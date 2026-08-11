@@ -6,7 +6,7 @@
 
 Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast candidate selection, personal vocabulary learning, and a familiar Shift-based Chinese/English switching experience.
 
-> 開發狀態：Milestone 1 已完成原生 macOS Input Method 的 build、安裝、公開 API 註冊與系統設定可見性驗收。尚未實作注音輸入。
+> 開發狀態：Milestone 2 已實作台灣標準注音鍵盤、音節組字與 InputMethodKit 行內標記文字。目前輸出的是注音符號；中文字典與候選字將在 Milestone 3 開始實作。
 
 ## Features
 
@@ -20,7 +20,28 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Open source
 - MIT License
 
-上述產品功能將依 Milestone 逐步實作；目前只完成原生輸入法的執行、安裝與註冊基礎。
+上述產品功能將依 Milestone 逐步實作；目前已完成原生輸入法基礎與注音鍵盤組字。
+
+## Milestone 2 input
+
+目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
+
+```text
+1 ㄅ  2 ㄉ  3 ˇ  4 ˋ  5 ㄓ  6 ˊ  7 ˙  8 ㄚ  9 ㄞ  0 ㄢ  - ㄦ
+q ㄆ  w ㄊ  e ㄍ  r ㄐ  t ㄔ  y ㄗ  u ㄧ  i ㄛ  o ㄟ  p ㄣ
+a ㄇ  s ㄋ  d ㄎ  f ㄑ  g ㄕ  h ㄘ  j ㄨ  k ㄜ  l ㄠ  ; ㄤ
+z ㄈ  x ㄌ  c ㄏ  v ㄒ  b ㄖ  n ㄙ  m ㄩ  , ㄝ  . ㄡ  / ㄥ
+Space 一聲
+```
+
+例如 `j i 3` 會送出 `ㄨㄛˇ`，`r u 0 4` 會送出 `ㄐㄧㄢˋ`，`2 k 7` 會送出 `˙ㄉㄜ`。輸入中的注音會先顯示為 marked text；聲調鍵會完成並送出音節，Enter 可送出尚未加聲調的音節。
+
+- Backspace：刪除最後輸入的注音 component。
+- Escape：丟棄目前音節。
+- 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
+- 未映射按鍵或 Command／Control／Option／Shift／Fn 組合鍵：先送出既有音節，再交回 App。
+
+`1`、`q`、`a`、`z` 都是聲母鍵；要連續驗證 `ㄅㄆㄇㄈ`，請在每個鍵後按 Enter 或一聲 Space 完成音節。直接連按四鍵會合理地以後一個聲母取代前一個。
 
 ## Requirements
 
@@ -84,9 +105,9 @@ To disable the development input source and remove only its installed bundle:
 
 No root access, SIP changes, or private APIs are required.
 
-## Milestone 1 scope
+## Current milestone scope
 
-The input controller intentionally returns unhandled key events to the active app. Keyboard mapping, Bopomofo parsing, dictionaries, candidates, Shift switching, and learning belong to later milestones and are not included yet. See [Milestone 1 notes](docs/MILESTONE_1.md) and [architecture](docs/ARCHITECTURE.md).
+Milestone 2 只輸出字面注音，不會把 `ㄨㄛˇ` 轉成「我」。中文字典、候選視窗、單按 Shift 切換、使用者學習及設定仍屬後續 Milestone。See [Milestone 2 notes](docs/MILESTONE_2.md), [Milestone 1 notes](docs/MILESTONE_1.md), and [architecture](docs/ARCHITECTURE.md).
 
 ## Privacy
 
