@@ -1,0 +1,522 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
+		1D378560EA1F2C421C82DEEA /* InputMethodBundleMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */; };
+		1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0748FDE71A052EB86AE9FC0B /* InputController.swift */; };
+		43C1C9045A125F542E8B2F95 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
+		55DDF9DCC55CE3B207F10651 /* InputMethodConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC1F18DAE2728F800E9A04A /* InputMethodConfigurationTests.swift */; };
+		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
+		80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */; };
+		8E799509AF0265E9ABF7D848 /* InputSourceRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */; };
+		B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */; };
+		B8A44384A0D54EAFCDDAF471 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C138C15B074BE10308B20A49 /* AppKit.framework */; };
+		E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
+		F32A31CF08E28712EA537A8F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30667214FEE41C9496CF28D /* main.swift */; };
+		FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */; };
+		FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0748FDE71A052EB86AE9FC0B /* InputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputController.swift; sourceTree = "<group>"; };
+		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
+		526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
+		587C51C5637FCED202A4E35B /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = JiukongZhuyin.icns; sourceTree = "<group>"; };
+		6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodBundleMetadataTests.swift; sourceTree = "<group>"; };
+		6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodConfiguration.swift; sourceTree = "<group>"; };
+		7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceRegistrar.swift; sourceTree = "<group>"; };
+		A096BED47B33FD3425B6DF35 /* Jiukong Zhuyin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jiukong Zhuyin.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
+		BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InputMethodKit.framework; path = System/Library/Frameworks/InputMethodKit.framework; sourceTree = SDKROOT; };
+		BFC1F18DAE2728F800E9A04A /* InputMethodConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodConfigurationTests.swift; sourceTree = "<group>"; };
+		C138C15B074BE10308B20A49 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		C30667214FEE41C9496CF28D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		557F606ED4DB8C566E6AF95B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8A44384A0D54EAFCDDAF471 /* AppKit.framework in Frameworks */,
+				06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */,
+				FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		084A048433899D60D8FF97E5 /* InputMethodTests */ = {
+			isa = PBXGroup;
+			children = (
+				6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */,
+				BFC1F18DAE2728F800E9A04A /* InputMethodConfigurationTests.swift */,
+			);
+			path = InputMethodTests;
+			sourceTree = "<group>";
+		};
+		32605061876F4DEB36D9D8D0 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */,
+				4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
+		3DAD93E3A197630F86AB6EF8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */,
+				A096BED47B33FD3425B6DF35 /* Jiukong Zhuyin.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4A282C178FA2FB5FA3DC4F23 /* zh-Hant.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */,
+			);
+			path = "zh-Hant.lproj";
+			sourceTree = "<group>";
+		};
+		805119F1E8539EC923FF4B27 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				C6989816110D886AF9F04539 /* InputMethod */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		AEAEB53BA25CA38DB9213D88 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				32605061876F4DEB36D9D8D0 /* Assets */,
+				CAAC06C334BCAC5C0F89DABE /* en.lproj */,
+				4A282C178FA2FB5FA3DC4F23 /* zh-Hant.lproj */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		C6989816110D886AF9F04539 /* InputMethod */ = {
+			isa = PBXGroup;
+			children = (
+				0748FDE71A052EB86AE9FC0B /* InputController.swift */,
+				6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */,
+				7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */,
+				C30667214FEE41C9496CF28D /* main.swift */,
+			);
+			path = InputMethod;
+			sourceTree = "<group>";
+		};
+		CAAC06C334BCAC5C0F89DABE /* en.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */,
+			);
+			path = en.lproj;
+			sourceTree = "<group>";
+		};
+		CC27FFCA30187E9009763113 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				084A048433899D60D8FF97E5 /* InputMethodTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		D2FF5CAA2635C6E1EE58A6DE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C138C15B074BE10308B20A49 /* AppKit.framework */,
+				587C51C5637FCED202A4E35B /* Carbon.framework */,
+				BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FBF4B12D57E5448B2A7FF29A = {
+			isa = PBXGroup;
+			children = (
+				AEAEB53BA25CA38DB9213D88 /* Resources */,
+				805119F1E8539EC923FF4B27 /* Sources */,
+				CC27FFCA30187E9009763113 /* Tests */,
+				D2FF5CAA2635C6E1EE58A6DE /* Frameworks */,
+				3DAD93E3A197630F86AB6EF8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0B867B0EA3989DA65CEE42AA /* Jiukong Zhuyin Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 622BD080E5DC36F394530D94 /* Build configuration list for PBXNativeTarget "Jiukong Zhuyin Tests" */;
+			buildPhases = (
+				D1E5C31D2E67039FA36B9455 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Jiukong Zhuyin Tests";
+			packageProductDependencies = (
+			);
+			productName = "Jiukong Zhuyin Tests";
+			productReference = FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		FEACA4DCDDB5E1A1F2154B49 /* Jiukong Zhuyin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EA0DCD2BB10C94CB64873398 /* Build configuration list for PBXNativeTarget "Jiukong Zhuyin" */;
+			buildPhases = (
+				C6159A61F980A4E8941ED916 /* Sources */,
+				326D3610FBA88E15CC71A125 /* Resources */,
+				557F606ED4DB8C566E6AF95B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Jiukong Zhuyin";
+			packageProductDependencies = (
+			);
+			productName = "Jiukong Zhuyin";
+			productReference = A096BED47B33FD3425B6DF35 /* Jiukong Zhuyin.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		53593C003D33302E22E06359 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0B867B0EA3989DA65CEE42AA = {
+						ProvisioningStyle = Manual;
+					};
+					FEACA4DCDDB5E1A1F2154B49 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 37FAAA7E67E23EBF012832F3 /* Build configuration list for PBXProject "Jiukong Zhuyin" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = FBF4B12D57E5448B2A7FF29A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 3DAD93E3A197630F86AB6EF8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FEACA4DCDDB5E1A1F2154B49 /* Jiukong Zhuyin */,
+				0B867B0EA3989DA65CEE42AA /* Jiukong Zhuyin Tests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		326D3610FBA88E15CC71A125 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */,
+				7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */,
+				80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */,
+				FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C6159A61F980A4E8941ED916 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */,
+				E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */,
+				8E799509AF0265E9ABF7D848 /* InputSourceRegistrar.swift in Sources */,
+				F32A31CF08E28712EA537A8F /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1E5C31D2E67039FA36B9455 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D378560EA1F2C421C82DEEA /* InputMethodBundleMetadataTests.swift in Sources */,
+				43C1C9045A125F542E8B2F95 /* InputMethodConfiguration.swift in Sources */,
+				55DDF9DCC55CE3B207F10651 /* InputMethodConfigurationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		14B2702B1B5BDCF86B897FAE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin;
+				PRODUCT_MODULE_NAME = JiukongZhuyin;
+				PRODUCT_NAME = "Jiukong Zhuyin";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		2AAC0596E81E115F00EFDB39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin.tests;
+				PRODUCT_MODULE_NAME = JiukongZhuyinTests;
+				PRODUCT_NAME = "Jiukong Zhuyin Tests";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		631386F57748793990BA29C5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		895052FB5831D016909DC72B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin;
+				PRODUCT_MODULE_NAME = JiukongZhuyin;
+				PRODUCT_NAME = "Jiukong Zhuyin";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		EF0A9B0F829DCA9C9252885E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		FF8E988D46FEAC531CB3E78C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin.tests;
+				PRODUCT_MODULE_NAME = JiukongZhuyinTests;
+				PRODUCT_NAME = "Jiukong Zhuyin Tests";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		37FAAA7E67E23EBF012832F3 /* Build configuration list for PBXProject "Jiukong Zhuyin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				631386F57748793990BA29C5 /* Debug */,
+				EF0A9B0F829DCA9C9252885E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		622BD080E5DC36F394530D94 /* Build configuration list for PBXNativeTarget "Jiukong Zhuyin Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2AAC0596E81E115F00EFDB39 /* Debug */,
+				FF8E988D46FEAC531CB3E78C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EA0DCD2BB10C94CB64873398 /* Build configuration list for PBXNativeTarget "Jiukong Zhuyin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				895052FB5831D016909DC72B /* Debug */,
+				14B2702B1B5BDCF86B897FAE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 53593C003D33302E22E06359 /* Project object */;
+}

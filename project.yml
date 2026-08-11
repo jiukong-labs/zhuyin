@@ -1,0 +1,137 @@
+name: Jiukong Zhuyin
+
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: YES
+    CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING: YES
+    CLANG_WARN_BOOL_CONVERSION: YES
+    CLANG_WARN_COMMA: YES
+    CLANG_WARN_CONSTANT_CONVERSION: YES
+    CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS: YES
+    CLANG_WARN_DIRECT_OBJC_ISA_USAGE: YES_ERROR
+    CLANG_WARN_DOCUMENTATION_COMMENTS: YES
+    CLANG_WARN_EMPTY_BODY: YES
+    CLANG_WARN_ENUM_CONVERSION: YES
+    CLANG_WARN_INFINITE_RECURSION: YES
+    CLANG_WARN_INT_CONVERSION: YES
+    CLANG_WARN_NON_LITERAL_NULL_CONVERSION: YES
+    CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF: YES
+    CLANG_WARN_OBJC_LITERAL_CONVERSION: YES
+    CLANG_WARN_OBJC_ROOT_CLASS: YES_ERROR
+    CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER: YES
+    CLANG_WARN_RANGE_LOOP_ANALYSIS: YES
+    CLANG_WARN_STRICT_PROTOTYPES: YES
+    CLANG_WARN_SUSPICIOUS_MOVE: YES
+    CLANG_WARN_UNGUARDED_AVAILABILITY: YES_AGGRESSIVE
+    CLANG_WARN_UNREACHABLE_CODE: YES
+    CLANG_WARN__DUPLICATE_METHOD_MATCH: YES
+    COPY_PHASE_STRIP: NO
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_STRICT_OBJC_MSGSEND: YES
+    GCC_C_LANGUAGE_STANDARD: gnu17
+    GCC_NO_COMMON_BLOCKS: YES
+    GCC_WARN_64_TO_32_BIT_CONVERSION: YES
+    GCC_WARN_ABOUT_RETURN_TYPE: YES_ERROR
+    GCC_WARN_UNDECLARED_SELECTOR: YES
+    GCC_WARN_UNINITIALIZED_AUTOS: YES_AGGRESSIVE
+    GCC_WARN_UNUSED_FUNCTION: YES
+    GCC_WARN_UNUSED_VARIABLE: YES
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+
+targets:
+  Jiukong Zhuyin:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/InputMethod
+      - path: Resources/Assets/JiukongZhuyin.icns
+        buildPhase: resources
+      - path: Resources/Assets/JiukongZhuyin.tiff
+        buildPhase: resources
+      - path: Resources/en.lproj/InfoPlist.strings
+        buildPhase: resources
+      - path: Resources/zh-Hant.lproj/InfoPlist.strings
+        buildPhase: resources
+    dependencies:
+      - sdk: AppKit.framework
+      - sdk: Carbon.framework
+      - sdk: InputMethodKit.framework
+    info:
+      path: Resources/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: zh-Hant
+        CFBundleDisplayName: 久空輸入法
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIconFile: JiukongZhuyin.icns
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: Jiukong Zhuyin
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleSignature: JKZY
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        InputMethodConnectionName: tw_org_cloudgate_jiukong_inputmethod_zhuyin_Connection
+        InputMethodServerControllerClass: JiukongInputController
+        LSApplicationCategoryType: public.app-category.utilities
+        LSBackgroundOnly: true
+        LSHasLocalizedDisplayName: true
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: Copyright © 2026 oldming101.
+        NSPrincipalClass: NSApplication
+        TISInputSourceID: tw.org.cloudgate.jiukong.inputmethod.zhuyin
+        TISIntendedLanguage: zh-Hant
+        tsInputMethodCharacterRepertoireKey:
+          - Hant
+        tsInputMethodIconFileKey: JiukongZhuyin.tiff
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        CURRENT_PROJECT_VERSION: 1
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: NO
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: 0.1.0
+        PRODUCT_BUNDLE_IDENTIFIER: tw.org.cloudgate.jiukong.inputmethod.zhuyin
+        PRODUCT_MODULE_NAME: JiukongZhuyin
+        PRODUCT_NAME: Jiukong Zhuyin
+
+  Jiukong Zhuyin Tests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Tests/InputMethodTests
+      - path: Sources/InputMethod/InputMethodConfiguration.swift
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_APP_SANDBOX: NO
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: tw.org.cloudgate.jiukong.inputmethod.zhuyin.tests
+        PRODUCT_MODULE_NAME: JiukongZhuyinTests
+        PRODUCT_NAME: Jiukong Zhuyin Tests
+
+schemes:
+  Jiukong Zhuyin:
+    build:
+      targets:
+        Jiukong Zhuyin: all
+        Jiukong Zhuyin Tests:
+          - test
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - name: Jiukong Zhuyin Tests
+    archive:
+      config: Release

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E3A8A"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#background)"/>
+  <g fill="none" stroke="#7DD3FC" stroke-width="28" opacity="0.82">
+    <circle cx="292" cy="292" r="62"/>
+    <circle cx="512" cy="292" r="62"/>
+    <circle cx="732" cy="292" r="62"/>
+    <circle cx="292" cy="512" r="62"/>
+    <circle cx="732" cy="512" r="62"/>
+    <circle cx="292" cy="732" r="62"/>
+    <circle cx="512" cy="732" r="62"/>
+    <circle cx="732" cy="732" r="62"/>
+  </g>
+  <circle cx="512" cy="512" r="130" fill="#F8FAFC"/>
+  <text x="512" y="598" fill="#172554" font-family="PingFang TC, Heiti TC, sans-serif" font-size="240" font-weight="600" text-anchor="middle">ㄅ</text>
+</svg>
