@@ -51,12 +51,18 @@ targets:
     platform: macOS
     sources:
       - path: Sources/Bopomofo
+      - path: Sources/Candidates
       - path: Sources/Composition
+      - path: Sources/Dictionary
       - path: Sources/InputMethod
       - path: Sources/Keyboard
       - path: Resources/Assets/JiukongZhuyin.icns
         buildPhase: resources
       - path: Resources/Assets/JiukongZhuyin.tiff
+        buildPhase: resources
+      - path: Resources/Dictionary/CNS11643_NOTICE.txt
+        buildPhase: resources
+      - path: Resources/Dictionary/JiukongZhuyin.sqlite3
         buildPhase: resources
       - path: Resources/en.lproj/InfoPlist.strings
         buildPhase: resources
@@ -66,6 +72,7 @@ targets:
       - sdk: AppKit.framework
       - sdk: Carbon.framework
       - sdk: InputMethodKit.framework
+      - sdk: libsqlite3.tbd
     info:
       path: Resources/Info.plist
       properties:
@@ -113,11 +120,18 @@ targets:
     sources:
       - path: Tests
       - path: Sources/Bopomofo
+      - path: Sources/Candidates/CandidateSession.swift
+      - path: Sources/Candidates/SystemCandidateKeyRouting.swift
       - path: Sources/Composition
+      - path: Sources/Dictionary
       - path: Sources/InputMethod/InputMethodConfiguration.swift
       - path: Sources/Keyboard
+      - path: Tools/DictionaryBuilder/CNS11643Manifest.swift
+      - path: Tools/DictionaryBuilder/CNS11643Parser.swift
+      - path: Tools/DictionaryBuilder/DictionaryDatabaseBuilder.swift
     dependencies:
       - sdk: Carbon.framework
+      - sdk: libsqlite3.tbd
     settings:
       base:
         CODE_SIGN_IDENTITY: "-"
@@ -127,6 +141,23 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: tw.org.cloudgate.jiukong.inputmethod.zhuyin.tests
         PRODUCT_MODULE_NAME: JiukongZhuyinTests
         PRODUCT_NAME: Jiukong Zhuyin Tests
+
+  Jiukong Dictionary Builder:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/Dictionary
+      - path: Tools/DictionaryBuilder
+    dependencies:
+      - sdk: libsqlite3.tbd
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_APP_SANDBOX: NO
+        PRODUCT_BUNDLE_IDENTIFIER: tw.org.cloudgate.jiukong.dictionary-builder
+        PRODUCT_MODULE_NAME: JiukongDictionaryBuilder
+        PRODUCT_NAME: JiukongDictionaryBuilder
 
 schemes:
   Jiukong Zhuyin:
@@ -142,4 +173,11 @@ schemes:
       targets:
         - name: Jiukong Zhuyin Tests
     archive:
+      config: Release
+
+  Jiukong Dictionary Builder:
+    build:
+      targets:
+        Jiukong Dictionary Builder: all
+    run:
       config: Release

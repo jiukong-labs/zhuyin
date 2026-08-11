@@ -1,0 +1,16 @@
+# CNS11643 source snapshot notice
+
+數位發展部 2026「CNS11643中文標準交換碼全字庫」20260805 版。
+
+此開放資料依政府資料開放授權條款（Open Government Data License）進行公眾釋出，使用者於遵守本條款各項規定之前提下，得利用之。
+
+- 資料提供機關：數位發展部
+- 資料集：CNS11643中文標準交換碼全字庫
+- 版本：20260805
+- 來源：https://www.cns11643.gov.tw
+- 資料集：https://data.gov.tw/dataset/5961/
+- 授權：https://data.gov.tw/license
+
+久空輸入法只使用注音屬性及 CNS／Unicode 對照。DictionaryBuilder 排除 Unicode 私用區、去除重複的讀音／字元組合，並編譯成只讀 SQLite 資料庫。全字庫字型及聲音檔未包含在本專案中。
+
+這些來源檔及其衍生字典不適用久空輸入法程式碼的 MIT License；其使用受上述政府資料開放授權條款約束。

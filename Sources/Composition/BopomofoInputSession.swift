@@ -2,6 +2,7 @@ enum CompositionTextAction: Equatable {
     case none
     case updateMarkedText(String)
     case clearMarkedText
+    case completeSyllable(BopomofoSyllable)
     case commitText(String)
 }
 
@@ -76,7 +77,7 @@ struct BopomofoInputSession {
             )
         case let .completed(syllable):
             return InputSessionResult(
-                textAction: .commitText(syllable.text),
+                textAction: .completeSyllable(syllable),
                 handled: true
             )
         }

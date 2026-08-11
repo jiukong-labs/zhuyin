@@ -14,7 +14,11 @@ final class BopomofoInputSessionTests: XCTestCase {
         )
         XCTAssertEqual(
             session.handle(.digit3),
-            handled(.commitText("ㄨㄛˇ"))
+            handled(.completeSyllable(syllable([
+                .medial(.u),
+                .final(.o),
+                .tone(.third)
+            ])))
         )
         XCTAssertFalse(session.hasComposition)
     }
@@ -28,7 +32,12 @@ final class BopomofoInputSessionTests: XCTestCase {
 
         XCTAssertEqual(
             session.handle(.digit4),
-            handled(.commitText("ㄐㄧㄢˋ"))
+            handled(.completeSyllable(syllable([
+                .initial(.j),
+                .medial(.i),
+                .final(.an),
+                .tone(.fourth)
+            ])))
         )
     }
 
@@ -38,7 +47,10 @@ final class BopomofoInputSessionTests: XCTestCase {
 
         XCTAssertEqual(
             session.handle(.space),
-            handled(.commitText("ㄅ"))
+            handled(.completeSyllable(syllable([
+                .initial(.b),
+                .tone(.first)
+            ])))
         )
     }
 
@@ -49,7 +61,11 @@ final class BopomofoInputSessionTests: XCTestCase {
 
         XCTAssertEqual(
             session.handle(.digit7),
-            handled(.commitText("˙ㄉㄜ"))
+            handled(.completeSyllable(syllable([
+                .initial(.d),
+                .final(.e),
+                .tone(.neutral)
+            ])))
         )
     }
 
@@ -134,5 +150,15 @@ final class BopomofoInputSessionTests: XCTestCase {
 
     private func handled(_ action: CompositionTextAction) -> InputSessionResult {
         InputSessionResult(textAction: action, handled: true)
+    }
+
+    private func syllable(
+        _ components: [BopomofoComponent]
+    ) -> BopomofoSyllable {
+        var syllable = BopomofoSyllable()
+        for component in components {
+            syllable.apply(component)
+        }
+        return syllable
     }
 }

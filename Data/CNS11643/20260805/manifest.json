@@ -1,0 +1,45 @@
+{
+  "version": "20260805",
+  "retrievedAt": "2026-08-11",
+  "provider": "數位發展部",
+  "datasetName": "CNS11643中文標準交換碼全字庫",
+  "datasetURL": "https://data.gov.tw/dataset/5961/",
+  "licenseName": "政府資料開放授權條款－第1版",
+  "licenseURL": "https://data.gov.tw/license",
+  "archiveSHA256": {
+    "MapingTables.zip": "4502fcf7b433d679dee51127298929543ec7f4aa99be93cd219df1552bc3d2bf",
+    "Properties.zip": "3d56ef14cc8099893245dac58fe4718d2fa64812b9159352a98a4588ad3efa5c"
+  },
+  "sourceFiles": [
+    {
+      "name": "release.txt",
+      "role": "release",
+      "sha256": "7fbda49386bf10790ab8dfda0b5df9c982482380e5dcc20d7b13b021d3988fae"
+    },
+    {
+      "name": "CNS_phonetic.txt",
+      "role": "phonetic",
+      "sha256": "adc2f2e71270e7b971fa5b51fb4dff49ddced986e6e9f06de1ee88394449c8e2"
+    },
+    {
+      "name": "CNS2UNICODE_Unicode BMP.txt",
+      "role": "unicodeMapping",
+      "sha256": "34fbe0e494a803680440c5cfd19d0ddf92da6766470e9439a4ef311cb502e595"
+    },
+    {
+      "name": "CNS2UNICODE_Unicode 2.txt",
+      "role": "unicodeMapping",
+      "sha256": "b99bc9520f006470f54263919db615d60c571f890b667786450ccfa7ef79f70a"
+    },
+    {
+      "name": "CNS2UNICODE_Unicode 3.txt",
+      "role": "unicodeMapping",
+      "sha256": "0599b2c1c9bc7670dd125e7e2dea923e206423b8499cefb66bed4a4a82d7ab2a"
+    },
+    {
+      "name": "CNS2UNICODE_Unicode 15.txt",
+      "role": "unicodeMapping",
+      "sha256": "baf46bb1606872b59ad90e580e0d729d250a1bc3ff3c9f9d47ef8b7e89e73893"
+    }
+  ]
+}
