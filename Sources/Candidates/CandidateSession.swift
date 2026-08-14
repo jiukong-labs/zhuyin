@@ -80,15 +80,6 @@ struct CandidateSession: Equatable {
         return candidates[targetIndex]
     }
 
-    func candidate(
-        matchingIdentifier identifier: Int,
-        using identifierForCandidate: (String) -> Int
-    ) -> String? {
-        candidates.first {
-            identifierForCandidate($0) == identifier
-        }
-    }
-
     func validatedSelection(_ candidate: String) -> String? {
         candidates.contains(candidate) ? candidate : nil
     }

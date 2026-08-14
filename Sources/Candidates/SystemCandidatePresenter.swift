@@ -1,12 +1,5 @@
 import InputMethodKit
 
-enum VisibleCandidateSelection: Equatable {
-    case selected(String)
-    case emptySlot
-    case notReady
-    case selectionFailed
-}
-
 final class SystemCandidatePresenter {
     private let panel: IMKCandidates
 
@@ -40,42 +33,6 @@ final class SystemCandidatePresenter {
         }
 
         return panel.selectCandidate(withIdentifier: identifier)
-    }
-
-    func candidate(
-        atVisibleIndex visibleIndex: Int,
-        from session: CandidateSession
-    ) -> VisibleCandidateSelection {
-        guard panel.isVisible() else {
-            return .notReady
-        }
-
-        guard visibleIndex >= 0 else {
-            return .emptySlot
-        }
-
-        let identifier = panel.candidateIdentifier(
-            atLineNumber: visibleIndex
-        )
-        guard identifier != NSNotFound else {
-            let firstVisibleIdentifier = panel.candidateIdentifier(
-                atLineNumber: 0
-            )
-            return firstVisibleIdentifier == NSNotFound
-                ? .notReady
-                : .emptySlot
-        }
-
-        guard let candidate = session.candidate(
-            matchingIdentifier: identifier,
-            using: {
-                panel.candidateStringIdentifier($0 as NSString)
-            }
-        ) else {
-            return .selectionFailed
-        }
-
-        return .selected(candidate)
     }
 
     func updateAndShow() {

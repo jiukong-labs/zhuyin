@@ -97,28 +97,4 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertNil(session.candidate(atSelectionKeyIndex: 9))
     }
 
-    func testResolvesAVisibleIdentifierAgainstTheCurrentSnapshot() throws {
-        let session = try XCTUnwrap(
-            CandidateSession(
-                pronunciation: "ㄨㄛˇ",
-                candidates: ["我", "倭", "婑"]
-            )
-        )
-        let identifiers = ["我": 10, "倭": 11, "婑": 12]
-
-        XCTAssertEqual(
-            session.candidate(
-                matchingIdentifier: 11,
-                using: { identifiers[$0] ?? -1 }
-            ),
-            "倭"
-        )
-        XCTAssertNil(
-            session.candidate(
-                matchingIdentifier: 99,
-                using: { identifiers[$0] ?? -1 }
-            )
-        )
-    }
-
 }

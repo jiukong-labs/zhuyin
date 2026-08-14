@@ -52,7 +52,7 @@ Running the builder twice from the same snapshot on the validation machine produ
 
 - A tone key completes the syllable and starts dictionary lookup.
 - The full reading remains marked while candidates are visible.
-- `IMKCandidates` supplies the native single-row candidate UI, paging controls, and mouse callbacks. Public server-first routing lets the controller process arrows, Home/End, Page Up/Page Down, `1`–`9`, Return, Escape, and Backspace deterministically through public candidate-selection APIs.
+- `IMKCandidates` supplies the native single-row candidate UI, paging controls, and mouse callbacks. Public server-first routing lets the controller process arrows, Home/End, Page Up/Page Down, `1`–`9`, Return, Escape, and Backspace; number keys select from the immutable session snapshot page containing the current highlight.
 - A selected candidate is validated against the current snapshot and replaces the marked reading exactly once.
 - Client commit, input-source deactivation, and controller closure commit the selected or first candidate.
 - Escape or Backspace cancels an active candidate composition.
@@ -70,7 +70,7 @@ The Debug suite covers:
 - stable candidate snapshots, highlighting, stale-selection rejection, navigation-key routing, nine-item page selection, and shortcut-modifier rejection;
 - tone-completion conversion actions and all earlier keyboard/composition behavior.
 
-On 2026-08-11, Xcode 26.6 with the macOS 26.5 SDK completed all 58 Debug tests with no failures. The generic Release build produced a valid ad-hoc-signed universal `arm64`/`x86_64` application, and the bundled database hash matched the checked-in artifact. Xcode emitted only its informational AppIntents metadata warning because this target intentionally has no AppIntents dependency.
+On 2026-08-14, Xcode 26.6 with the macOS 26.5 SDK completed all 57 Debug tests with no failures. The generic Release build produced a valid ad-hoc-signed universal `arm64`/`x86_64` application, and the bundled database hash matched the checked-in artifact. Xcode emitted only its informational AppIntents metadata warning because this target intentionally has no AppIntents dependency.
 
 Run:
 

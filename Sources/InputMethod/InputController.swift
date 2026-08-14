@@ -71,26 +71,10 @@ final class InputController: IMKInputController {
                     keyCode: event.keyCode,
                     modifierFlags: event.modifierFlags
                 ) {
-                let candidate: String?
-                switch candidatePresenter?.candidate(
-                    atVisibleIndex: selectionKeyIndex,
-                    from: candidateSession
+                if let candidate = candidateSession.candidate(
+                    atSelectionKeyIndex: selectionKeyIndex
                 ) {
-                case let .selected(visibleCandidate):
-                    candidate = visibleCandidate
-                case .emptySlot, .selectionFailed:
-                    candidate = nil
-                case .notReady, nil:
-                    candidate = candidateSession.candidate(
-                        atSelectionKeyIndex: selectionKeyIndex
-                    )
-                }
-
-                if let candidate,
-                   let selection = candidateSession.validatedSelection(
-                       candidate
-                   ) {
-                    commitCandidate(selection, to: inputClient)
+                    commitCandidate(candidate, to: inputClient)
                 }
                 return true
             }
