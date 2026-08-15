@@ -1,12 +1,12 @@
 # Architecture
 
-Milestone 6 adds persistent local character learning while keeping ranking, storage, candidate state, AppKit presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
+Milestone 7 adds a multi-unit marked composition buffer and exact user-phrase learning while keeping parsing, composition state, ranking, storage, candidate presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
 `main.swift` validates the bundle configuration, creates exactly one `IMKServer`, and starts the AppKit run loop. The bundle is an `LSUIElement` agent, so it can own a nonactivating candidate panel without appearing in the Dock. InputMethodKit creates one `InputController` for each client input session.
 
-`InputController` accepts key-down, modifier-change, and client mouse-down events. Modifier and key events first update the independent `ShiftToggleController`. Candidate mode then routes selection and navigation keys, treating the `.function` and `.numericPad` flags inherent to macOS navigation-key events separately from Command, Control, Option, and Shift shortcuts. Outside candidate mode, the controller translates a Chinese-mode key-down into a semantic physical key, asks the composition session for a result, then performs the requested `IMKTextInput` marked-text update or commit. English-mode and otherwise unhandled events are returned to the client application.
+`InputController` accepts key-down, modifier-change, and client mouse-down events. Modifier and key events first update the independent `ShiftToggleController`. Candidate mode then routes selection and navigation keys, treating the `.function` and `.numericPad` flags inherent to macOS navigation-key events separately from Command, Control, Option, and Shift shortcuts. Outside candidate mode, the controller first routes Shift range-selection commands, then translates a Chinese-mode key-down into a semantic physical key and asks the syllable session for a result. Converted units remain in `CompositionBuffer`; the controller renders one combined marked snapshot or performs one final `IMKTextInput` commit. English-mode and otherwise unhandled events are returned to the client application after active composition is finalized.
 
 ## Composition pipeline
 
@@ -19,8 +19,9 @@ NSEvent key code
   → BopomofoComponent
   → BopomofoParser / BopomofoSyllable
   → BopomofoInputSession result
+  → CompositionBuffer
   → CharacterDictionary lookup
-  → UserLearningService snapshot / CandidateRanker
+  → UserLearningService character + exact phrase snapshots / CandidateRanker
   → CandidateSession / CandidateCommandReducer
   → InputController / CandidateWindowPresenter
   → IMKTextInput marked text or committed character
@@ -32,7 +33,11 @@ NSEvent key code
 - `BopomofoParser` completes and resets one syllable when a tone arrives.
 - Outside candidate mode, `BopomofoInputSession` owns Backspace, Escape, Enter, pass-through, commit, and reset behavior without importing AppKit or InputMethodKit.
 
-A tone-completed syllable remains distinct from a forced raw-text commit. The former starts dictionary conversion; Return on an unfinished syllable and pass-through finalization retain the Milestone 2 raw Bopomofo behavior.
+A tone-completed syllable remains distinct from forced raw text. The former starts dictionary conversion; Return on an unfinished syllable and pass-through finalization preserve literal Bopomofo as one unlearned buffer unit.
+
+`CompositionBuffer` owns every converted or literal unit not yet inserted into the client. Each unit keeps display text, exact reading, and a UUID. Candidate selections become pending learning events tied to surviving unit UUIDs. Phrase replacement or Backspace prunes events touching removed units; Escape can discard the buffer without producing learning. A real commit first detaches one immutable snapshot, resets all mutable state, inserts its full text once, and only then records the snapshot's surviving events.
+
+The buffer selection is an end-anchored suffix. Shift+Left expands it one reading unit toward the beginning and Shift+Right shrinks it. Its `NSRange` is calculated from each unit's UTF-16 length. Starting a new raw syllable clears the range and returns the caret to the full marked string's UTF-16 end.
 
 ## Language mode
 

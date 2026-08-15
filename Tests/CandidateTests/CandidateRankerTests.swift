@@ -119,6 +119,58 @@ final class CandidateRankerTests: XCTestCase {
         )
     }
 
+    func testFixedPhraseBonusDominatesMaximumCharacterLearning() {
+        let maximumLearnedCharacter = Candidate(
+            text: "字",
+            pronunciation: "ㄗˋ",
+            userFrequency: Int64.max,
+            lastUsed: now
+        )
+        let exactPhrase = Candidate(
+            text: "造詞",
+            pronunciationSequence: ["ㄗㄠˋ", "ㄘˊ"],
+            type: .phrase,
+            baseRank: 9_999,
+            baseFrequency: 0
+        )
+
+        XCTAssertEqual(
+            ranker.score(for: exactPhrase, at: now),
+            CandidateRanker.defaultPhraseBonus,
+            accuracy: 0.000_001
+        )
+        XCTAssertEqual(
+            ranker.ranked(
+                [maximumLearnedCharacter, exactPhrase],
+                at: now
+            ).map(\.text),
+            ["造詞", "字"]
+        )
+    }
+
+    func testPinnedCharacterStillOutranksPhraseBonus() {
+        let pinnedCharacter = Candidate(
+            text: "釘",
+            pronunciation: "ㄉㄧㄥ",
+            baseRank: 999,
+            pinned: true
+        )
+        let exactPhrase = Candidate(
+            text: "造詞",
+            pronunciationSequence: ["ㄗㄠˋ", "ㄘˊ"],
+            type: .phrase,
+            baseFrequency: 0,
+            userFrequency: Int64.max,
+            lastUsed: now
+        )
+
+        XCTAssertEqual(
+            ranker.ranked([exactPhrase, pinnedCharacter], at: now)
+                .map(\.text),
+            ["釘", "造詞"]
+        )
+    }
+
     func testBaseFrequencyOverridesRankWhenAvailable() {
         let frequencyCandidate = Candidate(
             text: "頻",

@@ -18,9 +18,12 @@ final class CharacterCandidateProvider {
         self.now = now
     }
 
-    func candidates(for pronunciation: String) throws -> [Candidate] {
+    func candidates(
+        for pronunciation: String,
+        phraseQueries: [CompositionPhraseQuery] = []
+    ) throws -> [Candidate] {
         let learningRecords = learning?.records(for: pronunciation) ?? [:]
-        let candidates = try dictionary.candidateEntries(for: pronunciation)
+        let characterCandidates = try dictionary.candidateEntries(for: pronunciation)
             .enumerated()
             .map { baseRank, entry in
                 let learningRecord = learningRecords[entry.text]
@@ -35,31 +38,122 @@ final class CharacterCandidateProvider {
                 )
             }
 
-        return ranker.ranked(candidates, at: now())
+        let phraseCandidates = exactPhraseCandidates(
+            for: pronunciation,
+            queries: phraseQueries
+        )
+        return ranker.ranked(
+            phraseCandidates + characterCandidates,
+            at: now()
+        )
+    }
+
+    @discardableResult
+    func addUserPhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool {
+        guard let identity = try? UserPhraseValidator.validate(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence
+        ) else {
+            return false
+        }
+        return learning?.addPhrase(
+            phrase: identity.phrase,
+            pronunciationSequence: identity.pronunciationSequence,
+            createdAt: now()
+        ) ?? false
     }
 
     func recordCommittedSelection(
         _ candidate: Candidate,
         reason: CandidateCommitReason
     ) {
-        guard candidate.type == .character,
-              !candidate.text.isEmpty,
-              candidate.pronunciationSequence.count == 1,
-              let pronunciation = candidate.pronunciationSequence.first,
-              !pronunciation.isEmpty,
-              reason.recordsCharacterSelection else {
+        guard reason.recordsCandidateSelection else {
             return
         }
 
-        learning?.recordSelection(
-            character: candidate.text,
-            pronunciation: pronunciation
-        )
+        switch candidate.type {
+        case .character:
+            guard !candidate.text.isEmpty,
+                  candidate.pronunciationSequence.count == 1,
+                  let pronunciation = candidate.pronunciationSequence.first,
+                  !pronunciation.isEmpty else {
+                return
+            }
+            learning?.recordSelection(
+                character: candidate.text,
+                pronunciation: pronunciation
+            )
+        case .phrase:
+            guard let identity = try? UserPhraseValidator.validate(
+                phrase: candidate.text,
+                pronunciationSequence: candidate.pronunciationSequence
+            ), identity.phrase == candidate.text,
+                  identity.pronunciationSequence
+                    == candidate.pronunciationSequence else {
+                return
+            }
+            learning?.recordPhraseSelection(
+                phrase: candidate.text,
+                pronunciationSequence: candidate.pronunciationSequence,
+                at: now()
+            )
+        }
+    }
+
+    private func exactPhraseCandidates(
+        for pronunciation: String,
+        queries: [CompositionPhraseQuery]
+    ) -> [Candidate] {
+        guard let learning else {
+            return []
+        }
+
+        var seenQueries: Set<[String]> = []
+        var seenCandidates: Set<CandidateID> = []
+        var result: [Candidate] = []
+        for query in queries {
+            let readings = query.pronunciationSequence
+            guard readings.last == pronunciation,
+                  UserPhraseValidator.allowedUnitCount.contains(readings.count),
+                  seenQueries.insert(readings).inserted else {
+                continue
+            }
+
+            for record in learning.phraseRecords(for: readings) {
+                guard record.pronunciationSequence == readings,
+                      let identity = try? UserPhraseValidator.validate(
+                          phrase: record.phrase,
+                          pronunciationSequence: readings
+                      ), identity.phrase == record.phrase,
+                      identity.pronunciationSequence == readings else {
+                    continue
+                }
+                let candidate = Candidate(
+                    text: record.phrase,
+                    pronunciationSequence: readings,
+                    type: .phrase,
+                    baseRank: result.count,
+                    sourceOrder: record.phraseID,
+                    baseFrequency: 0,
+                    userFrequency: record.selectionCount,
+                    lastUsed: record.lastUsedAt,
+                    pinned: record.pinned
+                )
+                guard seenCandidates.insert(candidate.id).inserted else {
+                    continue
+                }
+                result.append(candidate)
+            }
+        }
+        return result
     }
 }
 
 private extension CandidateCommitReason {
-    var recordsCharacterSelection: Bool {
+    var recordsCandidateSelection: Bool {
         switch self {
         case .space,
              .returnKey,

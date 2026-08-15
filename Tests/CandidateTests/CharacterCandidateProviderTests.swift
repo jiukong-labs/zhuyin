@@ -135,11 +135,111 @@ final class CharacterCandidateProviderTests: XCTestCase {
         )
     }
 
-    func testRecordCommittedSelectionIgnoresPhraseCandidate() throws {
+    func testProviderMergesLongestFirstExactPhraseQueriesAheadOfCharacters() throws {
         let learning = LearningSpy()
+        let longReadings = ["ㄐㄧㄡˇ", "ㄎㄨㄥ", "ㄕㄨ", "ㄖㄨˋ"]
+        let shortReadings = ["ㄕㄨ", "ㄖㄨˋ"]
+        learning.phraseRecordsByPronunciation[longReadings] = [
+            makePhraseRecord(
+                id: 10,
+                phrase: "久空輸入",
+                readings: longReadings
+            ),
+        ]
+        learning.phraseRecordsByPronunciation[shortReadings] = [
+            makePhraseRecord(
+                id: 20,
+                phrase: "輸入",
+                readings: shortReadings
+            ),
+        ]
         let provider = CharacterCandidateProvider(
             dictionary: try makeDictionary(),
             learning: learning
+        )
+
+        let candidates = try provider.candidates(
+            for: "ㄖㄨˋ",
+            phraseQueries: [
+                makePhraseQuery(longReadings),
+                makePhraseQuery(shortReadings),
+            ]
+        )
+
+        XCTAssertEqual(Array(candidates.prefix(2).map(\.text)), ["久空輸入", "輸入"])
+        XCTAssertEqual(Array(candidates.prefix(2).map(\.type)), [.phrase, .phrase])
+        XCTAssertEqual(candidates.first?.baseFrequency, 0)
+        XCTAssertEqual(
+            learning.requestedPhraseReadings,
+            [longReadings, shortReadings]
+        )
+        XCTAssertTrue(candidates.dropFirst(2).contains { $0.type == .character })
+    }
+
+    func testProviderRejectsWrongFinalReadingAndDeduplicatesQueries() throws {
+        let learning = LearningSpy()
+        let exactReadings = ["ㄕㄨ", "ㄖㄨˋ"]
+        learning.phraseRecordsByPronunciation[exactReadings] = [
+            makePhraseRecord(id: 1, phrase: "輸入", readings: exactReadings),
+        ]
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+
+        let candidates = try provider.candidates(
+            for: "ㄖㄨˋ",
+            phraseQueries: [
+                makePhraseQuery(["ㄕㄨ", "ㄔㄨ"]),
+                makePhraseQuery(exactReadings),
+                makePhraseQuery(exactReadings),
+            ]
+        )
+
+        XCTAssertEqual(
+            candidates.filter { $0.type == .phrase }.map(\.text),
+            ["輸入"]
+        )
+        XCTAssertEqual(learning.requestedPhraseReadings, [exactReadings])
+    }
+
+    func testAddUserPhraseUsesInjectedClockAndRejectsMalformedPhrase() throws {
+        let learning = LearningSpy()
+        let date = Date(timeIntervalSince1970: 123)
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            now: { date }
+        )
+
+        XCTAssertTrue(
+            provider.addUserPhrase(
+                phrase: "久空",
+                pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+            )
+        )
+        XCTAssertFalse(
+            provider.addUserPhrase(
+                phrase: "錯誤",
+                pronunciationSequence: ["ASCII", "ㄨˋ"]
+            )
+        )
+        XCTAssertEqual(learning.addedPhrases.count, 1)
+        XCTAssertEqual(learning.addedPhrases.first?.phrase, "久空")
+        XCTAssertEqual(
+            learning.addedPhrases.first?.readings,
+            ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        )
+        XCTAssertEqual(learning.addedPhrases.first?.date, date)
+    }
+
+    func testRecordCommittedSelectionRecordsPhraseCandidate() throws {
+        let learning = LearningSpy()
+        let date = Date(timeIntervalSince1970: 456)
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            now: { date }
         )
 
         provider.recordCommittedSelection(
@@ -152,6 +252,13 @@ final class CharacterCandidateProviderTests: XCTestCase {
         )
 
         XCTAssertEqual(learning.recordedSelections, [])
+        XCTAssertEqual(learning.recordedPhraseSelections.count, 1)
+        XCTAssertEqual(learning.recordedPhraseSelections.first?.phrase, "久空")
+        XCTAssertEqual(
+            learning.recordedPhraseSelections.first?.readings,
+            ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        )
+        XCTAssertEqual(learning.recordedPhraseSelections.first?.date, date)
     }
 
     func testRecordCommittedSelectionRejectsMalformedCharacterIdentity() throws {
@@ -182,9 +289,19 @@ final class CharacterCandidateProviderTests: XCTestCase {
         let pronunciation: String
     }
 
+    private struct PhraseOperation: Equatable {
+        let phrase: String
+        let readings: [String]
+        let date: Date
+    }
+
     private final class LearningSpy: UserLearningProviding {
         var recordsByPronunciation: [String: [String: CharacterLearningRecord]] = [:]
+        var phraseRecordsByPronunciation: [[String]: [UserPhraseRecord]] = [:]
         var recordedSelections: [Selection] = []
+        var requestedPhraseReadings: [[String]] = []
+        var addedPhrases: [PhraseOperation] = []
+        var recordedPhraseSelections: [PhraseOperation] = []
 
         func records(
             for pronunciation: String
@@ -200,6 +317,73 @@ final class CharacterCandidateProviderTests: XCTestCase {
                 )
             )
         }
+
+        func phraseRecords(
+            for pronunciationSequence: [String]
+        ) -> [UserPhraseRecord] {
+            requestedPhraseReadings.append(pronunciationSequence)
+            return phraseRecordsByPronunciation[pronunciationSequence] ?? []
+        }
+
+        func addPhrase(
+            phrase: String,
+            pronunciationSequence: [String],
+            createdAt: Date
+        ) -> Bool {
+            addedPhrases.append(
+                PhraseOperation(
+                    phrase: phrase,
+                    readings: pronunciationSequence,
+                    date: createdAt
+                )
+            )
+            return true
+        }
+
+        func recordPhraseSelection(
+            phrase: String,
+            pronunciationSequence: [String],
+            at date: Date
+        ) {
+            recordedPhraseSelections.append(
+                PhraseOperation(
+                    phrase: phrase,
+                    readings: pronunciationSequence,
+                    date: date
+                )
+            )
+        }
+    }
+
+    private func makePhraseRecord(
+        id: Int64,
+        phrase: String,
+        readings: [String],
+        selectionCount: Int64 = 0,
+        lastUsedAt: Date? = nil,
+        pinned: Bool = false
+    ) -> UserPhraseRecord {
+        UserPhraseRecord(
+            phraseID: id,
+            phrase: phrase,
+            pronunciationSequence: readings,
+            createdAt: Date(timeIntervalSince1970: TimeInterval(id)),
+            lastUsedAt: lastUsedAt,
+            selectionCount: selectionCount,
+            pinned: pinned
+        )
+    }
+
+    private func makePhraseQuery(
+        _ readings: [String]
+    ) -> CompositionPhraseQuery {
+        CompositionPhraseQuery(
+            pronunciationSequence: readings,
+            existingSuffixUnitIDs: Array(
+                repeating: UUID(),
+                count: max(0, readings.count - 1)
+            )
+        )
     }
 
     private var repositoryRoot: URL {

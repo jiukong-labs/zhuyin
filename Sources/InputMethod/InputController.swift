@@ -23,6 +23,7 @@ final class InputController: IMKInputController {
     private lazy var languageModeHUD = LanguageModeHUD.shared
     private let languageModeController = LanguageModeController.shared
     private var inputSession = BopomofoInputSession()
+    private var compositionBuffer = CompositionBuffer()
     private var shiftToggleController = ShiftToggleController()
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
@@ -85,7 +86,7 @@ final class InputController: IMKInputController {
             return handleModifierChange(event, inputClient: inputClient)
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
             shiftToggleController.reset()
-            finishComposition(using: inputClient)
+            finishComposition(reason: .lifecycle, using: inputClient)
             return false
         case .keyDown:
             shiftToggleController.noteKeyDown()
@@ -95,6 +96,16 @@ final class InputController: IMKInputController {
 
         guard languageModeController.mode == .chinese else {
             return false
+        }
+
+        if let command = CompositionSelectionCommandRouter.command(
+            keyCode: event.keyCode,
+            modifierFlags: event.modifierFlags
+        ) {
+            return handleCompositionSelectionCommand(
+                command,
+                inputClient: inputClient
+            )
         }
 
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -109,28 +120,35 @@ final class InputController: IMKInputController {
         }
 
         if !modifiers.intersection(Self.passThroughModifiers).isEmpty {
-            finishCandidateBeforePassThrough(to: inputClient)
-            apply(inputSession.finishBeforePassThrough(), to: inputClient)
+            finishComposition(
+                reason: .implicitPassThrough,
+                using: inputClient
+            )
             return false
         }
 
         guard let key = MacVirtualKeyResolver.key(for: event.keyCode) else {
-            finishCandidateBeforePassThrough(to: inputClient)
-            apply(inputSession.finishBeforePassThrough(), to: inputClient)
+            finishComposition(
+                reason: .implicitPassThrough,
+                using: inputClient
+            )
             return false
         }
 
-        if handleCandidateMode(key, inputClient: inputClient) {
+        if handleCandidateMode() {
+            return true
+        }
+
+        if handleBufferOnlyCommand(key, inputClient: inputClient) {
             return true
         }
 
         let result = inputSession.handle(key)
-        apply(result, to: inputClient)
-        return result.handled
+        return apply(result, to: inputClient)
     }
 
     override func commitComposition(_ sender: Any!) {
-        finishComposition(using: sender)
+        finishComposition(reason: .lifecycle, using: sender)
     }
 
     override func activateServer(_ sender: Any!) {
@@ -140,19 +158,19 @@ final class InputController: IMKInputController {
 
     override func deactivateServer(_ sender: Any!) {
         resetTransientInputState()
-        finishComposition(using: sender)
+        finishComposition(reason: .lifecycle, using: sender)
         super.deactivateServer(sender)
     }
 
     override func inputControllerWillClose() {
         resetTransientInputState()
-        finishComposition(using: client())
+        finishComposition(reason: .lifecycle, using: client())
         super.inputControllerWillClose()
     }
 
     override func hidePalettes() {
         resetTransientInputState()
-        finishComposition(using: client())
+        finishComposition(reason: .lifecycle, using: client())
         super.hidePalettes()
     }
 
@@ -172,26 +190,29 @@ final class InputController: IMKInputController {
             }
 
             self.resetTransientInputState()
-            self.finishComposition(using: self.client())
+            self.finishComposition(
+                reason: .lifecycle,
+                using: self.client()
+            )
         }
     }
 
-    private func finishComposition(using sender: Any?) {
-        guard candidateSession != nil || inputSession.hasComposition else {
+    private func finishComposition(
+        reason: CandidateCommitReason,
+        using sender: Any?
+    ) {
+        guard candidateSession != nil
+            || inputSession.hasComposition
+            || !compositionBuffer.isEmpty else {
             return
         }
 
         guard let inputClient = inputClient(from: sender) else {
-            discardCandidateState()
-            _ = inputSession.discardComposition()
+            discardAllComposition()
             return
         }
 
-        if commitPreferredCandidate(reason: .lifecycle, to: inputClient) {
-            return
-        }
-
-        apply(inputSession.commitComposition(), to: inputClient)
+        flushComposition(reason: reason, to: inputClient)
     }
 
     private func handleModifierChange(
@@ -207,7 +228,7 @@ final class InputController: IMKInputController {
             return false
         }
 
-        finishComposition(using: inputClient)
+        finishComposition(reason: .lifecycle, using: inputClient)
         let mode = languageModeController.toggle()
         languageModeHUDToken = languageModeHUD.show(
             mode: mode,
@@ -252,24 +273,39 @@ final class InputController: IMKInputController {
             .takeUnretainedValue() as String
     }
 
-    private func apply(_ result: InputSessionResult, to inputClient: any IMKTextInput) {
+    @discardableResult
+    private func apply(
+        _ result: InputSessionResult,
+        to inputClient: any IMKTextInput
+    ) -> Bool {
         switch result.textAction {
         case .none:
-            break
-        case let .updateMarkedText(text):
-            let markedText = text as NSString
-            inputClient.setMarkedText(
-                markedText,
-                selectionRange: NSRange(location: markedText.length, length: 0),
-                replacementRange: Self.currentSelectionRange
-            )
+            if !result.handled, !compositionBuffer.isEmpty {
+                flushComposition(
+                    reason: .implicitPassThrough,
+                    to: inputClient
+                )
+            }
+        case .updateMarkedText:
+            compositionBuffer.clearSelection()
+            updateMarkedComposition(on: inputClient)
         case .clearMarkedText:
-            clearMarkedText(on: inputClient)
+            updateMarkedComposition(on: inputClient)
         case let .completeSyllable(syllable):
+            compositionBuffer.clearSelection()
             beginCandidateSelection(for: syllable, inputClient: inputClient)
         case let .commitText(text):
-            commitText(text, to: inputClient)
+            compositionBuffer.clearSelection()
+            _ = compositionBuffer.append(
+                text: text,
+                pronunciation: text
+            )
+            flushComposition(
+                reason: result.handled ? .returnKey : .implicitPassThrough,
+                to: inputClient
+            )
         }
+        return result.handled
     }
 
     private func beginCandidateSelection(
@@ -279,64 +315,106 @@ final class InputController: IMKInputController {
         let pronunciation = syllable.text
         guard let candidateProvider else {
             NSLog("Jiukong Zhuyin character conversion is unavailable.")
-            commitText(pronunciation, to: inputClient)
+            appendLiteralReading(pronunciation, to: inputClient)
             return
         }
 
         do {
             let candidates = try candidateProvider.candidates(
-                for: pronunciation
+                for: pronunciation,
+                phraseQueries: compositionBuffer.phraseLookupQueries(
+                    appending: pronunciation
+                )
             )
             guard let session = CandidateSession(
                 pronunciation: pronunciation,
                 candidates: candidates
             ) else {
                 NSLog("Jiukong Zhuyin dictionary lookup returned no candidates.")
-                commitText(pronunciation, to: inputClient)
+                appendLiteralReading(pronunciation, to: inputClient)
                 return
             }
 
             lastCandidateAnchor = nil
             candidateSession = session
             candidateSyllable = syllable
-            setMarkedText(pronunciation, on: inputClient)
+            updateMarkedComposition(on: inputClient)
             presentCandidates(session, inputClient: inputClient)
         } catch {
             NSLog(
                 "Jiukong Zhuyin dictionary lookup failed: %@",
                 error.localizedDescription
             )
-            commitText(pronunciation, to: inputClient)
+            appendLiteralReading(pronunciation, to: inputClient)
+        }
+    }
+
+    private func handleCompositionSelectionCommand(
+        _ command: CompositionSelectionCommand,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        // An active raw syllable or candidate owns the inline suffix. Consume
+        // Shift-arrow without accepting it or leaking selection to the client.
+        guard candidateSession == nil, !inputSession.hasComposition else {
+            return true
+        }
+        guard !compositionBuffer.isEmpty else {
+            return false
+        }
+
+        switch command {
+        case .expandBackward:
+            compositionBuffer.expandSelectionBackward()
+        case .shrinkForward:
+            compositionBuffer.shrinkSelectionForward()
+        }
+        updateMarkedComposition(on: inputClient)
+        return true
+    }
+
+    private func handleBufferOnlyCommand(
+        _ key: KeyboardKey,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        guard candidateSession == nil,
+              !inputSession.hasComposition,
+              !compositionBuffer.isEmpty else {
+            return false
+        }
+
+        switch key {
+        case .returnKey, .keypadEnter:
+            if let phrase = compositionBuffer.selectedPhrase {
+                _ = candidateProvider?.addUserPhrase(
+                    phrase: phrase.text,
+                    pronunciationSequence: phrase.pronunciationSequence
+                )
+            }
+            flushComposition(reason: .returnKey, to: inputClient)
+            return true
+        case .escape:
+            if !compositionBuffer.clearSelection() {
+                compositionBuffer.discard()
+            }
+            updateMarkedComposition(on: inputClient)
+            return true
+        case .deleteBackward:
+            compositionBuffer.deleteBackward()
+            updateMarkedComposition(on: inputClient)
+            return true
+        default:
+            return false
         }
     }
 
     /// Returns true only when the current key was consumed by candidate mode.
-    private func handleCandidateMode(
-        _ key: KeyboardKey,
-        inputClient: any IMKTextInput
-    ) -> Bool {
+    private func handleCandidateMode() -> Bool {
         guard candidateSession != nil else {
             return false
         }
 
-        _ = commitPreferredCandidate(
-            reason: .implicitPassThrough,
-            to: inputClient
-        )
+        _ = acceptPreferredCandidate(reason: .implicitPassThrough)
         return false
-    }
-
-    private func finishCandidateBeforePassThrough(
-        to inputClient: any IMKTextInput
-    ) {
-        guard candidateSession != nil else {
-            return
-        }
-
-        _ = commitPreferredCandidate(
-            reason: .implicitPassThrough,
-            to: inputClient
-        )
     }
 
     private func perform(
@@ -352,7 +430,8 @@ final class InputController: IMKInputController {
             candidateSession = updatedSession
             presentCandidates(updatedSession, inputClient: inputClient)
         case let .commit(candidate, reason):
-            commitCandidate(candidate, reason: reason, to: inputClient)
+            _ = acceptCandidate(candidate, reason: reason)
+            updateMarkedComposition(on: inputClient)
         case .cancel:
             cancelActiveCandidate(to: inputClient)
         case .deleteBackward:
@@ -363,38 +442,46 @@ final class InputController: IMKInputController {
     }
 
     @discardableResult
-    private func commitPreferredCandidate(
-        reason: CandidateCommitReason,
-        to inputClient: any IMKTextInput
+    private func acceptPreferredCandidate(
+        reason: CandidateCommitReason
     ) -> Bool {
         guard let session = candidateSession else {
             return false
         }
 
-        commitCandidate(
+        return acceptCandidate(
             session.preferredCandidate,
-            reason: reason,
-            to: inputClient
-        )
-        return true
-    }
-
-    private func commitCandidate(
-        _ candidate: Candidate,
-        reason: CandidateCommitReason,
-        to inputClient: any IMKTextInput
-    ) {
-        discardCandidateState()
-        commitText(candidate.text, to: inputClient)
-        candidateProvider?.recordCommittedSelection(
-            candidate,
             reason: reason
         )
     }
 
+    @discardableResult
+    private func acceptCandidate(
+        _ candidate: Candidate,
+        reason: CandidateCommitReason
+    ) -> Bool {
+        let fallbackReading = candidateSession?.pronunciation
+        discardCandidateState()
+
+        guard compositionBuffer.acceptCandidate(
+            candidate,
+            reason: reason
+        ) else {
+            if let fallbackReading {
+                _ = compositionBuffer.append(
+                    text: fallbackReading,
+                    pronunciation: fallbackReading
+                )
+            }
+            NSLog("Jiukong Zhuyin rejected an inconsistent candidate snapshot.")
+            return false
+        }
+        return true
+    }
+
     private func cancelActiveCandidate(to inputClient: any IMKTextInput) {
         discardCandidateState()
-        clearMarkedText(on: inputClient)
+        updateMarkedComposition(on: inputClient)
     }
 
     private func resumeEditingAfterCandidateBackspace(
@@ -406,7 +493,7 @@ final class InputController: IMKInputController {
         }
 
         discardCandidateState()
-        apply(
+        _ = apply(
             inputSession.resumeEditingAndDeleteBackward(completedSyllable),
             to: inputClient
         )
@@ -420,6 +507,51 @@ final class InputController: IMKInputController {
         if let sessionID {
             candidatePresenter.hide(sessionID: sessionID)
         }
+    }
+
+    private func appendLiteralReading(
+        _ pronunciation: String,
+        to inputClient: any IMKTextInput
+    ) {
+        _ = compositionBuffer.append(
+            text: pronunciation,
+            pronunciation: pronunciation
+        )
+        updateMarkedComposition(on: inputClient)
+    }
+
+    /// Detaches every mutable input state before calling into the client. This
+    /// makes lifecycle re-entry unable to insert or learn the same text twice.
+    private func flushComposition(
+        reason: CandidateCommitReason,
+        to inputClient: any IMKTextInput
+    ) {
+        _ = acceptPreferredCandidate(reason: reason)
+
+        if let rawText = inputSession.takeRawComposition() {
+            _ = compositionBuffer.append(
+                text: rawText,
+                pronunciation: rawText
+            )
+        }
+
+        guard let snapshot = compositionBuffer.takeCommitSnapshot() else {
+            return
+        }
+
+        commitText(snapshot.text, to: inputClient)
+        for pendingSelection in snapshot.pendingCandidateSelections {
+            candidateProvider?.recordCommittedSelection(
+                pendingSelection.candidate,
+                reason: pendingSelection.reason
+            )
+        }
+    }
+
+    private func discardAllComposition() {
+        discardCandidateState()
+        _ = inputSession.discardComposition()
+        compositionBuffer.discard()
     }
 
     private func presentCandidates(
@@ -511,14 +643,23 @@ final class InputController: IMKInputController {
             && rect.size.height > 0
     }
 
-    private func setMarkedText(
-        _ text: String,
+    private func updateMarkedComposition(
         on inputClient: any IMKTextInput
     ) {
-        let markedText = text as NSString
+        let activeSuffix = candidateSession?.pronunciation
+            ?? inputSession.markedText
+        guard let presentation = CompositionPresentation.make(
+            buffer: compositionBuffer,
+            activeSuffix: activeSuffix
+        ) else {
+            clearMarkedText(on: inputClient)
+            return
+        }
+
+        let markedText = presentation.text as NSString
         inputClient.setMarkedText(
             markedText,
-            selectionRange: NSRange(location: markedText.length, length: 0),
+            selectionRange: presentation.selectionRange,
             replacementRange: Self.currentSelectionRange
         )
     }
@@ -549,12 +690,12 @@ extension InputController: CandidateWindowPresenterDelegate {
         }
 
         if let inputClient = inputClient(from: client()) {
-            _ = commitPreferredCandidate(
+            flushComposition(
                 reason: .clientHandoff,
                 to: inputClient
             )
         } else {
-            discardCandidateState()
+            discardAllComposition()
         }
     }
 
@@ -570,6 +711,7 @@ extension InputController: CandidateWindowPresenterDelegate {
             return
         }
 
-        commitCandidate(candidate, reason: .mouse, to: inputClient)
+        _ = acceptCandidate(candidate, reason: .mouse)
+        updateMarkedComposition(on: inputClient)
     }
 }

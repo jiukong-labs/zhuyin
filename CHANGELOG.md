@@ -32,3 +32,7 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Centralized deterministic candidate ranking with logarithmic learning and seven-day recency decay.
 - Typed immutable candidate snapshots and explicit commit-reason learning across keyboard, mouse, and lifecycle paths.
 - Safe base-order fallback, atomic concurrent updates, schema/file validation, and Milestone 6 verification documentation.
+- Multi-character marked composition with UTF-16-safe Shift range selection and buffer editing.
+- Exact, longest-suffix user-phrase creation and conversion without reading committed client text.
+- SQLite schema v2 phrase storage with ordered readings and lossless Milestone 6 migration.
+- Deferred character and phrase learning that records only content surviving the final client commit.

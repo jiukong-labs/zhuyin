@@ -97,4 +97,96 @@ final class UserLearningService: UserLearningProviding {
         }
     }
 
+    func phraseRecords(
+        for pronunciationSequence: [String]
+    ) -> [UserPhraseRecord] {
+        queue.sync {
+            guard let store else {
+                return []
+            }
+            do {
+                return try store.phraseRecords(
+                    for: pronunciationSequence
+                )
+            } catch {
+                Self.logger.error(
+                    "Could not read user phrase data; phrase candidates are unavailable."
+                )
+                return []
+            }
+        }
+    }
+
+    @discardableResult
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        createdAt: Date
+    ) -> Bool {
+        queue.sync {
+            guard let store else {
+                return false
+            }
+            do {
+                try store.addPhrase(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence,
+                    createdAt: createdAt
+                )
+                return true
+            } catch {
+                Self.logger.error(
+                    "Could not add a user phrase; input will continue."
+                )
+                return false
+            }
+        }
+    }
+
+    func recordPhraseSelection(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) {
+        queue.sync {
+            guard let store else {
+                return
+            }
+            do {
+                try store.recordPhraseSelection(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence,
+                    at: date
+                )
+            } catch {
+                Self.logger.error(
+                    "Could not update user phrase learning; input will continue."
+                )
+            }
+        }
+    }
+
+    func setPhrasePinned(
+        _ pinned: Bool,
+        phrase: String,
+        pronunciationSequence: [String]
+    ) {
+        queue.sync {
+            guard let store else {
+                return
+            }
+            do {
+                try store.setPhrasePinned(
+                    pinned,
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence
+                )
+            } catch {
+                Self.logger.error(
+                    "Could not update a user phrase pin; input will continue."
+                )
+            }
+        }
+    }
+
 }

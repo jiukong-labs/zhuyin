@@ -4,15 +4,18 @@ struct CandidateRanker {
     static let defaultUserFrequencyWeight = 8.0
     static let defaultRecencyWeight = 4.0
     static let defaultRecencyHalfLife: TimeInterval = 7 * 24 * 60 * 60
+    static let defaultPhraseBonus = 1_024.0
 
     let userFrequencyWeight: Double
     let recencyWeight: Double
     let recencyHalfLife: TimeInterval
+    let phraseBonus: Double
 
     init(
         userFrequencyWeight: Double = Self.defaultUserFrequencyWeight,
         recencyWeight: Double = Self.defaultRecencyWeight,
-        recencyHalfLife: TimeInterval = Self.defaultRecencyHalfLife
+        recencyHalfLife: TimeInterval = Self.defaultRecencyHalfLife,
+        phraseBonus: Double = Self.defaultPhraseBonus
     ) {
         precondition(
             userFrequencyWeight.isFinite && userFrequencyWeight >= 0,
@@ -26,10 +29,15 @@ struct CandidateRanker {
             recencyHalfLife.isFinite && recencyHalfLife > 0,
             "Recency half-life must be finite and positive."
         )
+        precondition(
+            phraseBonus.isFinite && phraseBonus >= 0,
+            "Phrase bonus must be finite and nonnegative."
+        )
 
         self.userFrequencyWeight = userFrequencyWeight
         self.recencyWeight = recencyWeight
         self.recencyHalfLife = recencyHalfLife
+        self.phraseBonus = phraseBonus
     }
 
     func ranked(
@@ -85,6 +93,7 @@ struct CandidateRanker {
             recencyBonus = 0
         }
 
-        return baseScore + userBonus + recencyBonus
+        let typeBonus = candidate.type == .phrase ? phraseBonus : 0
+        return baseScore + userBonus + recencyBonus + typeBonus
     }
 }

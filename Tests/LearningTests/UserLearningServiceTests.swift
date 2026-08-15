@@ -37,16 +37,97 @@ final class UserLearningServiceTests: XCTestCase {
         let service = UserLearningService(store: nil)
 
         XCTAssertEqual(service.records(for: "ㄨㄛˇ"), [:])
+        XCTAssertEqual(service.phraseRecords(for: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]), [])
         service.recordSelection(character: "我", pronunciation: "ㄨㄛˇ")
         service.setPinned(true, character: "我", pronunciation: "ㄨㄛˇ")
+        XCTAssertFalse(
+            service.addPhrase(
+                phrase: "久空",
+                pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"],
+                createdAt: Date()
+            )
+        )
+        service.recordPhraseSelection(
+            phrase: "久空",
+            pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"],
+            at: Date()
+        )
+        service.setPhrasePinned(
+            true,
+            phrase: "久空",
+            pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        )
     }
 
     func testServiceFallsBackWhenStorageThrows() {
         let service = UserLearningService(store: FailingLearningStore())
 
         XCTAssertEqual(service.records(for: "ㄨㄛˇ"), [:])
+        XCTAssertEqual(service.phraseRecords(for: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]), [])
         service.recordSelection(character: "我", pronunciation: "ㄨㄛˇ")
         service.setPinned(true, character: "我", pronunciation: "ㄨㄛˇ")
+        XCTAssertFalse(
+            service.addPhrase(
+                phrase: "久空",
+                pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"],
+                createdAt: Date()
+            )
+        )
+        service.recordPhraseSelection(
+            phrase: "久空",
+            pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"],
+            at: Date()
+        )
+        service.setPhrasePinned(
+            true,
+            phrase: "久空",
+            pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        )
+    }
+
+    func testServiceForwardsPhraseOperationsAndExplicitDates() {
+        let store = ProbeLearningStore()
+        let service = UserLearningService(store: store)
+        let createdAt = Date(timeIntervalSince1970: 100)
+        let selectedAt = Date(timeIntervalSince1970: 200)
+        let readings = ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        store.phraseRecordsResult = [
+            UserPhraseRecord(
+                phraseID: 7,
+                phrase: "久空",
+                pronunciationSequence: readings,
+                createdAt: createdAt,
+                lastUsedAt: nil,
+                selectionCount: 0,
+                pinned: false
+            ),
+        ]
+
+        XCTAssertTrue(
+            service.addPhrase(
+                phrase: "久空",
+                pronunciationSequence: readings,
+                createdAt: createdAt
+            )
+        )
+        service.recordPhraseSelection(
+            phrase: "久空",
+            pronunciationSequence: readings,
+            at: selectedAt
+        )
+        service.setPhrasePinned(
+            true,
+            phrase: "久空",
+            pronunciationSequence: readings
+        )
+
+        XCTAssertEqual(service.phraseRecords(for: readings), store.phraseRecordsResult)
+        XCTAssertEqual(store.phraseAdditions.count, 1)
+        XCTAssertEqual(store.phraseAdditions.first?.phrase, "久空")
+        XCTAssertEqual(store.phraseAdditions.first?.readings, readings)
+        XCTAssertEqual(store.phraseAdditions.first?.date, createdAt)
+        XCTAssertEqual(store.phraseSelections.first?.date, selectedAt)
+        XCTAssertEqual(store.phrasePins.first?.pinned, true)
     }
 }
 
@@ -57,9 +138,25 @@ private final class ProbeLearningStore: UserLearningStoring {
         let date: Date
     }
 
+    struct PhraseOperation {
+        let phrase: String
+        let readings: [String]
+        let date: Date
+    }
+
+    struct PhrasePin {
+        let phrase: String
+        let readings: [String]
+        let pinned: Bool
+    }
+
     private let lock = NSLock()
     private let delay: TimeInterval
     private var selectionStorage: [Selection] = []
+    private var phraseAdditionStorage: [PhraseOperation] = []
+    private var phraseSelectionStorage: [PhraseOperation] = []
+    private var phrasePinStorage: [PhrasePin] = []
+    var phraseRecordsResult: [UserPhraseRecord] = []
     private var currentConcurrentCalls = 0
     private var maximumConcurrentCallsStorage = 0
 
@@ -77,6 +174,24 @@ private final class ProbeLearningStore: UserLearningStoring {
         lock.lock()
         defer { lock.unlock() }
         return maximumConcurrentCallsStorage
+    }
+
+    var phraseAdditions: [PhraseOperation] {
+        lock.lock()
+        defer { lock.unlock() }
+        return phraseAdditionStorage
+    }
+
+    var phraseSelections: [PhraseOperation] {
+        lock.lock()
+        defer { lock.unlock() }
+        return phraseSelectionStorage
+    }
+
+    var phrasePins: [PhrasePin] {
+        lock.lock()
+        defer { lock.unlock() }
+        return phrasePinStorage
     }
 
     func records(
@@ -112,6 +227,68 @@ private final class ProbeLearningStore: UserLearningStoring {
         pronunciation: String
     ) throws {
         beginCall()
+        endCall()
+    }
+
+    func phraseRecords(
+        for pronunciationSequence: [String]
+    ) throws -> [UserPhraseRecord] {
+        beginCall()
+        defer { endCall() }
+        return phraseRecordsResult
+    }
+
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        createdAt: Date
+    ) throws {
+        beginCall()
+        lock.lock()
+        phraseAdditionStorage.append(
+            PhraseOperation(
+                phrase: phrase,
+                readings: pronunciationSequence,
+                date: createdAt
+            )
+        )
+        lock.unlock()
+        endCall()
+    }
+
+    func recordPhraseSelection(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) throws {
+        beginCall()
+        lock.lock()
+        phraseSelectionStorage.append(
+            PhraseOperation(
+                phrase: phrase,
+                readings: pronunciationSequence,
+                date: date
+            )
+        )
+        lock.unlock()
+        endCall()
+    }
+
+    func setPhrasePinned(
+        _ pinned: Bool,
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws {
+        beginCall()
+        lock.lock()
+        phrasePinStorage.append(
+            PhrasePin(
+                phrase: phrase,
+                readings: pronunciationSequence,
+                pinned: pinned
+            )
+        )
+        lock.unlock()
         endCall()
     }
 
@@ -156,6 +333,36 @@ private final class FailingLearningStore: UserLearningStoring {
         _ pinned: Bool,
         character: String,
         pronunciation: String
+    ) throws {
+        throw Failure.expected
+    }
+
+    func phraseRecords(
+        for pronunciationSequence: [String]
+    ) throws -> [UserPhraseRecord] {
+        throw Failure.expected
+    }
+
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        createdAt: Date
+    ) throws {
+        throw Failure.expected
+    }
+
+    func recordPhraseSelection(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) throws {
+        throw Failure.expected
+    }
+
+    func setPhrasePinned(
+        _ pinned: Bool,
+        phrase: String,
+        pronunciationSequence: [String]
     ) throws {
         throw Failure.expected
     }

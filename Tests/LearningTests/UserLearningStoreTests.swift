@@ -297,7 +297,7 @@ final class UserLearningStoreTests: XCTestCase {
         )
         XCTAssertEqual(
             try pragmaInteger("user_version", database: database),
-            1
+            Int64(UserLearningStore.schemaVersion)
         )
         _ = try database.prepare("SELECT * FROM character_learning LIMIT 0")
     }

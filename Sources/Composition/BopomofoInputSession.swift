@@ -58,6 +58,13 @@ struct BopomofoInputSession {
         commitComposition(handled: true)
     }
 
+    /// Atomically detaches the raw marked syllable without describing a client
+    /// text action. A higher-level composition buffer can append the returned
+    /// text and perform one consolidated client commit.
+    mutating func takeRawComposition() -> String? {
+        parser.takeCurrentSyllable()?.text
+    }
+
     mutating func discardComposition() -> InputSessionResult {
         guard parser.discardCurrentSyllable() else {
             return .passThrough

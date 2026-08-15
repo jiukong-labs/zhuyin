@@ -148,6 +148,17 @@ final class BopomofoInputSessionTests: XCTestCase {
         XCTAssertFalse(session.hasComposition)
     }
 
+    func testTakeRawCompositionAtomicallyReturnsAndResetsTheSyllable() {
+        var session = BopomofoInputSession()
+        _ = session.handle(.letterJ)
+        _ = session.handle(.letterI)
+
+        XCTAssertEqual(session.takeRawComposition(), "ㄨㄛ")
+        XCTAssertFalse(session.hasComposition)
+        XCTAssertNil(session.markedText)
+        XCTAssertNil(session.takeRawComposition())
+    }
+
     func testCandidateBackspaceRestoresSyllableAndDeletesEveryTone() {
         for tone in BopomofoTone.allCases {
             var session = BopomofoInputSession()
