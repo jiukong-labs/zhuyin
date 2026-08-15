@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import InputMethodKit
 
 /// The per-client InputMethodKit controller.
@@ -18,9 +19,11 @@ final class InputController: IMKInputController {
     )
 
     private let dictionary: CharacterDictionary?
-    private let candidatePresenter: SystemCandidatePresenter?
+    private lazy var candidatePresenter = CandidateWindowPresenter.shared
     private var inputSession = BopomofoInputSession()
     private var candidateSession: CandidateSession?
+    private var candidateSyllable: BopomofoSyllable?
+    private var lastCandidateAnchor: NSRect?
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         do {
@@ -33,21 +36,23 @@ final class InputController: IMKInputController {
             )
         }
 
-        if let server {
-            candidatePresenter = SystemCandidatePresenter(server: server)
-            if candidatePresenter == nil {
-                NSLog(
-                    "Jiukong Zhuyin could not initialize the system candidate panel."
-                )
-            }
-        } else {
-            candidatePresenter = nil
-            NSLog(
-                "Jiukong Zhuyin received an input controller without an IMK server."
-            )
-        }
-
         super.init(server: server, delegate: delegate, client: inputClient)
+
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(selectedInputSourceDidChange(_:)),
+            name: Self.selectedInputSourceChangedNotification,
+            object: nil,
+            suspensionBehavior: .deliverImmediately
+        )
+    }
+
+    deinit {
+        DistributedNotificationCenter.default().removeObserver(
+            self,
+            name: Self.selectedInputSourceChangedNotification,
+            object: nil
+        )
     }
 
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
@@ -57,27 +62,14 @@ final class InputController: IMKInputController {
         }
 
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if let candidateSession {
-            if let navigation = SystemCandidateKeyRouting.navigation(
-                keyCode: event.keyCode,
-                modifierFlags: event.modifierFlags
-            ) {
-                moveCandidateSelection(navigation)
-                return true
-            }
-
-            if let selectionKeyIndex = SystemCandidateKeyRouting
-                .selectionKeyIndex(
-                    keyCode: event.keyCode,
-                    modifierFlags: event.modifierFlags
-                ) {
-                if let candidate = candidateSession.candidate(
-                    atSelectionKeyIndex: selectionKeyIndex
-                ) {
-                    commitCandidate(candidate, to: inputClient)
-                }
-                return true
-            }
+        if let candidateSession,
+           let command = CandidateCommandRouter.command(
+               keyCode: event.keyCode,
+               modifierFlags: event.modifierFlags,
+               isExpanded: candidateSession.isExpanded
+           ) {
+            perform(command, inputClient: inputClient)
+            return true
         }
 
         if !modifiers.intersection(Self.passThroughModifiers).isEmpty {
@@ -115,41 +107,28 @@ final class InputController: IMKInputController {
         super.inputControllerWillClose()
     }
 
-    override func candidates(_ sender: Any!) -> [Any]! {
-        candidateSession?.candidates.map { $0 as NSString } ?? []
+    override func hidePalettes() {
+        finishComposition(using: client())
+        super.hidePalettes()
     }
 
-    override func candidateSelectionChanged(
-        _ candidateString: NSAttributedString!
-    ) {
-        guard let candidate = candidateString?.string else {
+    @objc private func selectedInputSourceDidChange(_ notification: Notification) {
+        guard CandidateInputSourcePolicy.shouldFinishPresentation(
+            currentInputSourceID: Self.currentInputSourceID(),
+            ownInputSourceID: Bundle.main.object(
+                forInfoDictionaryKey: "TISInputSourceID"
+            ) as? String
+        ) else {
             return
         }
 
-        candidateSession?.updateHighlightedCandidate(candidate)
-    }
-
-    override func candidateSelected(_ candidateString: NSAttributedString!) {
-        guard let candidate = candidateString?.string,
-              let session = candidateSession else {
-            return
-        }
-
-        guard let selection = session.validatedSelection(candidate) else {
-            if let inputClient = inputClient(from: client()) {
-                cancelActiveCandidate(to: inputClient)
-            } else {
-                discardCandidateState()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                return
             }
-            return
-        }
 
-        guard let inputClient = inputClient(from: client()) else {
-            discardCandidateState()
-            return
+            self.finishComposition(using: self.client())
         }
-
-        commitCandidate(selection, to: inputClient)
     }
 
     private func finishComposition(using sender: Any?) {
@@ -176,6 +155,25 @@ final class InputController: IMKInputController {
         }
 
         return client()
+    }
+
+    private static let selectedInputSourceChangedNotification = Notification.Name(
+        kTISNotifySelectedKeyboardInputSourceChanged as String
+    )
+
+    private static func currentInputSourceID() -> String? {
+        let inputSource = TISCopyCurrentKeyboardInputSource()
+            .takeRetainedValue()
+        guard let rawValue = TISGetInputSourceProperty(
+            inputSource,
+            kTISPropertyInputSourceID
+        ) else {
+            return nil
+        }
+
+        return Unmanaged<CFString>
+            .fromOpaque(rawValue)
+            .takeUnretainedValue() as String
     }
 
     private func apply(_ result: InputSessionResult, to inputClient: any IMKTextInput) {
@@ -209,12 +207,6 @@ final class InputController: IMKInputController {
             return
         }
 
-        guard let candidatePresenter else {
-            NSLog("Jiukong Zhuyin candidate presentation is unavailable.")
-            commitText(pronunciation, to: inputClient)
-            return
-        }
-
         do {
             let candidates = try dictionary.candidates(for: pronunciation)
             guard let session = CandidateSession(
@@ -226,9 +218,11 @@ final class InputController: IMKInputController {
                 return
             }
 
+            lastCandidateAnchor = nil
             candidateSession = session
+            candidateSyllable = syllable
             setMarkedText(pronunciation, on: inputClient)
-            candidatePresenter.updateAndShow()
+            presentCandidates(session, inputClient: inputClient)
         } catch {
             NSLog(
                 "Jiukong Zhuyin dictionary lookup failed: %@",
@@ -247,21 +241,8 @@ final class InputController: IMKInputController {
             return false
         }
 
-        switch key {
-        case .escape, .deleteBackward:
-            cancelActiveCandidate(to: inputClient)
-            return true
-        case .returnKey, .keypadEnter:
-            _ = commitPreferredCandidate(to: inputClient)
-            return true
-        default:
-            if candidatePresenter?.isVisible == true {
-                _ = commitPreferredCandidate(to: inputClient)
-            } else {
-                cancelActiveCandidate(to: inputClient)
-            }
-            return false
-        }
+        _ = commitPreferredCandidate(to: inputClient)
+        return false
     }
 
     private func finishCandidateBeforePassThrough(
@@ -271,20 +252,30 @@ final class InputController: IMKInputController {
             return
         }
 
-        if candidatePresenter?.isVisible == true {
-            _ = commitPreferredCandidate(to: inputClient)
-        } else {
-            cancelActiveCandidate(to: inputClient)
-        }
+        _ = commitPreferredCandidate(to: inputClient)
     }
 
-    private func moveCandidateSelection(_ navigation: CandidateNavigation) {
-        guard let candidate = candidateSession?.candidate(after: navigation) else {
+    private func perform(
+        _ command: CandidateCommand,
+        inputClient: any IMKTextInput
+    ) {
+        guard let session = candidateSession else {
             return
         }
 
-        _ = candidatePresenter?.selectCandidate(candidate)
-        candidateSession?.updateHighlightedCandidate(candidate)
+        switch CandidateCommandReducer.reduce(command, session: session) {
+        case let .update(updatedSession):
+            candidateSession = updatedSession
+            presentCandidates(updatedSession, inputClient: inputClient)
+        case let .commit(candidate):
+            commitCandidate(candidate, to: inputClient)
+        case .cancel:
+            cancelActiveCandidate(to: inputClient)
+        case .deleteBackward:
+            resumeEditingAfterCandidateBackspace(to: inputClient)
+        case .handledWithoutChange:
+            break
+        }
     }
 
     @discardableResult
@@ -295,12 +286,7 @@ final class InputController: IMKInputController {
             return false
         }
 
-        let panelSelection = candidatePresenter?.selectedCandidateText
-            .flatMap(session.validatedSelection)
-        let preferredSelection = session.highlightedCandidate
-            ?? panelSelection
-            ?? session.preferredCandidate
-        commitCandidate(preferredSelection, to: inputClient)
+        commitCandidate(session.preferredCandidate, to: inputClient)
         return true
     }
 
@@ -317,9 +303,118 @@ final class InputController: IMKInputController {
         clearMarkedText(on: inputClient)
     }
 
+    private func resumeEditingAfterCandidateBackspace(
+        to inputClient: any IMKTextInput
+    ) {
+        guard let completedSyllable = candidateSyllable else {
+            cancelActiveCandidate(to: inputClient)
+            return
+        }
+
+        discardCandidateState()
+        apply(
+            inputSession.resumeEditingAndDeleteBackward(completedSyllable),
+            to: inputClient
+        )
+    }
+
     private func discardCandidateState() {
+        let sessionID = candidateSession?.id
         candidateSession = nil
-        candidatePresenter?.hide()
+        candidateSyllable = nil
+        lastCandidateAnchor = nil
+        if let sessionID {
+            candidatePresenter.hide(sessionID: sessionID)
+        }
+    }
+
+    private func presentCandidates(
+        _ session: CandidateSession,
+        inputClient: any IMKTextInput
+    ) {
+        candidatePresenter.present(
+            session: session,
+            anchor: candidateAnchor(on: inputClient),
+            clientWindowLevel: inputClient.windowLevel(),
+            delegate: self
+        )
+    }
+
+    private func candidateAnchor(on inputClient: any IMKTextInput) -> NSRect {
+        let markedRange = inputClient.markedRange()
+        if markedRange.location != NSNotFound,
+           markedRange.length != NSNotFound,
+           markedRange.location <= Int.max - markedRange.length {
+            let caretRange = NSRange(
+                location: markedRange.location + markedRange.length,
+                length: 0
+            )
+            if let caretRect = firstValidRect(
+                for: caretRange,
+                inputClient: inputClient
+            ) {
+                lastCandidateAnchor = caretRect
+                return caretRect
+            }
+        }
+
+        let selectedRange = inputClient.selectedRange()
+        if selectedRange.location != NSNotFound,
+           let caretRect = firstValidRect(
+               for: NSRange(location: selectedRange.location, length: 0),
+               inputClient: inputClient
+           ) {
+            lastCandidateAnchor = caretRect
+            return caretRect
+        }
+
+        var lineRect = NSRect.zero
+        _ = inputClient.attributes(
+            forCharacterIndex: 0,
+            lineHeightRectangle: &lineRect
+        )
+        lineRect = lineRect.standardized
+        if isValidAnchor(lineRect) {
+            lastCandidateAnchor = lineRect
+            return lineRect
+        }
+
+        if let lastCandidateAnchor {
+            return lastCandidateAnchor
+        }
+
+        let fallbackFrame = NSScreen.main?.visibleFrame ?? NSRect(
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1
+        )
+        return NSRect(
+            x: fallbackFrame.midX,
+            y: fallbackFrame.midY,
+            width: 1,
+            height: 1
+        )
+    }
+
+    private func firstValidRect(
+        for characterRange: NSRange,
+        inputClient: any IMKTextInput
+    ) -> NSRect? {
+        var actualRange = NSRange(location: NSNotFound, length: 0)
+        let rect = inputClient.firstRect(
+            forCharacterRange: characterRange,
+            actualRange: &actualRange
+        ).standardized
+        return isValidAnchor(rect) ? rect : nil
+    }
+
+    private func isValidAnchor(_ rect: NSRect) -> Bool {
+        rect.origin.x.isFinite
+            && rect.origin.y.isFinite
+            && rect.size.width.isFinite
+            && rect.size.height.isFinite
+            && rect.size.height > 0
     }
 
     private func setMarkedText(
@@ -347,5 +442,37 @@ final class InputController: IMKInputController {
             text as NSString,
             replacementRange: Self.currentSelectionRange
         )
+    }
+}
+
+extension InputController: CandidateWindowPresenterDelegate {
+    func candidateWindowPresenter(
+        _ presenter: CandidateWindowPresenter,
+        requestsFinalizationOf sessionID: UUID
+    ) {
+        guard candidateSession?.id == sessionID else {
+            return
+        }
+
+        if let inputClient = inputClient(from: client()) {
+            _ = commitPreferredCandidate(to: inputClient)
+        } else {
+            discardCandidateState()
+        }
+    }
+
+    func candidateWindowPresenter(
+        _ presenter: CandidateWindowPresenter,
+        choseCandidateAt index: Int,
+        sessionID: UUID
+    ) {
+        guard let session = candidateSession,
+              session.id == sessionID,
+              let candidate = session.candidate(at: index),
+              let inputClient = inputClient(from: client()) else {
+            return
+        }
+
+        commitCandidate(candidate, to: inputClient)
     }
 }

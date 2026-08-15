@@ -12,8 +12,8 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         XCTAssertEqual(info["CFBundlePackageType"] as? String, "APPL")
         XCTAssertEqual(info["CFBundleDisplayName"] as? String, "久空輸入法")
         XCTAssertEqual(info["CFBundleIconFile"] as? String, "JiukongZhuyin.icns")
-        XCTAssertEqual(info["LSBackgroundOnly"] as? Bool, true)
-        XCTAssertNil(info["LSUIElement"])
+        XCTAssertEqual(info["LSUIElement"] as? Bool, true)
+        XCTAssertNil(info["LSBackgroundOnly"])
         XCTAssertEqual(info["NSPrincipalClass"] as? String, "NSApplication")
         XCTAssertEqual(
             info["InputMethodConnectionName"] as? String,

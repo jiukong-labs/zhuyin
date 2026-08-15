@@ -45,6 +45,10 @@ struct BopomofoParser {
         return currentSyllable
     }
 
+    mutating func restore(_ completedSyllable: BopomofoSyllable) {
+        syllable = completedSyllable
+    }
+
     @discardableResult
     mutating func discardCurrentSyllable() -> Bool {
         guard hasComposition else {

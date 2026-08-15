@@ -90,7 +90,7 @@ targets:
         InputMethodConnectionName: tw_org_cloudgate_jiukong_inputmethod_zhuyin_Connection
         InputMethodServerControllerClass: JiukongInputController
         LSApplicationCategoryType: public.app-category.utilities
-        LSBackgroundOnly: true
+        LSUIElement: true
         LSHasLocalizedDisplayName: true
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: Copyright © 2026 oldming101.
@@ -120,8 +120,11 @@ targets:
     sources:
       - path: Tests
       - path: Sources/Bopomofo
+      - path: Sources/Candidates/CandidateCommandReducer.swift
+      - path: Sources/Candidates/CandidateCommandRouter.swift
+      - path: Sources/Candidates/CandidateInputSourcePolicy.swift
       - path: Sources/Candidates/CandidateSession.swift
-      - path: Sources/Candidates/SystemCandidateKeyRouting.swift
+      - path: Sources/Candidates/CandidateWindowGeometry.swift
       - path: Sources/Composition
       - path: Sources/Dictionary
       - path: Sources/InputMethod/InputMethodConfiguration.swift
@@ -130,6 +133,7 @@ targets:
       - path: Tools/DictionaryBuilder/CNS11643Parser.swift
       - path: Tools/DictionaryBuilder/DictionaryDatabaseBuilder.swift
     dependencies:
+      - sdk: AppKit.framework
       - sdk: Carbon.framework
       - sdk: libsqlite3.tbd
     settings:

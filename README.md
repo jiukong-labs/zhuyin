@@ -2,17 +2,18 @@
 
 > 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
 
-久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字、完整候選字顯示、個人字詞學習，以及單按 Shift 切換中英文。
+久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字與完整候選字顯示，並規劃加入個人字詞學習及單按 Shift 切換中英文。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast candidate selection, personal vocabulary learning, and a familiar Shift-based Chinese/English switching experience.
+Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, with personal learning and Shift-based Chinese/English switching planned for later milestones.
 
-> 開發狀態：Milestone 3 已接上 CNS11643 基礎中文字典與 macOS 系統候選面板。輸入完整注音與聲調後，可查詢、顯示並選取單字候選。
+> 開發狀態：Milestone 4 已加入久空自有的可展開候選視窗。輸入完整注音與聲調後，可在精簡列中選字，或按 ↓ 展開 27 格並捲動全部候選。
 
 ## Current features
 
 - Traditional Chinese Zhuyin composition
-- Native macOS input method and candidate panel
+- Native macOS input method with a custom nonactivating candidate window
 - CNS11643 base character candidates
+- Compact and 27-item expanded candidate views with scrolling
 - Fully offline
 - Open source
 - MIT-licensed source code
@@ -20,11 +21,10 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 ## Planned features
 
 - Shift Chinese/English switching
-- Expandable candidate window
 - Personal character learning
 - Personal phrase learning
 
-## Milestone 3 input
+## Milestone 4 input
 
 目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -36,12 +36,14 @@ z ㄈ  x ㄌ  c ㄏ  v ㄒ  b ㄖ  n ㄙ  m ㄩ  , ㄝ  . ㄡ  / ㄥ
 Space 一聲
 ```
 
-例如 `j i 3` 會完成 `ㄨㄛˇ` 並顯示候選，第一個候選是「我」；`r u 0 4` 會顯示 `ㄐㄧㄢˋ` 的同音候選。輸入中的注音會先顯示為 marked text；聲調鍵會完成音節並查詢字典。候選模式可用方向鍵、Home／End、Page Up／Page Down 移動反白，按 `1`–`9` 選擇目前頁面的候選，Return／Keypad Enter 選定目前候選，也可直接用滑鼠點選 macOS 系統候選面板。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
+例如 `j i 3` 會完成 `ㄨㄛˇ` 並顯示候選，第一個候選是「我」；`r u 0 4` 會顯示 `ㄐㄧㄢˋ` 的同音候選。輸入中的注音會先顯示為 marked text；聲調鍵會完成音節並查詢字典。候選窗起初顯示目前一列、最多 9 個候選；第一次按 ↓ 只展開視窗，不移動反白，展開後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看。
 
-- Backspace：組字時刪除最後輸入的注音 component；候選顯示時取消整個候選組字。
+精簡模式可用 ←／→（以及 ↑）逐字移動，第一次按 ↓ 只展開；展開後 ←／→ 移動一字、↑／↓ 移動九字列，Home／End 與 Page Up／Page Down 可快速跳轉。按主鍵區 `1`–`9` 選擇反白所在 9 字列的候選，Return／Keypad Enter 選定反白候選，Space 永遠選第一候選，也可直接用滑鼠點選。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
+
+- Backspace：組字時刪除最後輸入的注音 component；候選顯示時關閉候選窗、刪除聲調，回到注音編輯。
 - Escape：丟棄目前音節或取消目前候選組字。
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
-- 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交反白或第一候選，再交回 App。
+- 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
 候選順序在此階段忠實保留 CNS11643 注音資料的來源順序，並不代表使用頻率。個人排序學習屬後續 Milestone。
 
@@ -119,7 +121,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 3 提供 CNS11643 基礎單字查詢與 Apple 系統候選面板。自製可展開候選視窗、詞組轉換、候選頻率排序、單按 Shift 切換、使用者學習及設定仍屬後續 Milestone。See [Milestone 3 notes](docs/MILESTONE_3.md), [Milestone 2 notes](docs/MILESTONE_2.md), [Milestone 1 notes](docs/MILESTONE_1.md), and [architecture](docs/ARCHITECTURE.md).
+Milestone 4 提供自製的精簡／展開候選視窗、集中式候選快捷鍵、滑鼠與捲動操作，以及游標附近的多螢幕邊界定位。詞組轉換、候選頻率排序、單按 Shift 切換、使用者學習及設定仍屬後續 Milestone。
+
+詳見 [Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 

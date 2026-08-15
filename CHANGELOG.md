@@ -19,3 +19,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Base single-character candidates through the native InputMethodKit candidate panel.
 - Candidate selection, cancellation, lifecycle finalization, and raw-Bopomofo fallback.
 - Milestone 3 dictionary, licensing, architecture, and verification documentation.
+- Custom nonactivating candidate window with compact and 27-item expanded views.
+- Centralized candidate commands for grid navigation, paging, number selection, confirmation, cancellation, and editing.
+- Scrollable candidate presentation with caret-relative, screen-aware boundary placement.
+- Candidate Backspace restoration and Milestone 4 architecture and verification documentation.
+- Token-guarded single-panel ownership across clients and deterministic finalization on input-source changes.

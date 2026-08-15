@@ -66,6 +66,13 @@ struct BopomofoInputSession {
         return InputSessionResult(textAction: .clearMarkedText, handled: true)
     }
 
+    mutating func resumeEditingAndDeleteBackward(
+        _ completedSyllable: BopomofoSyllable
+    ) -> InputSessionResult {
+        parser.restore(completedSyllable)
+        return deleteBackward()
+    }
+
     private mutating func handle(_ component: BopomofoComponent) -> InputSessionResult {
         switch parser.input(component) {
         case .rejected:

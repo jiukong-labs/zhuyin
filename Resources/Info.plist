@@ -30,7 +30,7 @@
 	<string>JiukongInputController</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
-	<key>LSBackgroundOnly</key>
+	<key>LSUIElement</key>
 	<true/>
 	<key>LSHasLocalizedDisplayName</key>
 	<true/>

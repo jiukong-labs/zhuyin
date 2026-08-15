@@ -148,6 +148,53 @@ final class BopomofoInputSessionTests: XCTestCase {
         XCTAssertFalse(session.hasComposition)
     }
 
+    func testCandidateBackspaceRestoresSyllableAndDeletesEveryTone() {
+        for tone in BopomofoTone.allCases {
+            var session = BopomofoInputSession()
+            let completedSyllable = syllable([
+                .initial(.b),
+                .tone(tone)
+            ])
+
+            XCTAssertEqual(
+                session.resumeEditingAndDeleteBackward(completedSyllable),
+                handled(.updateMarkedText("ㄅ")),
+                "Failed to delete restored tone \(tone)"
+            )
+            XCTAssertEqual(
+                session.handle(.deleteBackward),
+                handled(.clearMarkedText)
+            )
+        }
+    }
+
+    func testCandidateBackspaceRestoresAndDeletesTheWholeSyllableInOrder() {
+        var session = BopomofoInputSession()
+        let completedSyllable = syllable([
+            .initial(.j),
+            .medial(.i),
+            .final(.an),
+            .tone(.fourth)
+        ])
+
+        XCTAssertEqual(
+            session.resumeEditingAndDeleteBackward(completedSyllable),
+            handled(.updateMarkedText("ㄐㄧㄢ"))
+        )
+        XCTAssertEqual(
+            session.handle(.deleteBackward),
+            handled(.updateMarkedText("ㄐㄧ"))
+        )
+        XCTAssertEqual(
+            session.handle(.deleteBackward),
+            handled(.updateMarkedText("ㄐ"))
+        )
+        XCTAssertEqual(
+            session.handle(.deleteBackward),
+            handled(.clearMarkedText)
+        )
+    }
+
     private func handled(_ action: CompositionTextAction) -> InputSessionResult {
         InputSessionResult(textAction: action, handled: true)
     }

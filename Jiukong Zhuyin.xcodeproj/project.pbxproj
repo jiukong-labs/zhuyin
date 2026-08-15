@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02E7FB9F1FFB463D76068A0A /* CandidateWindowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */; };
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
 		0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
@@ -18,13 +19,16 @@
 		221A51110211C7971ECB3808 /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
 		2538A2B3C7B9A89AE53CC398 /* DictionaryDatabaseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */; };
 		25D17A90C07E9393159D5878 /* BopomofoSyllableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */; };
+		27AFCC19C975073B881F8EB8 /* CandidateInputSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */; };
 		28AB81FC9394CA3AC7667269 /* JiukongZhuyin.sqlite3 in Resources */ = {isa = PBXBuildFile; fileRef = DC6DA06683B57D7A7EE892B0 /* JiukongZhuyin.sqlite3 */; };
+		29F509D9776FACB1E4A2A5F8 /* CandidateWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */; };
+		2EE85E7821596FF3CE7BB318 /* CandidateCommandRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */; };
 		345D014A7644CB35C17E2839 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */; };
 		43C1C9045A125F542E8B2F95 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
-		5132287DCE564206242D8CE1 /* SystemCandidatePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFD1D3F8877CFFF281B16C42 /* SystemCandidatePresenter.swift */; };
 		541310968ECA585A33D08250 /* CNS11643Manifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9502DD5E44CA13CFA608D85 /* CNS11643Manifest.swift */; };
+		5541F07226D7C1743690D21B /* CandidateCommandReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */; };
 		55DDF9DCC55CE3B207F10651 /* InputMethodConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC1F18DAE2728F800E9A04A /* InputMethodConfigurationTests.swift */; };
 		58CBE9AF70FDA1DEB49C8369 /* CNS11643Manifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9502DD5E44CA13CFA608D85 /* CNS11643Manifest.swift */; };
 		5947BC0113949558CB27C050 /* CNS11643Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE4D0FD6DBF128C8A6E0E95 /* CNS11643Parser.swift */; };
@@ -32,39 +36,45 @@
 		691D5B59E2BAFDC69B588C08 /* BopomofoParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C26E20F48A99B95459A0E4A7 /* BopomofoParserTests.swift */; };
 		6ABAB42F3756D9078A3AB55D /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
 		6F33F5771F3E8FE49F86F21E /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
+		724300226842DB5D4E6188AA /* CandidateCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */; };
 		748A37EAEF698053462FED9C /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */; };
 		74B209D9EA69393A3821C3CE /* BopomofoComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5D0B1D084CF9D4932B4A8 /* BopomofoComponent.swift */; };
+		76A3472BDB7EB02CB094A40B /* CandidateCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */; };
 		783D7541B400A444EFA62568 /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
+		7922B9A6DE6E65F931DB7893 /* CandidateInputSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */; };
 		7CC53D7DA8D6E018675A5127 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32EFC11EAB2C94A893A2CB57 /* main.swift */; };
 		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
 		80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */; };
 		82C7B20D1A38E5D3A6F84893 /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
+		84A630E44B128E3159290C4A /* CandidateWindowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */; };
 		8906769D870222349344D909 /* CandidateSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7307E6AF04437571E89464 /* CandidateSessionTests.swift */; };
 		8E799509AF0265E9ABF7D848 /* InputSourceRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */; };
 		9026C8DCE02772769169E368 /* StandardZhuyinLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7EC61447034D1CD5F119ABE /* StandardZhuyinLayoutTests.swift */; };
+		9039F5A7FF8C462C8DC0CE60 /* CandidateWindowGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */; };
 		9400F25BFE4125223C0A4C94 /* CharacterDictionaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */; };
+		A0301C6A683601AA029AEB80 /* CandidateInputSourcePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */; };
 		A26F4F32F9F39B2A4A7087DB /* BopomofoInputSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */; };
 		A8D5A9719E6F91407BCE6469 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */; };
 		B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
 		B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */; };
-		B707049EC6F601AFCFF23D6D /* SystemCandidateKeyRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4335E38F1BCDD5B7CD605D06 /* SystemCandidateKeyRouting.swift */; };
 		B8A44384A0D54EAFCDDAF471 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C138C15B074BE10308B20A49 /* AppKit.framework */; };
+		BC4A030EDCA83C5B11D3A154 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C138C15B074BE10308B20A49 /* AppKit.framework */; };
 		BECDFB34AA2E5BF67DD334EB /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
 		C0D2E8687417E57F472D6278 /* BopomofoComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5D0B1D084CF9D4932B4A8 /* BopomofoComponent.swift */; };
 		C22E96D6B767D834A219EA83 /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		C246AB747EDFD6E92B592CF2 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
-		C384673A793FC3C2AD858A9A /* SystemCandidateKeyRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952B072A7469A377B7568A33 /* SystemCandidateKeyRoutingTests.swift */; };
 		C916E036900B4B6FDD26D113 /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
+		D7E75B586FA82EAACCF6E0D8 /* CandidateCommandReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */; };
 		D967BA129A655FE1FDD923CC /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
 		DE83BDCA385BDE0B8EC5C726 /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
 		DFAB5EC9BDD65F6D06466116 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
 		E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		E0E3E8A547EFCC37BACA41EA /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
+		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
 		F32A31CF08E28712EA537A8F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30667214FEE41C9496CF28D /* main.swift */; };
 		F370DC600E90D9AD024FBEC4 /* DictionaryDatabaseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */; };
-		F56A391F288B0004C12D712A /* SystemCandidateKeyRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4335E38F1BCDD5B7CD605D06 /* SystemCandidateKeyRouting.swift */; };
 		F7761C7EF89808E052F64C42 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */; };
 		FA5D4798C7B7AFA33E123E22 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
 		FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */; };
@@ -76,25 +86,29 @@
 		107AA4C2629FAE0343555A77 /* KeyboardKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardKey.swift; sourceTree = "<group>"; };
 		2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoParser.swift; sourceTree = "<group>"; };
 		2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllable.swift; sourceTree = "<group>"; };
+		2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandRouter.swift; sourceTree = "<group>"; };
 		32EFC11EAB2C94A893A2CB57 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducer.swift; sourceTree = "<group>"; };
 		3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllableTests.swift; sourceTree = "<group>"; };
 		419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSession.swift; sourceTree = "<group>"; };
-		4335E38F1BCDD5B7CD605D06 /* SystemCandidateKeyRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCandidateKeyRouting.swift; sourceTree = "<group>"; };
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
 		526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
 		587C51C5637FCED202A4E35B /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandRouterTests.swift; sourceTree = "<group>"; };
 		5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSessionTests.swift; sourceTree = "<group>"; };
 		64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayout.swift; sourceTree = "<group>"; };
 		66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayout.swift; sourceTree = "<group>"; };
+		6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducerTests.swift; sourceTree = "<group>"; };
 		6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = JiukongZhuyin.icns; sourceTree = "<group>"; };
 		6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodBundleMetadataTests.swift; sourceTree = "<group>"; };
 		6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodConfiguration.swift; sourceTree = "<group>"; };
+		6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometryTests.swift; sourceTree = "<group>"; };
 		715321CFA6F26EE6DA16640F /* Jiukong Dictionary Builder */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Dictionary Builder"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceRegistrar.swift; sourceTree = "<group>"; };
 		7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDictionaryTests.swift; sourceTree = "<group>"; };
 		8310435AE00955EBEFC673B6 /* CandidateSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSession.swift; sourceTree = "<group>"; };
-		952B072A7469A377B7568A33 /* SystemCandidateKeyRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCandidateKeyRoutingTests.swift; sourceTree = "<group>"; };
 		9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDictionary.swift; sourceTree = "<group>"; };
+		9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateInputSourcePolicy.swift; sourceTree = "<group>"; };
 		A096BED47B33FD3425B6DF35 /* Jiukong Zhuyin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jiukong Zhuyin.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB7307E6AF04437571E89464 /* CandidateSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSessionTests.swift; sourceTree = "<group>"; };
 		ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
@@ -105,7 +119,9 @@
 		C138C15B074BE10308B20A49 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		C26E20F48A99B95459A0E4A7 /* BopomofoParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoParserTests.swift; sourceTree = "<group>"; };
 		C30667214FEE41C9496CF28D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateInputSourcePolicyTests.swift; sourceTree = "<group>"; };
 		D01F60E94243161D89FAC2DA /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
+		D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowPresenter.swift; sourceTree = "<group>"; };
 		D54FE3D81889F06781B4BBD5 /* CNS11643ParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643ParserTests.swift; sourceTree = "<group>"; };
 		DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CNS11643_NOTICE.txt; sourceTree = "<group>"; };
 		DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryDatabaseBuilder.swift; sourceTree = "<group>"; };
@@ -113,9 +129,9 @@
 		DCE4D0FD6DBF128C8A6E0E95 /* CNS11643Parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643Parser.swift; sourceTree = "<group>"; };
 		E7EC61447034D1CD5F119ABE /* StandardZhuyinLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayoutTests.swift; sourceTree = "<group>"; };
 		E9502DD5E44CA13CFA608D85 /* CNS11643Manifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643Manifest.swift; sourceTree = "<group>"; };
+		F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometry.swift; sourceTree = "<group>"; };
 		F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVirtualKeyResolver.swift; sourceTree = "<group>"; };
 		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		FFD1D3F8877CFFF281B16C42 /* SystemCandidatePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCandidatePresenter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +147,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BC4A030EDCA83C5B11D3A154 /* AppKit.framework in Frameworks */,
 				FA5D4798C7B7AFA33E123E22 /* Carbon.framework in Frameworks */,
 				0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */,
 			);
@@ -225,8 +242,11 @@
 		70EEBD30CEEE808799D5331A /* CandidateTests */ = {
 			isa = PBXGroup;
 			children = (
+				6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */,
+				5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */,
+				C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */,
 				AB7307E6AF04437571E89464 /* CandidateSessionTests.swift */,
-				952B072A7469A377B7568A33 /* SystemCandidateKeyRoutingTests.swift */,
+				6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */,
 			);
 			path = CandidateTests;
 			sourceTree = "<group>";
@@ -242,9 +262,12 @@
 		750E134D708510E9F9EED891 /* Candidates */ = {
 			isa = PBXGroup;
 			children = (
+				3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */,
+				2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */,
+				9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */,
 				8310435AE00955EBEFC673B6 /* CandidateSession.swift */,
-				4335E38F1BCDD5B7CD605D06 /* SystemCandidateKeyRouting.swift */,
-				FFD1D3F8877CFFF281B16C42 /* SystemCandidatePresenter.swift */,
+				F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */,
+				D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */,
 			);
 			path = Candidates;
 			sourceTree = "<group>";
@@ -521,7 +544,12 @@
 				E0E3E8A547EFCC37BACA41EA /* BopomofoInputSession.swift in Sources */,
 				0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */,
 				221A51110211C7971ECB3808 /* BopomofoSyllable.swift in Sources */,
+				5541F07226D7C1743690D21B /* CandidateCommandReducer.swift in Sources */,
+				724300226842DB5D4E6188AA /* CandidateCommandRouter.swift in Sources */,
+				7922B9A6DE6E65F931DB7893 /* CandidateInputSourcePolicy.swift in Sources */,
 				D967BA129A655FE1FDD923CC /* CandidateSession.swift in Sources */,
+				02E7FB9F1FFB463D76068A0A /* CandidateWindowGeometry.swift in Sources */,
+				29F509D9776FACB1E4A2A5F8 /* CandidateWindowPresenter.swift in Sources */,
 				DE83BDCA385BDE0B8EC5C726 /* CharacterDictionary.swift in Sources */,
 				1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */,
 				E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */,
@@ -531,8 +559,6 @@
 				B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */,
 				3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */,
 				AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */,
-				F56A391F288B0004C12D712A /* SystemCandidateKeyRouting.swift in Sources */,
-				5132287DCE564206242D8CE1 /* SystemCandidatePresenter.swift in Sources */,
 				F32A31CF08E28712EA537A8F /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -551,8 +577,16 @@
 				541310968ECA585A33D08250 /* CNS11643Manifest.swift in Sources */,
 				1B8AB2057B43870E1380A411 /* CNS11643Parser.swift in Sources */,
 				638BC03F66F38695BD917CD4 /* CNS11643ParserTests.swift in Sources */,
+				D7E75B586FA82EAACCF6E0D8 /* CandidateCommandReducer.swift in Sources */,
+				E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */,
+				76A3472BDB7EB02CB094A40B /* CandidateCommandRouter.swift in Sources */,
+				2EE85E7821596FF3CE7BB318 /* CandidateCommandRouterTests.swift in Sources */,
+				27AFCC19C975073B881F8EB8 /* CandidateInputSourcePolicy.swift in Sources */,
+				A0301C6A683601AA029AEB80 /* CandidateInputSourcePolicyTests.swift in Sources */,
 				82C7B20D1A38E5D3A6F84893 /* CandidateSession.swift in Sources */,
 				8906769D870222349344D909 /* CandidateSessionTests.swift in Sources */,
+				84A630E44B128E3159290C4A /* CandidateWindowGeometry.swift in Sources */,
+				9039F5A7FF8C462C8DC0CE60 /* CandidateWindowGeometryTests.swift in Sources */,
 				783D7541B400A444EFA62568 /* CharacterDictionary.swift in Sources */,
 				9400F25BFE4125223C0A4C94 /* CharacterDictionaryTests.swift in Sources */,
 				F370DC600E90D9AD024FBEC4 /* DictionaryDatabaseBuilder.swift in Sources */,
@@ -565,8 +599,6 @@
 				F7761C7EF89808E052F64C42 /* SQLiteDatabase.swift in Sources */,
 				14C4230B00D5EC61B7A8901F /* StandardZhuyinLayout.swift in Sources */,
 				9026C8DCE02772769169E368 /* StandardZhuyinLayoutTests.swift in Sources */,
-				B707049EC6F601AFCFF23D6D /* SystemCandidateKeyRouting.swift in Sources */,
-				C384673A793FC3C2AD858A9A /* SystemCandidateKeyRoutingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

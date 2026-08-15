@@ -1,10 +1,10 @@
 # Architecture
 
-Milestone 3 adds a reproducible character dictionary and system candidate presentation while keeping native macOS APIs, composition logic, and data tooling separate.
+Milestone 4 adds a custom expandable candidate window while keeping keyboard semantics, candidate state, AppKit presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
-`main.swift` validates the bundle configuration, creates exactly one `IMKServer`, and starts the background AppKit run loop. InputMethodKit creates one `InputController` for each client input session.
+`main.swift` validates the bundle configuration, creates exactly one `IMKServer`, and starts the AppKit run loop. The bundle is an `LSUIElement` agent, so it can own a nonactivating candidate panel without appearing in the Dock. InputMethodKit creates one `InputController` for each client input session.
 
 `InputController` accepts key-down events that belong to the current composition. Candidate mode first routes selection and navigation keys, treating the `.function` and `.numericPad` flags inherent to macOS navigation-key events separately from Command, Control, Option, and Shift shortcuts. Outside candidate mode, the controller translates an `NSEvent` into a semantic physical key, asks the composition session for a result, then performs the requested `IMKTextInput` marked-text update or commit. Unhandled events are returned to the client application.
 
@@ -19,8 +19,8 @@ NSEvent key code
   → BopomofoParser / BopomofoSyllable
   → BopomofoInputSession result
   → CharacterDictionary lookup
-  → CandidateSession
-  → InputController / IMKCandidates
+  → CandidateSession / CandidateCommandReducer
+  → InputController / CandidateWindowPresenter
   → IMKTextInput marked text or committed character
 ```
 
@@ -50,17 +50,21 @@ The schema indexes both `pronunciation → characters` and `character → pronun
 
 ## Candidate lifecycle
 
-After a tone completes a syllable, `InputController` queries the dictionary and stores an immutable candidate snapshot before asking `IMKCandidates` to update. The reading stays as marked text. A final candidate callback validates the value against that snapshot and inserts exactly one character, replacing the marked reading.
+After a tone completes a syllable, `InputController` queries the dictionary and stores an immutable candidate snapshot before showing the custom panel. The reading stays as marked text. A final keyboard or mouse selection is resolved against the current session and inserts exactly one character, replacing the marked reading.
 
-`CandidateSession` is a pure Swift state model for stable deduplication, highlight tracking, and stale-selection rejection. `SystemCandidatePresenter` is the small InputMethodKit adapter. Missing data, a failed lookup, or an empty candidate result falls back to committing literal Bopomofo; there is no hidden hand-written dictionary.
+`CandidateSession` is the canonical pure Swift state model for stable deduplication, presentation mode, absolute highlight, nine-item selection row, and grid/page navigation. `CandidateCommandRouter` maps one unmodified physical key event to a semantic command; `CandidateCommandReducer` turns that command and session into a state update or explicit side effect. `InputController` alone performs `IMKTextInput` mutations. Missing data, a failed lookup, or an empty candidate result falls back to committing literal Bopomofo; there is no hidden hand-written dictionary.
 
-The built-in single-row `IMKCandidates` panel owns presentation, paging controls, and mouse callbacks. Its public server-first routing attribute lets the controller handle keyboard interaction deterministically: arrows, Home/End, and Page Up/Page Down update the session highlight through `candidateStringIdentifier` and `selectCandidate(withIdentifier:)`; `1`–`9` select from the immutable session snapshot page that contains the current highlight, and an empty final-page slot is consumed without changing the composition. Escape and Backspace cancel. Return, client-driven commit, input-source deactivation, and controller closure commit the highlighted or first candidate through one idempotent path.
+`CandidateWindowPresenter` is a process-wide coordinator that owns the single AppKit panel and mouse callbacks; multiple client controllers can never leave multiple candidate windows on screen. A new owner first asks the previous owner to finalize its candidate session, then replaces the panel snapshot. Its borderless `NSPanel` cannot become key or main, and is shown without activating the input-method process, so keyboard focus remains in the client. Compact mode displays up to nine candidates in one row. The first Down Arrow expands without changing the highlight; expanded mode uses a nine-column, three-row viewport for up to 27 simultaneous candidates. Both modes are hosted in one `NSScrollView`; expanded snapshots larger than the viewport become scrollable, and every keyboard highlight is scrolled into view. Mouse callbacks carry the session UUID and absolute index, while hide requests are owner-token guarded, so an old controller cannot click or dismiss a newer session's panel.
+
+Four arrows, Home/End, Page Up/Page Down, top-row `1`–`9`, Space, Return/Keypad Enter, Escape, and Backspace all enter through the same router. Space commits candidate zero; Return commits the highlight; an empty numeric slot is consumed without mutation. Candidate-mode Backspace restores the completed `BopomofoSyllable`, removes its last input component (normally the tone, including invisible first tone), hides the window, and resumes marked-text editing. Lifecycle callbacks commit through one idempotent path.
+
+Panel placement uses the text client's public marked/selected ranges and candidate anchor rectangles. Sizing and placement are pure geometry: choose the display containing or nearest the caret, use its current `visibleFrame`, prefer below the caret, flip above when necessary, then clamp width and height inside an inset frame. Coordinates do not assume the primary display begins at `(0, 0)`, so negative-origin displays are supported. The panel level is the client window level plus one, as required for a custom input-method candidate window.
 
 ## InputMethodKit boundary
 
-Active composition is sent with `setMarkedText`; its caret range is relative to the supplied UTF-16 string. Literal Bopomofo or a selected candidate is sent once with `insertText`. Candidate-mode Escape or Backspace clears the complete marked reading; raw-syllable Escape and Backspace-to-empty use the same empty marked string. The controller does not call `cancelComposition`, whose framework behavior is restoration rather than discard.
+Active composition is sent with `setMarkedText`; its caret range is relative to the supplied UTF-16 string. Literal Bopomofo or a selected candidate is sent once with `insertText`. Candidate-mode Escape clears the complete marked reading; candidate-mode Backspace updates it with the restored incomplete reading. Raw-syllable Escape and Backspace-to-empty use the same empty marked string. The controller does not call `cancelComposition`, whose framework behavior is restoration rather than discard.
 
-Client-driven commit, input-source deactivation, and controller closure all use the same idempotent session finalization path. The controller keeps InputMethodKit's default key-down-only recognized event mask.
+Client-driven commit, input-source change notification or deactivation, palette hiding, and controller closure all use the same idempotent session finalization path. The public distributed source-change notification is registered for immediate delivery and only finalizes after the current source identifier confirms a switch away from Jiukong. The controller keeps InputMethodKit's default key-down-only recognized event mask.
 
 ## Configuration
 
@@ -68,14 +72,14 @@ Client-driven commit, input-source deactivation, and controller closure all use 
 
 The bundle metadata declares:
 
-- a background-only macOS application that stays out of the Dock;
+- an `LSUIElement` macOS agent that can present UI while staying out of the Dock;
 - the InputMethodKit connection and Objective-C controller class names;
 - the Traditional Chinese intended language and repertoire;
 - a stable Text Input Sources identifier;
 - a localized English and Traditional Chinese display name.
 
-Milestone 1 uses `LSBackgroundOnly` because it is the configuration explicitly listed by Apple's current `IMKServer` initializer documentation. A later milestone can reassess the process policy when settings or other app-owned UI are introduced. `LSBackgroundOnly` and `LSUIElement` are not declared together.
+Milestones 1–3 used `LSBackgroundOnly`. Milestone 4 replaces it with `LSUIElement` because AppKit defines a background-only application as unable to create windows, while an agent application may present the custom nonactivating panel and remain absent from the Dock. The two keys are never declared together.
 
 The current application-bundle lifecycle was also compared with [McBopomofo](https://github.com/openvanilla/McBopomofo/tree/73d0379eca621377fb46416ceb4a7dc9bb576d47) and [OpenVanilla](https://github.com/openvanilla/openvanilla/tree/8f09dc6a66f10aecfdc928e7ff63753d7bc19b25). Only their public architecture was studied; no source code or language data was copied.
 
-The custom expandable candidate panel, phrase conversion, frequency ranking, user learning, punctuation, and settings remain outside Milestone 3. Those modules will not be placed in `InputController`.
+Phrase conversion, frequency ranking, user learning, punctuation, Shift language switching, and settings remain outside Milestone 4. Those modules will not be placed in `InputController`.
