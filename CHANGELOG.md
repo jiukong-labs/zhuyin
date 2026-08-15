@@ -24,3 +24,7 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Scrollable candidate presentation with caret-relative, screen-aware boundary placement.
 - Candidate Backspace restoration and Milestone 4 architecture and verification documentation.
 - Token-guarded single-panel ownership across clients and deterministic finalization on input-source changes.
+- Standalone left/right Shift detection with chord rejection and process-wide Chinese/English mode.
+- Direct English-mode event pass-through and a token-guarded, click-through transient mode HUD.
+- Explicit InputMethodKit modifier and client mouse-event handling with composition-safe finalization.
+- Milestone 5 architecture, verification, and installed TextEdit acceptance documentation.

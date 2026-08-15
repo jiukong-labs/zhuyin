@@ -20,10 +20,14 @@ final class InputController: IMKInputController {
 
     private let dictionary: CharacterDictionary?
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
+    private lazy var languageModeHUD = LanguageModeHUD.shared
+    private let languageModeController = LanguageModeController.shared
     private var inputSession = BopomofoInputSession()
+    private var shiftToggleController = ShiftToggleController()
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
     private var lastCandidateAnchor: NSRect?
+    private var languageModeHUDToken: UUID?
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         do {
@@ -55,9 +59,37 @@ final class InputController: IMKInputController {
         )
     }
 
+    override func recognizedEvents(_ sender: Any!) -> Int {
+        let eventMask: NSEvent.EventTypeMask = [
+            .keyDown,
+            .flagsChanged,
+            .leftMouseDown,
+            .rightMouseDown,
+            .otherMouseDown
+        ]
+        return Int(eventMask.rawValue)
+    }
+
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
-        guard let event, event.type == .keyDown,
+        guard let event,
               let inputClient = sender as? any IMKTextInput else {
+            return false
+        }
+
+        switch event.type {
+        case .flagsChanged:
+            return handleModifierChange(event, inputClient: inputClient)
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            shiftToggleController.reset()
+            finishComposition(using: inputClient)
+            return false
+        case .keyDown:
+            shiftToggleController.noteKeyDown()
+        default:
+            return false
+        }
+
+        guard languageModeController.mode == .chinese else {
             return false
         }
 
@@ -97,17 +129,25 @@ final class InputController: IMKInputController {
         finishComposition(using: sender)
     }
 
+    override func activateServer(_ sender: Any!) {
+        shiftToggleController.reset()
+        super.activateServer(sender)
+    }
+
     override func deactivateServer(_ sender: Any!) {
+        resetTransientInputState()
         finishComposition(using: sender)
         super.deactivateServer(sender)
     }
 
     override func inputControllerWillClose() {
+        resetTransientInputState()
         finishComposition(using: client())
         super.inputControllerWillClose()
     }
 
     override func hidePalettes() {
+        resetTransientInputState()
         finishComposition(using: client())
         super.hidePalettes()
     }
@@ -127,6 +167,7 @@ final class InputController: IMKInputController {
                 return
             }
 
+            self.resetTransientInputState()
             self.finishComposition(using: self.client())
         }
     }
@@ -147,6 +188,37 @@ final class InputController: IMKInputController {
         }
 
         apply(inputSession.commitComposition(), to: inputClient)
+    }
+
+    private func handleModifierChange(
+        _ event: NSEvent,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        let shouldToggle = shiftToggleController.handleFlagsChanged(
+            keyCode: event.keyCode,
+            modifierFlags: event.modifierFlags,
+            preference: .both
+        )
+        guard shouldToggle else {
+            return false
+        }
+
+        finishComposition(using: inputClient)
+        let mode = languageModeController.toggle()
+        languageModeHUDToken = languageModeHUD.show(
+            mode: mode,
+            anchor: candidateAnchor(on: inputClient),
+            clientWindowLevel: inputClient.windowLevel()
+        )
+        return false
+    }
+
+    private func resetTransientInputState() {
+        shiftToggleController.reset()
+        if let languageModeHUDToken {
+            languageModeHUD.hide(token: languageModeHUDToken)
+            self.languageModeHUDToken = nil
+        }
     }
 
     private func inputClient(from sender: Any?) -> (any IMKTextInput)? {

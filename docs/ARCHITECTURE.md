@@ -1,17 +1,18 @@
 # Architecture
 
-Milestone 4 adds a custom expandable candidate window while keeping keyboard semantics, candidate state, AppKit presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
+Milestone 5 adds standalone Shift Chinese/English switching while keeping modifier gestures, process-wide language state, keyboard semantics, candidate state, AppKit presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
 `main.swift` validates the bundle configuration, creates exactly one `IMKServer`, and starts the AppKit run loop. The bundle is an `LSUIElement` agent, so it can own a nonactivating candidate panel without appearing in the Dock. InputMethodKit creates one `InputController` for each client input session.
 
-`InputController` accepts key-down events that belong to the current composition. Candidate mode first routes selection and navigation keys, treating the `.function` and `.numericPad` flags inherent to macOS navigation-key events separately from Command, Control, Option, and Shift shortcuts. Outside candidate mode, the controller translates an `NSEvent` into a semantic physical key, asks the composition session for a result, then performs the requested `IMKTextInput` marked-text update or commit. Unhandled events are returned to the client application.
+`InputController` accepts key-down, modifier-change, and client mouse-down events. Modifier and key events first update the independent `ShiftToggleController`. Candidate mode then routes selection and navigation keys, treating the `.function` and `.numericPad` flags inherent to macOS navigation-key events separately from Command, Control, Option, and Shift shortcuts. Outside candidate mode, the controller translates a Chinese-mode key-down into a semantic physical key, asks the composition session for a result, then performs the requested `IMKTextInput` marked-text update or commit. English-mode and otherwise unhandled events are returned to the client application.
 
 ## Composition pipeline
 
 ```text
 NSEvent key code
+  → ShiftToggleController / LanguageModeController
   → MacVirtualKeyResolver
   → KeyboardKey
   → StandardZhuyinLayout
@@ -31,6 +32,14 @@ NSEvent key code
 - Outside candidate mode, `BopomofoInputSession` owns Backspace, Escape, Enter, pass-through, commit, and reset behavior without importing AppKit or InputMethodKit.
 
 A tone-completed syllable remains distinct from a forced raw-text commit. The former starts dictionary conversion; Return on an unfinished syllable and pass-through finalization retain the Milestone 2 raw Bopomofo behavior.
+
+## Language mode
+
+Each input controller owns a `ShiftToggleController` for its own modifier gesture, while every controller reads one process-wide `LanguageModeController`. A left or right Shift release toggles only when that Shift was pressed without any intervening key, other modifier, or second Shift. The state machine deliberately has no tap timeout. Its policy already models both, left-only, right-only, and disabled behavior; Milestone 5 uses both.
+
+A toggle first uses the existing idempotent composition finalization path, then changes mode. Chinese mode continues through candidate and Bopomofo handling. English mode returns key events unchanged, allowing the client and selected macOS keyboard layout to own characters, capitalization, dead keys, repeats, and shortcuts. Mode is shared across client sessions for the lifetime of the input-method process and defaults to Chinese after relaunch.
+
+`LanguageModeHUD` displays `中` or `A` for 0.75 seconds in a process-wide nonactivating, click-through panel. Presentations and hides are UUID-guarded so delayed timers or lifecycle callbacks from an old client cannot hide a newer indicator.
 
 ## Dictionary pipeline
 
@@ -64,7 +73,9 @@ Panel placement uses the text client's public marked/selected ranges and candida
 
 Active composition is sent with `setMarkedText`; its caret range is relative to the supplied UTF-16 string. Literal Bopomofo or a selected candidate is sent once with `insertText`. Candidate-mode Escape clears the complete marked reading; candidate-mode Backspace updates it with the restored incomplete reading. Raw-syllable Escape and Backspace-to-empty use the same empty marked string. The controller does not call `cancelComposition`, whose framework behavior is restoration rather than discard.
 
-Client-driven commit, input-source change notification or deactivation, palette hiding, and controller closure all use the same idempotent session finalization path. The public distributed source-change notification is registered for immediate delivery and only finalizes after the current source identifier confirms a switch away from Jiukong. The controller keeps InputMethodKit's default key-down-only recognized event mask.
+Client-driven commit, input-source change notification or deactivation, palette hiding, and controller closure all use the same idempotent session finalization path. The public distributed source-change notification is registered for immediate delivery and only finalizes after the current source identifier confirms a switch away from Jiukong.
+
+Milestone 5 must recognize `flagsChanged`, so InputMethodKit no longer provides its key-down-only default mouse finalization. The controller explicitly recognizes client left/right/other mouse-down events, resets a pending Shift gesture, finalizes active composition once, and returns the mouse event to the client. No global event monitor or Accessibility-based document reading is used.
 
 ## Configuration
 
@@ -82,4 +93,4 @@ Milestones 1–3 used `LSBackgroundOnly`. Milestone 4 replaces it with `LSUIElem
 
 The current application-bundle lifecycle was also compared with [McBopomofo](https://github.com/openvanilla/McBopomofo/tree/73d0379eca621377fb46416ceb4a7dc9bb576d47) and [OpenVanilla](https://github.com/openvanilla/openvanilla/tree/8f09dc6a66f10aecfdc928e7ff63753d7bc19b25). Only their public architecture was studied; no source code or language data was copied.
 
-Phrase conversion, frequency ranking, user learning, punctuation, Shift language switching, and settings remain outside Milestone 4. Those modules will not be placed in `InputController`.
+Phrase conversion, frequency ranking, user learning, punctuation, and settings remain outside Milestone 5. Those modules will not be placed in `InputController`.

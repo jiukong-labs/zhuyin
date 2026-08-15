@@ -2,11 +2,11 @@
 
 > 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
 
-久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字與完整候選字顯示，並規劃加入個人字詞學習及單按 Shift 切換中英文。
+久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字、完整候選字顯示，以及單按 Shift 切換中英文，並規劃加入個人字詞學習。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, with personal learning and Shift-based Chinese/English switching planned for later milestones.
+Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection with single-Shift Chinese/English switching. Personal learning remains planned for later milestones.
 
-> 開發狀態：Milestone 4 已加入久空自有的可展開候選視窗。輸入完整注音與聲調後，可在精簡列中選字，或按 ↓ 展開 27 格並捲動全部候選。
+> 開發狀態：Milestone 5 已加入單按左右 Shift 切換中英文。中文模式保留自有候選視窗；英文模式把鍵盤事件直接交給目前 App。
 
 ## Current features
 
@@ -14,17 +14,17 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Native macOS input method with a custom nonactivating candidate window
 - CNS11643 base character candidates
 - Compact and 27-item expanded candidate views with scrolling
+- Standalone left/right Shift Chinese/English switching
 - Fully offline
 - Open source
 - MIT-licensed source code
 
 ## Planned features
 
-- Shift Chinese/English switching
 - Personal character learning
 - Personal phrase learning
 
-## Milestone 4 input
+## Milestone 5 input
 
 目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -48,6 +48,14 @@ Space 一聲
 候選順序在此階段忠實保留 CNS11643 注音資料的來源順序，並不代表使用頻率。個人排序學習屬後續 Milestone。
 
 `1`、`q`、`a`、`z` 都是聲母鍵；要連續驗證 `ㄅㄆㄇㄈ`，請在每個鍵後按 Enter 或一聲 Space 完成音節。直接連按四鍵會合理地以後一個聲母取代前一個。
+
+### 中英文切換
+
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換後會在游標附近短暫顯示「中」或「A」，不會搶走目前 App 的鍵盤焦點。
+
+英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。左右／單側／關閉 Shift 切換的持久設定屬 Milestone 8。
+
+若切換模式時仍有未完成注音或候選，久空會先完成一次目前組字再切換，避免吃字或重複插入。因 Milestone 5 需要接收 Shift 的 modifier 事件，久空也會透過 InputMethodKit 公開事件路徑處理 client 內的滑鼠按下：先完成現有組字，再把點擊交回 App。
 
 ## Requirements
 
@@ -121,9 +129,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 4 提供自製的精簡／展開候選視窗、集中式候選快捷鍵、滑鼠與捲動操作，以及游標附近的多螢幕邊界定位。詞組轉換、候選頻率排序、單按 Shift 切換、使用者學習及設定仍屬後續 Milestone。
+Milestone 5 提供單按左右 Shift 的中英文切換、英文直通模式與短暫模式提示，並保留 Milestone 4 的自製候選視窗及輸入行為。詞組轉換、候選頻率排序、使用者學習及設定仍屬後續 Milestone。
 
-詳見 [Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 
