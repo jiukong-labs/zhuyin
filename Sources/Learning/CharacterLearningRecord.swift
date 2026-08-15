@@ -103,6 +103,10 @@ protocol UserLearningStoring: AnyObject {
         phrase: String,
         pronunciationSequence: [String]
     ) throws
+
+    func clearCharacterLearning() throws
+    func clearUserPhrases() throws
+    func clearAllUserData() throws
 }
 
 extension UserLearningStoring {
@@ -129,4 +133,8 @@ extension UserLearningStoring {
         phrase: String,
         pronunciationSequence: [String]
     ) throws {}
+
+    func clearCharacterLearning() throws {}
+    func clearUserPhrases() throws {}
+    func clearAllUserData() throws {}
 }

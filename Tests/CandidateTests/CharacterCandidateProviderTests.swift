@@ -284,6 +284,87 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(learning.recordedSelections, [])
     }
 
+    func testDisabledAutomaticLearningStopsCharacterAndPhraseCounting() throws {
+        let learning = LearningSpy()
+        var enabled = true
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            isAutomaticLearningEnabled: { enabled }
+        )
+
+        let reasons: [CandidateCommitReason] = [
+            .space,
+            .returnKey,
+            .number(9),
+            .mouse,
+            .implicitPassThrough,
+            .lifecycle,
+            .clientHandoff,
+        ]
+
+        enabled = false
+        for reason in reasons {
+            provider.recordCommittedSelection(
+                Candidate(text: "我", pronunciation: "ㄨㄛˇ"),
+                reason: reason
+            )
+            provider.recordCommittedSelection(
+                Candidate(
+                    text: "久空",
+                    pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"],
+                    type: .phrase
+                ),
+                reason: reason
+            )
+        }
+
+        XCTAssertEqual(learning.recordedSelections, [])
+        XCTAssertEqual(learning.recordedPhraseSelections, [])
+
+        enabled = true
+        provider.recordCommittedSelection(
+            Candidate(text: "我", pronunciation: "ㄨㄛˇ"),
+            reason: .space
+        )
+
+        XCTAssertEqual(
+            learning.recordedSelections,
+            [Selection(character: "我", pronunciation: "ㄨㄛˇ")]
+        )
+    }
+
+    func testDisabledAutomaticLearningStillRanksAndAcceptsExplicitPhrases() throws {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let learning = LearningSpy()
+        learning.recordsByPronunciation["ㄐㄧㄢˋ"] = [
+            "鍵": CharacterLearningRecord(
+                character: "鍵",
+                pronunciation: "ㄐㄧㄢˋ",
+                selectionCount: 4,
+                lastSelectedAt: now,
+                pinned: false
+            ),
+        ]
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            isAutomaticLearningEnabled: { false },
+            now: { now }
+        )
+
+        let candidates = try provider.candidates(for: "ㄐㄧㄢˋ")
+
+        XCTAssertEqual(candidates.first?.text, "鍵")
+        XCTAssertTrue(
+            provider.addUserPhrase(
+                phrase: "久空",
+                pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+            )
+        )
+        XCTAssertEqual(learning.addedPhrases.count, 1)
+    }
+
     private struct Selection: Equatable {
         let character: String
         let pronunciation: String

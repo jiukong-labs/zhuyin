@@ -4,17 +4,20 @@ final class CharacterCandidateProvider {
     private let dictionary: CharacterDictionary
     private let learning: (any UserLearningProviding)?
     private let ranker: CandidateRanker
+    private let isAutomaticLearningEnabled: () -> Bool
     private let now: () -> Date
 
     init(
         dictionary: CharacterDictionary,
         learning: (any UserLearningProviding)? = nil,
         ranker: CandidateRanker = CandidateRanker(),
+        isAutomaticLearningEnabled: @escaping () -> Bool = { true },
         now: @escaping () -> Date = Date.init
     ) {
         self.dictionary = dictionary
         self.learning = learning
         self.ranker = ranker
+        self.isAutomaticLearningEnabled = isAutomaticLearningEnabled
         self.now = now
     }
 
@@ -66,11 +69,15 @@ final class CharacterCandidateProvider {
         ) ?? false
     }
 
+    /// Implicit learning only. Existing counts still rank candidates while the
+    /// setting is off, and an explicit `addUserPhrase` remains available,
+    /// because the user asked for that phrase directly.
     func recordCommittedSelection(
         _ candidate: Candidate,
         reason: CandidateCommitReason
     ) {
-        guard reason.recordsCandidateSelection else {
+        guard reason.recordsCandidateSelection,
+              isAutomaticLearningEnabled() else {
             return
         }
 

@@ -6,7 +6,7 @@
 
 Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
 
-> 開發狀態：Milestone 7 已加入未提交組字緩衝、Shift 範圍選取與本機使用者造詞。字與詞的學習資料只保存在目前 Mac。
+> 開發狀態：Milestone 8 第一階段已加入可保存的偏好設定、設定視窗、自動學習開關與使用者資料清除。字與詞的學習資料只保存在目前 Mac。
 
 ## Current features
 
@@ -17,15 +17,17 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Standalone left/right Shift Chinese/English switching
 - Persistent, local character-selection learning and deterministic ranking
 - Multi-character marked composition and exact user-phrase learning
+- Persistent settings for Shift switching and automatic learning
+- Local user-data clearing from a settings window
 - Fully offline
 - Open source
 - MIT-licensed source code
 
 ## Planned features
 
-- Settings and user-dictionary management
+- User-dictionary management and import/export
 
-## Milestone 7 input
+## Milestone 8 input
 
 目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -56,13 +58,15 @@ Space 一聲
 
 中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換後會在游標附近短暫顯示「中」或「A」，不會搶走目前 App 的鍵盤焦點。
 
-英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。左右／單側／關閉 Shift 切換的持久設定屬 Milestone 8。
+英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
 若切換模式時仍有未完成注音或候選，久空會先完成一次目前組字再切換，避免吃字或重複插入。因 Milestone 5 需要接收 Shift 的 modifier 事件，久空也會透過 InputMethodKit 公開事件路徑處理 client 內的滑鼠按下：先完成現有組字，再把點擊交回 App。
 
 ### 個人選字學習
 
-Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與字面注音 fallback 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，管理介面將在 Milestone 8 提供。
+Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與字面注音 fallback 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，逐項管理介面將在 Milestone 8 第二階段提供。
+
+在設定視窗關閉「自動學習」後，就不再累積新的使用次數；既有紀錄仍會影響排序，Shift 造詞也仍可使用。
 
 選定候選只會先建立待提交事件；整段 composition 真正送進 App 後才會學習。被 Escape 丟棄、被 Backspace 刪除或被詞候選取代的內容不會留下錯誤計數。
 
@@ -73,6 +77,16 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 之後重打相同的完整逐音序列時，使用者詞會出現在最後一個音節的候選中。查詢是完整相等、最長後綴優先；目前不做詞首聯想，也不會未經確認自動補完整詞。置頂仍是最高排序層，未置頂的精確使用者詞則優先於一般未置頂單字。
 
 學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v2 原地保留 M6 字頻並加入使用者詞與有順序的逐音讀音。資料庫無法使用時，輸入仍會安全退回 CNS 原始順序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
+
+### 設定視窗
+
+在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗。目前提供：
+
+- 中英文切換要用哪一側 Shift：左右皆可、只用左、只用右、關閉；
+- 自動學習開關；
+- 清除選字紀錄、清除使用者詞、清除全部使用者資料，每項都需再次確認。
+
+設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；清除動作只影響 `user.sqlite`，不會動到內建字典。開啟設定視窗前會先完成目前的組字。
 
 ## Requirements
 
@@ -146,9 +160,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 7 提供本機多字 marked composition、Shift 範圍選取、精確逐音使用者造詞、schema v2 遷移與延後至真正提交才發生的字／詞學習。設定視窗、詞庫管理與匯入／匯出屬 Milestone 8。
+Milestone 8 第一階段提供可保存的偏好設定、輸入選單中的設定視窗、Shift 側邊選擇、自動學習開關與使用者資料清除。逐項詞庫管理與匯入／匯出屬 Milestone 8 第二階段。
 
-詳見 [Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 

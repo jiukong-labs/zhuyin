@@ -48,6 +48,19 @@ private func runApplication() throws {
         return
     }
 
+    // Maintainer verification path: the settings window is normally opened from
+    // the macOS input menu, which requires an installed and selected input
+    // source. This shows the same window without starting an input session.
+    if arguments == ["--settings"] {
+        let application = NSApplication.shared
+        application.setActivationPolicy(.accessory)
+        DispatchQueue.main.async {
+            SettingsWindowController.shared.show()
+        }
+        application.run()
+        return
+    }
+
     guard let server = IMKServer(
         name: configuration.connectionName,
         bundleIdentifier: configuration.bundleIdentifier

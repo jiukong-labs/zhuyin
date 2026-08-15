@@ -22,6 +22,7 @@ final class InputController: IMKInputController {
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
     private lazy var languageModeHUD = LanguageModeHUD.shared
     private let languageModeController = LanguageModeController.shared
+    private let preferences = PreferencesController.shared
     private var inputSession = BopomofoInputSession()
     private var compositionBuffer = CompositionBuffer()
     private var shiftToggleController = ShiftToggleController()
@@ -33,9 +34,13 @@ final class InputController: IMKInputController {
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         do {
             let dictionary = try CharacterDictionary(bundle: .main)
+            let preferences = PreferencesController.shared
             candidateProvider = CharacterCandidateProvider(
                 dictionary: dictionary,
-                learning: UserLearningService.shared
+                learning: UserLearningService.shared,
+                isAutomaticLearningEnabled: {
+                    preferences.current.automaticLearningEnabled
+                }
             )
         } catch {
             candidateProvider = nil
@@ -151,6 +156,27 @@ final class InputController: IMKInputController {
         finishComposition(reason: .lifecycle, using: sender)
     }
 
+    /// The input-source menu shown from the macOS input menu.
+    override func menu() -> NSMenu! {
+        let menu = NSMenu(title: "久空輸入法")
+        let settingsItem = NSMenuItem(
+            title: "偏好設定…",
+            action: #selector(showSettings(_:)),
+            keyEquivalent: ""
+        )
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        return menu
+    }
+
+    /// Opening settings ends the current composition first, so text cannot be
+    /// left marked in a client that is about to lose focus to the window.
+    @objc private func showSettings(_ sender: Any?) {
+        resetTransientInputState()
+        finishComposition(reason: .lifecycle, using: client())
+        SettingsWindowController.shared.show()
+    }
+
     override func activateServer(_ sender: Any!) {
         shiftToggleController.reset()
         super.activateServer(sender)
@@ -222,7 +248,7 @@ final class InputController: IMKInputController {
         let shouldToggle = shiftToggleController.handleFlagsChanged(
             keyCode: event.keyCode,
             modifierFlags: event.modifierFlags,
-            preference: .both
+            preference: preferences.current.shiftKeyPreference
         )
         guard shouldToggle else {
             return false

@@ -344,6 +344,48 @@ final class UserLearningStore: UserLearningStoring {
         }
     }
 
+    /// Removes every learned character row and leaves user phrases intact.
+    func clearCharacterLearning() throws {
+        try clear(statements: ["DELETE FROM character_learning"])
+    }
+
+    /// Removes every user phrase. Readings are deleted explicitly so the result
+    /// is identical whether or not foreign keys are enforced.
+    func clearUserPhrases() throws {
+        try clear(
+            statements: [
+                "DELETE FROM user_phrase_readings",
+                "DELETE FROM user_phrases",
+            ]
+        )
+    }
+
+    /// Empties both data sets in one transaction, so a failure can never leave
+    /// characters cleared while phrases survive.
+    func clearAllUserData() throws {
+        try clear(
+            statements: [
+                "DELETE FROM user_phrase_readings",
+                "DELETE FROM user_phrases",
+                "DELETE FROM character_learning",
+            ]
+        )
+    }
+
+    /// Clearing keeps the schema, application ID, and version in place. The
+    /// database file remains usable for the next selection without reopening.
+    private func clear(statements: [String]) throws {
+        try withOperationLock {
+            try withImmediateTransaction {
+                for statement in statements {
+                    try database.execute(statement)
+                }
+                try validateSchema()
+            }
+            try secureDatabaseSidecars()
+        }
+    }
+
     private func configureOrValidateSchema() throws {
         let applicationID = try pragmaInteger("application_id")
         let schemaVersion = Int(try pragmaInteger("user_version"))

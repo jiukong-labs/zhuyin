@@ -36,3 +36,10 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Exact, longest-suffix user-phrase creation and conversion without reading committed client text.
 - SQLite schema v2 phrase storage with ordered readings and lossless Milestone 6 migration.
 - Deferred character and phrase learning that records only content surviving the final client commit.
+- Milestone 7 composition-buffer, phrase-storage, and verification documentation.
+- Persistent preferences with per-field fallback and a process-wide cached controller.
+- Selectable left/right/both/disabled Shift language switching.
+- Automatic-learning switch that stops new counting without discarding existing ranking data.
+- Atomic clearing of character learning, user phrases, or all local user data.
+- Traditional Chinese settings window opened from the macOS input menu.
+- Milestone 8 preferences, settings, and verification documentation.

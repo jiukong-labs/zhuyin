@@ -189,4 +189,40 @@ final class UserLearningService: UserLearningProviding {
         }
     }
 
+    /// Reports success so the settings window can tell the user that a clear
+    /// request did not take effect instead of silently appearing to succeed.
+    @discardableResult
+    func clearCharacterLearning() -> Bool {
+        clear("character learning") { try $0.clearCharacterLearning() }
+    }
+
+    @discardableResult
+    func clearUserPhrases() -> Bool {
+        clear("user phrases") { try $0.clearUserPhrases() }
+    }
+
+    @discardableResult
+    func clearAllUserData() -> Bool {
+        clear("all user data") { try $0.clearAllUserData() }
+    }
+
+    private func clear(
+        _ description: String,
+        operation: (any UserLearningStoring) throws -> Void
+    ) -> Bool {
+        queue.sync {
+            guard let store else {
+                return false
+            }
+            do {
+                try operation(store)
+                return true
+            } catch {
+                Self.logger.error(
+                    "Could not clear \(description, privacy: .public); the existing data was kept."
+                )
+                return false
+            }
+        }
+    }
 }

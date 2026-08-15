@@ -1,6 +1,6 @@
 # Architecture
 
-Milestone 7 adds a multi-unit marked composition buffer and exact user-phrase learning while keeping parsing, composition state, ranking, storage, candidate presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
+Milestone 8 adds persistent preferences and a settings window while keeping parsing, composition state, ranking, storage, candidate presentation, settings UI, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
@@ -41,7 +41,7 @@ The buffer selection is an end-anchored suffix. Shift+Left expands it one readin
 
 ## Language mode
 
-Each input controller owns a `ShiftToggleController` for its own modifier gesture, while every controller reads one process-wide `LanguageModeController`. A left or right Shift release toggles only when that Shift was pressed without any intervening key, other modifier, or second Shift. The state machine deliberately has no tap timeout. Its policy already models both, left-only, right-only, and disabled behavior; Milestone 5 uses both.
+Each input controller owns a `ShiftToggleController` for its own modifier gesture, while every controller reads one process-wide `LanguageModeController`. A left or right Shift release toggles only when that Shift was pressed without any intervening key, other modifier, or second Shift. The state machine deliberately has no tap timeout. Its policy models both, left-only, right-only, and disabled behavior; since Milestone 8 the active policy comes from the persisted `ShiftKeyPreference` rather than a fixed value.
 
 A toggle first uses the existing idempotent composition finalization path, then changes mode. Chinese mode continues through candidate and Bopomofo handling. English mode returns key events unchanged, allowing the client and selected macOS keyboard layout to own characters, capitalization, dead keys, repeats, and shortcuts. Mode is shared across client sessions for the lifetime of the input-method process and defaults to Chinese after relaunch.
 
@@ -70,6 +70,16 @@ The schema indexes both `pronunciation → characters` and `character → pronun
 Unpinned candidates use `-baseRank + 8 × log2(selectionCount + 1) + recency`, where recency starts at 4 and decays with a seven-day half-life. Future timestamps clamp to age zero. Pinned candidates form a separate highest tier; equal scores fall back through base rank, source order, text, reading, and candidate type. The formula and tie-breaks live only in `CandidateRanker` and are covered by exact-position tests.
 
 `UserLearningStore` owns a versioned SQLite database under the user Application Support directory. It validates `application_id`, schema version, columns, and regular-file identity before use; enables full-mutex access, a one-second busy timeout, WAL, normal synchronous writes, and foreign keys; and keeps the directory/database at `0700`/`0600`. An atomic UPSERT saturates counts at `Int64.max`, keeps the newest timestamp, and preserves an existing pin. `UserLearningService` serializes process-wide access and logs only generic failures without characters or readings. If storage fails, candidate lookup continues with the untouched CNS order.
+
+## Preferences and settings
+
+`Preferences` is a plain value holding the Shift toggle policy and the automatic-learning switch. Decoding is pure and total: a missing, malformed, or unknown stored value falls back per field to the shipped default, and a version newer than this build is not guessed at. `UserDefaultsPreferencesStore` reads and writes only the namespaced keys this build owns, so nothing else in the domain is misread or destroyed.
+
+`PreferencesController` is the process-wide owner. It caches the decoded value behind a lock so a keystroke never reads `UserDefaults`, persists a change only when it differs, and posts `didChangeNotification` outside the lock so an observer can read `current` while handling it.
+
+Automatic learning gates only implicit recording. Existing counts and pins still rank candidates while it is off, and explicit Shift phrase creation still works, because the user asked for that phrase directly. `UserLearningStore` clears character data, phrase data, or both inside one immediate transaction that revalidates the schema, so the database stays usable without reopening and a failure cannot half-clear the data.
+
+`SettingsWindowController` owns the single settings window for every client session. Because the bundle is an agent, it activates the process explicitly before ordering the window front and deactivates again on close. `InputController.menu()` contributes the input-menu item and finalizes any active composition before the window opens.
 
 ## Candidate lifecycle
 
@@ -107,4 +117,4 @@ Milestones 1–3 used `LSBackgroundOnly`. Milestone 4 replaces it with `LSUIElem
 
 The current application-bundle lifecycle was also compared with [McBopomofo](https://github.com/openvanilla/McBopomofo/tree/73d0379eca621377fb46416ceb4a7dc9bb576d47) and [OpenVanilla](https://github.com/openvanilla/openvanilla/tree/8f09dc6a66f10aecfdc928e7ff63753d7bc19b25). Only their public architecture was studied; no source code or language data was copied.
 
-Phrase conversion, user-created phrases, punctuation, and settings remain outside Milestone 6. Those modules will not be placed in `InputController`.
+Punctuation mapping, user-dictionary management, and import/export remain outside the current milestone. Those modules will not be placed in `InputController`.

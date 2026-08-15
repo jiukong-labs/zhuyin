@@ -58,6 +58,8 @@ targets:
       - path: Sources/Keyboard
       - path: Sources/Language
       - path: Sources/Learning
+      - path: Sources/Preferences
+      - path: Sources/Settings
       - path: Resources/Assets/JiukongZhuyin.icns
         buildPhase: resources
       - path: Resources/Assets/JiukongZhuyin.tiff
@@ -137,6 +139,7 @@ targets:
       - path: Sources/Language/LanguageMode.swift
       - path: Sources/Language/ShiftToggleController.swift
       - path: Sources/Learning
+      - path: Sources/Preferences
       - path: Tools/DictionaryBuilder/CNS11643Manifest.swift
       - path: Tools/DictionaryBuilder/CNS11643Parser.swift
       - path: Tools/DictionaryBuilder/DictionaryDatabaseBuilder.swift
