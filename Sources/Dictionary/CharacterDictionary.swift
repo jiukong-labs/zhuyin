@@ -21,6 +21,15 @@ enum CharacterDictionaryError: LocalizedError {
     }
 }
 
+struct DictionaryCharacter: Equatable {
+    let text: String
+    let sourceOrder: Int64
+
+    var character: String {
+        text
+    }
+}
+
 final class CharacterDictionary {
     static let resourceName = "JiukongZhuyin"
     static let resourceExtension = "sqlite3"
@@ -80,9 +89,15 @@ final class CharacterDictionary {
     }
 
     func candidates(for pronunciation: String) throws -> [String] {
+        try candidateEntries(for: pronunciation).map(\.text)
+    }
+
+    func candidateEntries(
+        for pronunciation: String
+    ) throws -> [DictionaryCharacter] {
         let statement = try database.prepare(
             """
-            SELECT character
+            SELECT character, source_order
             FROM dictionary_entries
             WHERE pronunciation = ?
             ORDER BY source_order, character
@@ -90,9 +105,14 @@ final class CharacterDictionary {
         )
         try statement.bind(pronunciation, at: 1)
 
-        var values: [String] = []
+        var values: [DictionaryCharacter] = []
         while try statement.step() == .row {
-            values.append(try statement.text(at: 0))
+            values.append(
+                DictionaryCharacter(
+                    text: try statement.text(at: 0),
+                    sourceOrder: statement.integer(at: 1)
+                )
+            )
         }
         return values
     }

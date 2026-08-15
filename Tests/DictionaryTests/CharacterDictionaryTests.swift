@@ -11,6 +11,24 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(candidates.count, 34)
     }
 
+    func testCandidateEntriesExposeSourceOrderWithoutChangingStringAPI() throws {
+        let dictionary = try makeDictionary()
+        let entries = try dictionary.candidateEntries(for: "ㄨㄛˇ")
+
+        XCTAssertEqual(
+            entries.prefix(3),
+            [
+                DictionaryCharacter(text: "我", sourceOrder: 827),
+                DictionaryCharacter(text: "倭", sourceOrder: 2_092),
+                DictionaryCharacter(text: "婑", sourceOrder: 9_357),
+            ]
+        )
+        XCTAssertEqual(
+            entries.map(\.text),
+            try dictionary.candidates(for: "ㄨㄛˇ")
+        )
+    }
+
     func testJianFourthToneContainsCommonHomophones() throws {
         let candidates = Set(
             try makeDictionary().candidates(for: "ㄐㄧㄢˋ")

@@ -3,7 +3,7 @@ import XCTest
 final class CandidateCommandReducerTests: XCTestCase {
     func testFirstDownOnlyExpandsWithoutCommittingOrMoving() throws {
         var session = try makeSession(count: 40)
-        session.updateHighlightedCandidate("10")
+        session.updateHighlightedCandidate(session.candidates[10].id)
 
         guard case let .update(updated) = CandidateCommandReducer.reduce(
             .expand,
@@ -14,9 +14,11 @@ final class CandidateCommandReducerTests: XCTestCase {
 
         XCTAssertTrue(updated.isExpanded)
         XCTAssertEqual(updated.highlightedIndex, 10)
+        XCTAssertFalse(session.isExpanded)
+        XCTAssertEqual(session.highlightedIndex, 10)
     }
 
-    func testNavigationOnlyUpdatesTheCandidateSnapshot() throws {
+    func testNavigationOnlyUpdatesTheCandidateSnapshotCopy() throws {
         var session = try makeSession(count: 40)
         _ = session.expand()
 
@@ -28,11 +30,13 @@ final class CandidateCommandReducerTests: XCTestCase {
         }
 
         XCTAssertEqual(updated.highlightedIndex, 9)
+        XCTAssertEqual(session.highlightedIndex, 0)
+        XCTAssertEqual(updated.candidates, session.candidates)
     }
 
     func testInvalidNumberSlotIsConsumedWithoutACommit() throws {
         var session = try makeSession(count: 10)
-        session.updateHighlightedCandidate("9")
+        session.updateHighlightedCandidate(session.candidates[9].id)
 
         XCTAssertEqual(
             CandidateCommandReducer.reduce(.select(1), session: session),
@@ -40,20 +44,29 @@ final class CandidateCommandReducerTests: XCTestCase {
         )
     }
 
-    func testSpaceCommitsFirstAndReturnCommitsHighlight() throws {
+    func testNumberSelectionCommitsTypedCandidateWithItsZeroBasedSlot() throws {
+        let session = try makeSession(count: 4)
+
+        XCTAssertEqual(
+            CandidateCommandReducer.reduce(.select(1), session: session),
+            .commit(session.candidates[1], reason: .number(1))
+        )
+    }
+
+    func testSpaceCommitsFirstAndReturnCommitsHighlightWithReasons() throws {
         var session = try makeSession(count: 4)
-        session.updateHighlightedCandidate("2")
+        session.updateHighlightedCandidate(session.candidates[2].id)
 
         XCTAssertEqual(
             CandidateCommandReducer.reduce(.commitFirst, session: session),
-            .commit("0")
+            .commit(session.candidates[0], reason: .space)
         )
         XCTAssertEqual(
             CandidateCommandReducer.reduce(
                 .commitHighlighted,
                 session: session
             ),
-            .commit("2")
+            .commit(session.candidates[2], reason: .returnKey)
         )
     }
 
@@ -74,7 +87,13 @@ final class CandidateCommandReducerTests: XCTestCase {
         try XCTUnwrap(
             CandidateSession(
                 pronunciation: "test",
-                candidates: (0 ..< count).map(String.init)
+                candidates: (0 ..< count).map {
+                    Candidate(
+                        text: String($0),
+                        pronunciation: "test",
+                        baseRank: $0
+                    )
+                }
             )
         )
     }

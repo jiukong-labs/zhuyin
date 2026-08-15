@@ -57,6 +57,7 @@ targets:
       - path: Sources/InputMethod
       - path: Sources/Keyboard
       - path: Sources/Language
+      - path: Sources/Learning
       - path: Resources/Assets/JiukongZhuyin.icns
         buildPhase: resources
       - path: Resources/Assets/JiukongZhuyin.tiff
@@ -124,6 +125,9 @@ targets:
       - path: Sources/Candidates/CandidateCommandReducer.swift
       - path: Sources/Candidates/CandidateCommandRouter.swift
       - path: Sources/Candidates/CandidateInputSourcePolicy.swift
+      - path: Sources/Candidates/Candidate.swift
+      - path: Sources/Candidates/CandidateRanker.swift
+      - path: Sources/Candidates/CharacterCandidateProvider.swift
       - path: Sources/Candidates/CandidateSession.swift
       - path: Sources/Candidates/CandidateWindowGeometry.swift
       - path: Sources/Composition
@@ -132,6 +136,7 @@ targets:
       - path: Sources/Keyboard
       - path: Sources/Language/LanguageMode.swift
       - path: Sources/Language/ShiftToggleController.swift
+      - path: Sources/Learning
       - path: Tools/DictionaryBuilder/CNS11643Manifest.swift
       - path: Tools/DictionaryBuilder/CNS11643Parser.swift
       - path: Tools/DictionaryBuilder/DictionaryDatabaseBuilder.swift

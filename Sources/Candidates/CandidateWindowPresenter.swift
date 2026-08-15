@@ -164,7 +164,7 @@ private final class CandidateGridView: NSView {
                 ? .alternateSelectedControlTextColor
                 : .labelColor
             button.attributedTitle = NSAttributedString(
-                string: selectionKey + candidate,
+                string: selectionKey + candidate.text,
                 attributes: [
                     .font: NSFont.systemFont(ofSize: 18, weight: .medium),
                     .foregroundColor: foregroundColor
@@ -177,9 +177,9 @@ private final class CandidateGridView: NSView {
             button.layer?.borderColor = isSelected
                 ? NSColor.selectedControlTextColor.withAlphaComponent(0.7).cgColor
                 : NSColor.clear.cgColor
-            button.toolTip = "候選 \(candidateIndex + 1)／\(session.candidates.count)：\(candidate)"
+            button.toolTip = "候選 \(candidateIndex + 1)／\(session.candidates.count)：\(candidate.text)"
             button.setAccessibilityLabel(
-                "候選 \(candidateIndex + 1)／\(session.candidates.count)，\(candidate)"
+                "候選 \(candidateIndex + 1)／\(session.candidates.count)，\(candidate.text)"
             )
             button.setAccessibilityValue(isSelected ? "已選取" : nil)
         }

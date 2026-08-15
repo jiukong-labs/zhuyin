@@ -2,11 +2,11 @@
 
 > 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
 
-久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字、完整候選字顯示，以及單按 Shift 切換中英文，並規劃加入個人字詞學習。
+久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字、完整候選字顯示、單按 Shift 切換中英文，以及完全離線的個人選字學習。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection with single-Shift Chinese/English switching. Personal learning remains planned for later milestones.
+Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, single-Shift Chinese/English switching, and fully local personal character learning.
 
-> 開發狀態：Milestone 5 已加入單按左右 Shift 切換中英文。中文模式保留自有候選視窗；英文模式把鍵盤事件直接交給目前 App。
+> 開發狀態：Milestone 6 已加入本機選字學習。選過的字會依使用次數與最近使用時間逐漸提高排名，資料只保存在目前 Mac。
 
 ## Current features
 
@@ -15,16 +15,17 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - CNS11643 base character candidates
 - Compact and 27-item expanded candidate views with scrolling
 - Standalone left/right Shift Chinese/English switching
+- Persistent, local character-selection learning and deterministic ranking
 - Fully offline
 - Open source
 - MIT-licensed source code
 
 ## Planned features
 
-- Personal character learning
 - Personal phrase learning
+- Settings and user-dictionary management
 
-## Milestone 5 input
+## Milestone 6 input
 
 目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -45,7 +46,7 @@ Space 一聲
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
-候選順序在此階段忠實保留 CNS11643 注音資料的來源順序，並不代表使用頻率。個人排序學習屬後續 Milestone。
+未學習過的候選忠實保留 CNS11643 注音資料的來源順序；該順序不是字頻。使用者實際選字後，久空會以固定、可測的使用次數與七天最近使用半衰期逐步調整下一次查詢的排序。已開啟的候選快照不會在操作途中跳動。
 
 `1`、`q`、`a`、`z` 都是聲母鍵；要連續驗證 `ㄅㄆㄇㄈ`，請在每個鍵後按 Enter 或一聲 Space 完成音節。直接連按四鍵會合理地以後一個聲母取代前一個。
 
@@ -56,6 +57,12 @@ Space 一聲
 英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。左右／單側／關閉 Shift 切換的持久設定屬 Milestone 8。
 
 若切換模式時仍有未完成注音或候選，久空會先完成一次目前組字再切換，避免吃字或重複插入。因 Milestone 5 需要接收 Shift 的 modifier 事件，久空也會透過 InputMethodKit 公開事件路徑處理 client 內的滑鼠按下：先完成現有組字，再把點擊交回 App。
+
+### 個人選字學習
+
+Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與字面注音 fallback 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，管理介面將在 Milestone 8 提供。
+
+學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。資料庫無法使用時，輸入仍會安全退回 CNS 原始順序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
 
 ## Requirements
 
@@ -129,9 +136,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 5 提供單按左右 Shift 的中英文切換、英文直通模式與短暫模式提示，並保留 Milestone 4 的自製候選視窗及輸入行為。詞組轉換、候選頻率排序、使用者學習及設定仍屬後續 Milestone。
+Milestone 6 提供本機 SQLite 選字學習、集中式候選排序、最近使用加權與永久置頂資料模型，並保留前述注音、候選視窗及中英文切換行為。多字詞組、使用者造詞與設定管理仍屬後續 Milestone。
 
-詳見 [Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 

@@ -139,6 +139,10 @@ final class SQLiteStatement {
         try check(sqlite3_bind_int64(handle, index, value))
     }
 
+    func bindNull(at index: Int32) throws {
+        try check(sqlite3_bind_null(handle, index))
+    }
+
     func step() throws -> SQLiteStepResult {
         switch sqlite3_step(handle) {
         case SQLITE_ROW:
@@ -168,6 +172,10 @@ final class SQLiteStatement {
 
     func integer(at index: Int32) -> Int64 {
         sqlite3_column_int64(handle, index)
+    }
+
+    func isNull(at index: Int32) -> Bool {
+        sqlite3_column_type(handle, index) == SQLITE_NULL
     }
 
     func reset() throws {

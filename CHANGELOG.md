@@ -28,3 +28,7 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Direct English-mode event pass-through and a token-guarded, click-through transient mode HUD.
 - Explicit InputMethodKit modifier and client mouse-event handling with composition-safe finalization.
 - Milestone 5 architecture, verification, and installed TextEdit acceptance documentation.
+- Versioned private SQLite storage for per-reading character counts, recency, and pins.
+- Centralized deterministic candidate ranking with logarithmic learning and seven-day recency decay.
+- Typed immutable candidate snapshots and explicit commit-reason learning across keyboard, mouse, and lifecycle paths.
+- Safe base-order fallback, atomic concurrent updates, schema/file validation, and Milestone 6 verification documentation.

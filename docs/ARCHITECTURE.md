@@ -1,6 +1,6 @@
 # Architecture
 
-Milestone 5 adds standalone Shift Chinese/English switching while keeping modifier gestures, process-wide language state, keyboard semantics, candidate state, AppKit presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
+Milestone 6 adds persistent local character learning while keeping ranking, storage, candidate state, AppKit presentation, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
@@ -20,6 +20,7 @@ NSEvent key code
   → BopomofoParser / BopomofoSyllable
   → BopomofoInputSession result
   → CharacterDictionary lookup
+  → UserLearningService snapshot / CandidateRanker
   → CandidateSession / CandidateCommandReducer
   → InputController / CandidateWindowPresenter
   → IMKTextInput marked text or committed character
@@ -57,11 +58,19 @@ The normal app build never downloads data and never parses raw TSV files. `Jiuko
 
 The schema indexes both `pronunciation → characters` and `character → pronunciations`. Candidate order is deterministic CNS source order, not an inferred frequency rank. Unicode Plane 15 private-use mappings are deliberately excluded because they have no portable character identity or glyph without additional proprietary conventions.
 
+## User learning and ranking
+
+`CharacterCandidateProvider` joins each read-only `DictionaryCharacter` with the matching local `CharacterLearningRecord`, then asks `CandidateRanker` for a deterministic ordered snapshot. CNS `source_order` is retained as a stable base rank and is never presented as corpus frequency; `baseFrequency` remains optional until a separately licensed frequency source exists.
+
+Unpinned candidates use `-baseRank + 8 × log2(selectionCount + 1) + recency`, where recency starts at 4 and decays with a seven-day half-life. Future timestamps clamp to age zero. Pinned candidates form a separate highest tier; equal scores fall back through base rank, source order, text, reading, and candidate type. The formula and tie-breaks live only in `CandidateRanker` and are covered by exact-position tests.
+
+`UserLearningStore` owns a versioned SQLite database under the user Application Support directory. It validates `application_id`, schema version, columns, and regular-file identity before use; enables full-mutex access, a one-second busy timeout, WAL, normal synchronous writes, and foreign keys; and keeps the directory/database at `0700`/`0600`. An atomic UPSERT saturates counts at `Int64.max`, keeps the newest timestamp, and preserves an existing pin. `UserLearningService` serializes process-wide access and logs only generic failures without characters or readings. If storage fails, candidate lookup continues with the untouched CNS order.
+
 ## Candidate lifecycle
 
-After a tone completes a syllable, `InputController` queries the dictionary and stores an immutable candidate snapshot before showing the custom panel. The reading stays as marked text. A final keyboard or mouse selection is resolved against the current session and inserts exactly one character, replacing the marked reading.
+After a tone completes a syllable, `InputController` queries the candidate provider and stores an immutable typed candidate snapshot before showing the custom panel. The reading stays as marked text. A final keyboard or mouse selection is resolved against the current session and inserts exactly one character, replacing the marked reading.
 
-`CandidateSession` is the canonical pure Swift state model for stable deduplication, presentation mode, absolute highlight, nine-item selection row, and grid/page navigation. `CandidateCommandRouter` maps one unmodified physical key event to a semantic command; `CandidateCommandReducer` turns that command and session into a state update or explicit side effect. `InputController` alone performs `IMKTextInput` mutations. Missing data, a failed lookup, or an empty candidate result falls back to committing literal Bopomofo; there is no hidden hand-written dictionary.
+`CandidateSession` is the canonical pure Swift state model for stable typed-ID deduplication, presentation mode, absolute highlight, nine-item selection row, and grid/page navigation. It is an immutable ordering snapshot: a selection recorded while the panel is open affects only the next lookup. `CandidateCommandRouter` maps one unmodified physical key event to a semantic command; `CandidateCommandReducer` turns that command and session into a state update or a typed candidate plus explicit commit reason. `InputController` clears the session before inserting and recording one selection, preventing reentrant lifecycle callbacks from counting twice. Missing data, a failed lookup, or an empty candidate result falls back to committing literal Bopomofo; there is no hidden hand-written dictionary.
 
 `CandidateWindowPresenter` is a process-wide coordinator that owns the single AppKit panel and mouse callbacks; multiple client controllers can never leave multiple candidate windows on screen. A new owner first asks the previous owner to finalize its candidate session, then replaces the panel snapshot. Its borderless `NSPanel` cannot become key or main, and is shown without activating the input-method process, so keyboard focus remains in the client. Compact mode displays up to nine candidates in one row. The first Down Arrow expands without changing the highlight; expanded mode uses a nine-column, three-row viewport for up to 27 simultaneous candidates. Both modes are hosted in one `NSScrollView`; expanded snapshots larger than the viewport become scrollable, and every keyboard highlight is scrolled into view. Mouse callbacks carry the session UUID and absolute index, while hide requests are owner-token guarded, so an old controller cannot click or dismiss a newer session's panel.
 
@@ -93,4 +102,4 @@ Milestones 1–3 used `LSBackgroundOnly`. Milestone 4 replaces it with `LSUIElem
 
 The current application-bundle lifecycle was also compared with [McBopomofo](https://github.com/openvanilla/McBopomofo/tree/73d0379eca621377fb46416ceb4a7dc9bb576d47) and [OpenVanilla](https://github.com/openvanilla/openvanilla/tree/8f09dc6a66f10aecfdc928e7ff63753d7bc19b25). Only their public architecture was studied; no source code or language data was copied.
 
-Phrase conversion, frequency ranking, user learning, punctuation, and settings remain outside Milestone 5. Those modules will not be placed in `InputController`.
+Phrase conversion, user-created phrases, punctuation, and settings remain outside Milestone 6. Those modules will not be placed in `InputController`.

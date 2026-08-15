@@ -18,7 +18,7 @@ final class InputController: IMKInputController {
         length: NSNotFound
     )
 
-    private let dictionary: CharacterDictionary?
+    private let candidateProvider: CharacterCandidateProvider?
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
     private lazy var languageModeHUD = LanguageModeHUD.shared
     private let languageModeController = LanguageModeController.shared
@@ -31,9 +31,13 @@ final class InputController: IMKInputController {
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         do {
-            dictionary = try CharacterDictionary(bundle: .main)
+            let dictionary = try CharacterDictionary(bundle: .main)
+            candidateProvider = CharacterCandidateProvider(
+                dictionary: dictionary,
+                learning: UserLearningService.shared
+            )
         } catch {
-            dictionary = nil
+            candidateProvider = nil
             NSLog(
                 "Jiukong Zhuyin could not load its character dictionary: %@",
                 error.localizedDescription
@@ -183,7 +187,7 @@ final class InputController: IMKInputController {
             return
         }
 
-        if commitPreferredCandidate(to: inputClient) {
+        if commitPreferredCandidate(reason: .lifecycle, to: inputClient) {
             return
         }
 
@@ -273,14 +277,16 @@ final class InputController: IMKInputController {
         inputClient: any IMKTextInput
     ) {
         let pronunciation = syllable.text
-        guard let dictionary else {
+        guard let candidateProvider else {
             NSLog("Jiukong Zhuyin character conversion is unavailable.")
             commitText(pronunciation, to: inputClient)
             return
         }
 
         do {
-            let candidates = try dictionary.candidates(for: pronunciation)
+            let candidates = try candidateProvider.candidates(
+                for: pronunciation
+            )
             guard let session = CandidateSession(
                 pronunciation: pronunciation,
                 candidates: candidates
@@ -313,7 +319,10 @@ final class InputController: IMKInputController {
             return false
         }
 
-        _ = commitPreferredCandidate(to: inputClient)
+        _ = commitPreferredCandidate(
+            reason: .implicitPassThrough,
+            to: inputClient
+        )
         return false
     }
 
@@ -324,7 +333,10 @@ final class InputController: IMKInputController {
             return
         }
 
-        _ = commitPreferredCandidate(to: inputClient)
+        _ = commitPreferredCandidate(
+            reason: .implicitPassThrough,
+            to: inputClient
+        )
     }
 
     private func perform(
@@ -339,8 +351,8 @@ final class InputController: IMKInputController {
         case let .update(updatedSession):
             candidateSession = updatedSession
             presentCandidates(updatedSession, inputClient: inputClient)
-        case let .commit(candidate):
-            commitCandidate(candidate, to: inputClient)
+        case let .commit(candidate, reason):
+            commitCandidate(candidate, reason: reason, to: inputClient)
         case .cancel:
             cancelActiveCandidate(to: inputClient)
         case .deleteBackward:
@@ -352,22 +364,32 @@ final class InputController: IMKInputController {
 
     @discardableResult
     private func commitPreferredCandidate(
+        reason: CandidateCommitReason,
         to inputClient: any IMKTextInput
     ) -> Bool {
         guard let session = candidateSession else {
             return false
         }
 
-        commitCandidate(session.preferredCandidate, to: inputClient)
+        commitCandidate(
+            session.preferredCandidate,
+            reason: reason,
+            to: inputClient
+        )
         return true
     }
 
     private func commitCandidate(
-        _ candidate: String,
+        _ candidate: Candidate,
+        reason: CandidateCommitReason,
         to inputClient: any IMKTextInput
     ) {
         discardCandidateState()
-        commitText(candidate, to: inputClient)
+        commitText(candidate.text, to: inputClient)
+        candidateProvider?.recordCommittedSelection(
+            candidate,
+            reason: reason
+        )
     }
 
     private func cancelActiveCandidate(to inputClient: any IMKTextInput) {
@@ -527,7 +549,10 @@ extension InputController: CandidateWindowPresenterDelegate {
         }
 
         if let inputClient = inputClient(from: client()) {
-            _ = commitPreferredCandidate(to: inputClient)
+            _ = commitPreferredCandidate(
+                reason: .clientHandoff,
+                to: inputClient
+            )
         } else {
             discardCandidateState()
         }
@@ -545,6 +570,6 @@ extension InputController: CandidateWindowPresenterDelegate {
             return
         }
 
-        commitCandidate(candidate, to: inputClient)
+        commitCandidate(candidate, reason: .mouse, to: inputClient)
     }
 }

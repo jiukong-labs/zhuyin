@@ -23,17 +23,24 @@ struct CandidateSession: Equatable {
 
     let id: UUID
     let pronunciation: String
-    let candidates: [String]
+    /// The candidates shown for this selection session.
+    ///
+    /// This ordered value snapshot deliberately does not consult the learning
+    /// store again. Learning recorded while a panel is open therefore affects
+    /// the next lookup without moving the choices under the user's cursor.
+    let candidates: [Candidate]
     private(set) var highlightedIndex = 0
     private(set) var presentationMode: CandidatePresentationMode = .compact
 
     init?(
         id: UUID = UUID(),
         pronunciation: String,
-        candidates: [String]
+        candidates: [Candidate]
     ) {
-        var seen: Set<String> = []
-        let uniqueCandidates = candidates.filter { seen.insert($0).inserted }
+        var seen: Set<CandidateID> = []
+        let uniqueCandidates = candidates.filter {
+            seen.insert($0.id).inserted
+        }
         guard !pronunciation.isEmpty, !uniqueCandidates.isEmpty else {
             return nil
         }
@@ -43,11 +50,11 @@ struct CandidateSession: Equatable {
         self.candidates = uniqueCandidates
     }
 
-    var preferredCandidate: String {
+    var preferredCandidate: Candidate {
         candidates[highlightedIndex]
     }
 
-    var highlightedCandidate: String {
+    var highlightedCandidate: Candidate {
         candidates[highlightedIndex]
     }
 
@@ -78,8 +85,10 @@ struct CandidateSession: Equatable {
         return true
     }
 
-    mutating func updateHighlightedCandidate(_ candidate: String) {
-        guard let index = candidates.firstIndex(of: candidate) else {
+    mutating func updateHighlightedCandidate(_ candidateID: CandidateID) {
+        guard let index = candidates.firstIndex(where: {
+            $0.id == candidateID
+        }) else {
             return
         }
 
@@ -87,7 +96,7 @@ struct CandidateSession: Equatable {
     }
 
     @discardableResult
-    mutating func navigate(_ navigation: CandidateNavigation) -> String {
+    mutating func navigate(_ navigation: CandidateNavigation) -> Candidate {
         let lastIndex = candidates.index(before: candidates.endIndex)
         let targetIndex: Int
 
@@ -129,7 +138,7 @@ struct CandidateSession: Equatable {
         return candidates[highlightedIndex]
     }
 
-    func candidate(atSelectionKeyIndex selectionKeyIndex: Int) -> String? {
+    func candidate(atSelectionKeyIndex selectionKeyIndex: Int) -> Candidate? {
         guard (0 ..< Self.selectionPageSize).contains(selectionKeyIndex) else {
             return nil
         }
@@ -139,11 +148,11 @@ struct CandidateSession: Equatable {
         return candidate(at: targetIndex)
     }
 
-    func candidate(at index: Int) -> String? {
+    func candidate(at index: Int) -> Candidate? {
         candidates.indices.contains(index) ? candidates[index] : nil
     }
 
-    func validatedSelection(_ candidate: String) -> String? {
-        candidates.contains(candidate) ? candidate : nil
+    func validatedSelection(_ candidateID: CandidateID) -> Candidate? {
+        candidates.first(where: { $0.id == candidateID })
     }
 }

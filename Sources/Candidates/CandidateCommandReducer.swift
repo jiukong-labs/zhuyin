@@ -1,6 +1,6 @@
 enum CandidateCommandEffect: Equatable {
     case update(CandidateSession)
-    case commit(String)
+    case commit(Candidate, reason: CandidateCommitReason)
     case cancel
     case deleteBackward
     case handledWithoutChange
@@ -26,11 +26,17 @@ enum CandidateCommandReducer {
             ) else {
                 return .handledWithoutChange
             }
-            return .commit(candidate)
+            return .commit(
+                candidate,
+                reason: .number(selectionKeyIndex)
+            )
         case .commitFirst:
-            return .commit(session.candidates[0])
+            return .commit(session.candidates[0], reason: .space)
         case .commitHighlighted:
-            return .commit(session.highlightedCandidate)
+            return .commit(
+                session.highlightedCandidate,
+                reason: .returnKey
+            )
         case .cancel:
             return .cancel
         case .deleteBackward:

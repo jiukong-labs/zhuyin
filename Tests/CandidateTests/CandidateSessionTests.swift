@@ -2,140 +2,227 @@ import XCTest
 
 final class CandidateSessionTests: XCTestCase {
     func testRejectsEmptyPronunciationAndCandidateList() {
-        XCTAssertNil(CandidateSession(pronunciation: "", candidates: ["我"]))
+        XCTAssertNil(
+            CandidateSession(
+                pronunciation: "",
+                candidates: [makeCandidate("我", pronunciation: "ㄨㄛˇ")]
+            )
+        )
         XCTAssertNil(CandidateSession(pronunciation: "ㄨㄛˇ", candidates: []))
     }
 
-    func testDeduplicatesCandidatesWithoutChangingOrder() throws {
+    func testDeduplicatesCandidateIDsWithoutChangingOrder() throws {
+        let first = makeCandidate(
+            "我",
+            pronunciation: "ㄨㄛˇ",
+            rank: 0
+        )
+        let duplicateWithUpdatedLearning = makeCandidate(
+            "我",
+            pronunciation: "ㄨㄛˇ",
+            rank: 99,
+            userFrequency: 20
+        )
+        let second = makeCandidate(
+            "倭",
+            pronunciation: "ㄨㄛˇ",
+            rank: 1
+        )
         let session = try XCTUnwrap(
             CandidateSession(
                 pronunciation: "ㄨㄛˇ",
-                candidates: ["我", "倭", "我", "婑"]
+                candidates: [
+                    first,
+                    second,
+                    duplicateWithUpdatedLearning
+                ]
             )
         )
 
-        XCTAssertEqual(session.candidates, ["我", "倭", "婑"])
-        XCTAssertEqual(session.preferredCandidate, "我")
+        XCTAssertEqual(session.candidates, [first, second])
+        XCTAssertEqual(session.preferredCandidate, first)
         XCTAssertEqual(session.highlightedIndex, 0)
         XCTAssertEqual(session.presentationMode, .compact)
     }
 
-    func testOnlyKnownHighlightCanChangePreferredCandidate() throws {
-        var session = try XCTUnwrap(
-            CandidateSession(pronunciation: "ㄨㄛˇ", candidates: ["我", "倭"])
+    func testRetainsSameVisibleTextWhenTypedCandidateIDsDiffer() throws {
+        let character = makeCandidate("行", pronunciation: "ㄒㄧㄥˊ")
+        let phrase = Candidate(
+            text: "行",
+            pronunciation: "ㄒㄧㄥˊ",
+            type: .phrase
         )
-
-        session.updateHighlightedCandidate("未知")
-        XCTAssertEqual(session.preferredCandidate, "我")
-
-        session.updateHighlightedCandidate("倭")
-        XCTAssertEqual(session.preferredCandidate, "倭")
-    }
-
-    func testValidatesFinalSelectionAgainstCurrentSnapshot() throws {
         let session = try XCTUnwrap(
-            CandidateSession(pronunciation: "ㄨㄛˇ", candidates: ["我", "倭"])
-        )
-
-        XCTAssertEqual(session.validatedSelection("我"), "我")
-        XCTAssertNil(session.validatedSelection("窩"))
-    }
-
-    func testNavigatesCandidatesFromTheCurrentHighlight() throws {
-        var session = try XCTUnwrap(
             CandidateSession(
-                pronunciation: "ㄨㄛˇ",
-                candidates: ["我", "倭", "婑"]
+                pronunciation: "ㄒㄧㄥˊ",
+                candidates: [character, phrase]
             )
         )
 
-        XCTAssertEqual(session.navigate(.next), "倭")
-        XCTAssertEqual(session.navigate(.previous), "我")
+        XCTAssertNotEqual(character.id, phrase.id)
+        XCTAssertEqual(session.candidates, [character, phrase])
+    }
 
-        session.updateHighlightedCandidate("倭")
-        XCTAssertEqual(session.navigate(.next), "婑")
-        XCTAssertEqual(session.navigate(.previous), "倭")
-        XCTAssertEqual(session.navigate(.first), "我")
-        XCTAssertEqual(session.navigate(.last), "婑")
+    func testOnlyKnownCandidateIDCanChangePreferredCandidate() throws {
+        let first = makeCandidate("我", pronunciation: "ㄨㄛˇ")
+        let second = makeCandidate("倭", pronunciation: "ㄨㄛˇ", rank: 1)
+        let unknown = makeCandidate("未知", pronunciation: "ㄨㄛˇ")
+        var session = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "ㄨㄛˇ",
+                candidates: [first, second]
+            )
+        )
+
+        session.updateHighlightedCandidate(unknown.id)
+        XCTAssertEqual(session.preferredCandidate, first)
+
+        session.updateHighlightedCandidate(second.id)
+        XCTAssertEqual(session.preferredCandidate, second)
+    }
+
+    func testValidatesFinalSelectionAgainstCurrentSnapshotByID() throws {
+        let first = makeCandidate("我", pronunciation: "ㄨㄛˇ")
+        let second = makeCandidate("倭", pronunciation: "ㄨㄛˇ", rank: 1)
+        let unknown = makeCandidate("窩", pronunciation: "ㄨㄛˇ")
+        let session = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "ㄨㄛˇ",
+                candidates: [first, second]
+            )
+        )
+
+        XCTAssertEqual(session.validatedSelection(first.id), first)
+        XCTAssertNil(session.validatedSelection(unknown.id))
+    }
+
+    func testActiveSessionRetainsItsImmutableRankedSnapshot() throws {
+        let first = makeCandidate("我", rank: 0)
+        let second = makeCandidate("倭", rank: 1)
+        let session = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "test",
+                candidates: [first, second]
+            )
+        )
+
+        let newlyLearnedSecond = makeCandidate(
+            "倭",
+            rank: 1,
+            userFrequency: 50
+        )
+        let nextSession = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "test",
+                candidates: [newlyLearnedSecond, first]
+            )
+        )
+
+        XCTAssertEqual(session.candidates, [first, second])
+        XCTAssertEqual(session.preferredCandidate, first)
+        XCTAssertEqual(nextSession.preferredCandidate, newlyLearnedSecond)
+    }
+
+    func testNavigatesCandidatesFromTheCurrentHighlight() throws {
+        var session = try makeSession(count: 3)
+
+        XCTAssertEqual(session.navigate(.next).text, "1")
+        XCTAssertEqual(session.navigate(.previous).text, "0")
+
+        session.updateHighlightedCandidate(session.candidates[1].id)
+        XCTAssertEqual(session.navigate(.next).text, "2")
+        XCTAssertEqual(session.navigate(.previous).text, "1")
+        XCTAssertEqual(session.navigate(.first).text, "0")
+        XCTAssertEqual(session.navigate(.last).text, "2")
     }
 
     func testClampsCandidateNavigationAtListAndPageBoundaries() throws {
-        let candidates = (0 ..< 20).map(String.init)
-        var session = try XCTUnwrap(
-            CandidateSession(pronunciation: "test", candidates: candidates)
-        )
+        var session = try makeSession(count: 20)
 
-        XCTAssertEqual(session.navigate(.previous), "0")
-        XCTAssertEqual(session.navigate(.previousPage), "0")
-        XCTAssertEqual(session.navigate(.nextPage), "9")
+        XCTAssertEqual(session.navigate(.previous).text, "0")
+        XCTAssertEqual(session.navigate(.previousPage).text, "0")
+        XCTAssertEqual(session.navigate(.nextPage).text, "9")
 
-        session.updateHighlightedCandidate("15")
-        XCTAssertEqual(session.navigate(.previousPage), "6")
-        XCTAssertEqual(session.navigate(.nextPage), "15")
+        session.updateHighlightedCandidate(session.candidates[15].id)
+        XCTAssertEqual(session.navigate(.previousPage).text, "6")
+        XCTAssertEqual(session.navigate(.nextPage).text, "15")
 
-        session.updateHighlightedCandidate("19")
-        XCTAssertEqual(session.navigate(.next), "19")
-        XCTAssertEqual(session.navigate(.nextPage), "19")
+        session.updateHighlightedCandidate(session.candidates[19].id)
+        XCTAssertEqual(session.navigate(.next).text, "19")
+        XCTAssertEqual(session.navigate(.nextPage).text, "19")
     }
 
     func testExpandedNavigationUsesNineColumnsAndTwentySevenItemPages() throws {
-        let candidates = (0 ..< 100).map(String.init)
-        var session = try XCTUnwrap(
-            CandidateSession(pronunciation: "test", candidates: candidates)
-        )
+        var session = try makeSession(count: 100)
 
         XCTAssertTrue(session.expand())
         XCTAssertFalse(session.expand())
         XCTAssertEqual(session.highlightedIndex, 0)
-        XCTAssertEqual(session.navigate(.down), "9")
-        XCTAssertEqual(session.navigate(.down), "18")
-        XCTAssertEqual(session.navigate(.up), "9")
-        XCTAssertEqual(session.navigate(.nextPage), "36")
-        XCTAssertEqual(session.navigate(.previousPage), "9")
+        XCTAssertEqual(session.navigate(.down).text, "9")
+        XCTAssertEqual(session.navigate(.down).text, "18")
+        XCTAssertEqual(session.navigate(.up).text, "9")
+        XCTAssertEqual(session.navigate(.nextPage).text, "36")
+        XCTAssertEqual(session.navigate(.previousPage).text, "9")
 
-        session.updateHighlightedCandidate("98")
-        XCTAssertEqual(session.navigate(.down), "98")
-        XCTAssertEqual(session.navigate(.nextPage), "99")
+        session.updateHighlightedCandidate(session.candidates[98].id)
+        XCTAssertEqual(session.navigate(.down).text, "98")
+        XCTAssertEqual(session.navigate(.nextPage).text, "99")
     }
 
     func testExpandedVerticalNavigationStaysInTheSameColumn() throws {
-        var session = try XCTUnwrap(
-            CandidateSession(
-                pronunciation: "test",
-                candidates: (0 ..< 28).map(String.init)
-            )
-        )
+        var session = try makeSession(count: 28)
         _ = session.expand()
 
-        session.updateHighlightedCandidate("8")
-        XCTAssertEqual(session.navigate(.up), "8")
+        session.updateHighlightedCandidate(session.candidates[8].id)
+        XCTAssertEqual(session.navigate(.up).text, "8")
 
-        session.updateHighlightedCandidate("18")
-        XCTAssertEqual(session.navigate(.down), "27")
+        session.updateHighlightedCandidate(session.candidates[18].id)
+        XCTAssertEqual(session.navigate(.down).text, "27")
 
-        session.updateHighlightedCandidate("26")
-        XCTAssertEqual(session.navigate(.down), "26")
+        session.updateHighlightedCandidate(session.candidates[26].id)
+        XCTAssertEqual(session.navigate(.down).text, "26")
     }
 
     func testNumberSelectionUsesTheHighlightedNineCandidatePage() throws {
-        let candidates = (0 ..< 20).map(String.init)
-        var session = try XCTUnwrap(
-            CandidateSession(pronunciation: "test", candidates: candidates)
-        )
+        var session = try makeSession(count: 20)
 
-        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0), "0")
-        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 8), "8")
+        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0)?.text, "0")
+        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 8)?.text, "8")
 
-        session.updateHighlightedCandidate("10")
-        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0), "9")
-        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 8), "17")
+        session.updateHighlightedCandidate(session.candidates[10].id)
+        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0)?.text, "9")
+        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 8)?.text, "17")
 
-        session.updateHighlightedCandidate("19")
-        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0), "18")
-        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 1), "19")
+        session.updateHighlightedCandidate(session.candidates[19].id)
+        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0)?.text, "18")
+        XCTAssertEqual(session.candidate(atSelectionKeyIndex: 1)?.text, "19")
         XCTAssertNil(session.candidate(atSelectionKeyIndex: 2))
         XCTAssertNil(session.candidate(atSelectionKeyIndex: -1))
         XCTAssertNil(session.candidate(atSelectionKeyIndex: 9))
     }
 
+    private func makeSession(count: Int) throws -> CandidateSession {
+        try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "test",
+                candidates: (0 ..< count).map {
+                    makeCandidate(String($0), rank: $0)
+                }
+            )
+        )
+    }
+
+    private func makeCandidate(
+        _ text: String,
+        pronunciation: String = "test",
+        rank: Int = 0,
+        userFrequency: Int64 = 0
+    ) -> Candidate {
+        Candidate(
+            text: text,
+            pronunciation: pronunciation,
+            baseRank: rank,
+            userFrequency: userFrequency
+        )
+    }
 }
