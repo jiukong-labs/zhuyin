@@ -206,6 +206,101 @@ final class UserLearningService: UserLearningProviding {
         clear("all user data") { try $0.clearAllUserData() }
     }
 
+    func allCharacterRecords() -> [CharacterLearningRecord] {
+        queue.sync {
+            guard let store else {
+                return []
+            }
+            do {
+                return try store.allCharacterRecords()
+            } catch {
+                Self.logger.error(
+                    "Could not list user learning data; the settings list is empty."
+                )
+                return []
+            }
+        }
+    }
+
+    func allPhraseRecords() -> [UserPhraseRecord] {
+        queue.sync {
+            guard let store else {
+                return []
+            }
+            do {
+                return try store.allPhraseRecords()
+            } catch {
+                Self.logger.error(
+                    "Could not list user phrases; the settings list is empty."
+                )
+                return []
+            }
+        }
+    }
+
+    @discardableResult
+    func deleteCharacterRecord(
+        character: String,
+        pronunciation: String
+    ) -> Bool {
+        clear("a character record") {
+            try $0.deleteCharacterRecord(
+                character: character,
+                pronunciation: pronunciation
+            )
+        }
+    }
+
+    @discardableResult
+    func deletePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool {
+        clear("a user phrase") {
+            try $0.deletePhrase(
+                phrase: phrase,
+                pronunciationSequence: pronunciationSequence
+            )
+        }
+    }
+
+    /// Reads both data sets under one lock so an export is a consistent pair.
+    func exportArchive(at date: Date = Date()) -> UserDataArchive? {
+        queue.sync {
+            guard let store else {
+                return nil
+            }
+            do {
+                return UserDataArchive.make(
+                    characters: try store.allCharacterRecords(),
+                    phrases: try store.allPhraseRecords(),
+                    exportedAt: date
+                )
+            } catch {
+                Self.logger.error(
+                    "Could not read user data for export; nothing was written."
+                )
+                return nil
+            }
+        }
+    }
+
+    func merge(_ archive: UserDataArchive) -> UserDataMergeSummary? {
+        queue.sync {
+            guard let store else {
+                return nil
+            }
+            do {
+                return try store.merge(archive)
+            } catch {
+                Self.logger.error(
+                    "Could not import user data; the existing data was kept."
+                )
+                return nil
+            }
+        }
+    }
+
     private func clear(
         _ description: String,
         operation: (any UserLearningStoring) throws -> Void

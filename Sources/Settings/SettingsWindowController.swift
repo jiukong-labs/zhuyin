@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 /// The single settings window shared by every InputMethodKit client.
 ///
@@ -10,6 +11,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private let preferences: PreferencesController
     private let learning: UserLearningService
+
+    private let characterList: UserDataListController
+    private let phraseList: UserDataListController
 
     private var window: NSWindow?
     private var shiftPopUpButton: NSPopUpButton?
@@ -28,12 +32,18 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     ) {
         self.preferences = preferences
         self.learning = learning
+        characterList = UserDataListController(
+            kind: .characters,
+            learning: learning
+        )
+        phraseList = UserDataListController(kind: .phrases, learning: learning)
         super.init()
     }
 
     func show() {
         let window = existingOrNewWindow()
         reloadControls()
+        reloadLists()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
     }
@@ -49,7 +59,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 300),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -64,23 +74,126 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeContentView() -> NSView {
+        let tabView = NSTabView()
+        tabView.translatesAutoresizingMaskIntoConstraints = false
+
+        for (label, view) in [
+            ("一般", makeGeneralView()),
+            ("使用者詞", phraseList.makeView()),
+            ("選字紀錄", characterList.makeView()),
+            ("資料", makeDataView()),
+        ] {
+            let item = NSTabViewItem(identifier: label)
+            item.label = label
+            item.view = view
+            tabView.addTabViewItem(item)
+        }
+
+        let container = NSView()
+        container.addSubview(tabView)
+        NSLayoutConstraint.activate([
+            tabView.leadingAnchor.constraint(
+                equalTo: container.leadingAnchor,
+                constant: 12
+            ),
+            tabView.trailingAnchor.constraint(
+                equalTo: container.trailingAnchor,
+                constant: -12
+            ),
+            tabView.topAnchor.constraint(
+                equalTo: container.topAnchor,
+                constant: 12
+            ),
+            tabView.bottomAnchor.constraint(
+                equalTo: container.bottomAnchor,
+                constant: -12
+            ),
+        ])
+        return container
+    }
+
+    private func makeGeneralView() -> NSView {
+        let popUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+        for option in Self.shiftOptions {
+            popUpButton.addItem(withTitle: option.title)
+        }
+        popUpButton.target = self
+        popUpButton.action = #selector(shiftPreferenceDidChange(_:))
+        shiftPopUpButton = popUpButton
+
+        let checkbox = NSButton(
+            checkboxWithTitle: "自動學習已提交的選字與詞頻",
+            target: self,
+            action: #selector(automaticLearningDidChange(_:))
+        )
+        automaticLearningButton = checkbox
+
+        return makePane(
+            sections: [
+                makeSection(
+                    title: "中英文切換",
+                    controls: [popUpButton],
+                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。"
+                ),
+                makeSection(
+                    title: "學習",
+                    controls: [checkbox],
+                    note: "關閉後不再累積新的使用次數，既有紀錄仍會影響排序，Shift 造詞也仍可使用。"
+                ),
+            ]
+        )
+    }
+
+    private func makeDataView() -> NSView {
+        let transferRow = NSStackView(views: [
+            makeButton("匯出…", action: #selector(exportUserData(_:))),
+            makeButton("匯入…", action: #selector(importUserData(_:))),
+        ])
+        transferRow.orientation = .horizontal
+        transferRow.spacing = 10
+
+        let clearRow = NSStackView(views: [
+            makeButton("清除選字紀錄…", action: #selector(clearCharacterLearning(_:))),
+            makeButton("清除使用者詞…", action: #selector(clearUserPhrases(_:))),
+            makeButton("清除全部…", action: #selector(clearAllUserData(_:))),
+        ])
+        clearRow.orientation = .horizontal
+        clearRow.spacing = 10
+
+        return makePane(
+            sections: [
+                makeSection(
+                    title: "匯出與匯入",
+                    controls: [transferRow],
+                    note: "匯出為 JSON 檔。匯入會與現有資料合併：次數與時間取較大者，置頂取聯集，重複匯入同一個檔案不會重複累加。"
+                ),
+                makeSection(
+                    title: "清除",
+                    controls: [clearRow],
+                    note: "資料只存在這台 Mac，清除後無法復原。"
+                ),
+            ]
+        )
+    }
+
+    private func makeButton(_ title: String, action: Selector) -> NSButton {
+        NSButton(title: title, target: self, action: action)
+    }
+
+    private func makePane(sections: [NSView]) -> NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
-        stack.edgeInsets = NSEdgeInsets(
-            top: 20,
-            left: 24,
-            bottom: 20,
-            right: 24
-        )
+        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        stack.addArrangedSubview(makeLanguageSection())
-        stack.addArrangedSubview(makeSeparator())
-        stack.addArrangedSubview(makeLearningSection())
-        stack.addArrangedSubview(makeSeparator())
-        stack.addArrangedSubview(makeDataSection())
+        for (index, section) in sections.enumerated() {
+            if index > 0 {
+                stack.addArrangedSubview(makeSeparator())
+            }
+            stack.addArrangedSubview(section)
+        }
 
         let container = NSView()
         container.addSubview(stack)
@@ -95,65 +208,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         return container
     }
 
-    private func makeLanguageSection() -> NSView {
-        let popUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
-        for option in Self.shiftOptions {
-            popUpButton.addItem(withTitle: option.title)
-        }
-        popUpButton.target = self
-        popUpButton.action = #selector(shiftPreferenceDidChange(_:))
-        shiftPopUpButton = popUpButton
-
-        return makeSection(
-            title: "中英文切換",
-            controls: [popUpButton],
-            note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。"
-        )
-    }
-
-    private func makeLearningSection() -> NSView {
-        let checkbox = NSButton(
-            checkboxWithTitle: "自動學習已提交的選字與詞頻",
-            target: self,
-            action: #selector(automaticLearningDidChange(_:))
-        )
-        automaticLearningButton = checkbox
-
-        return makeSection(
-            title: "學習",
-            controls: [checkbox],
-            note: "關閉後不再累積新的使用次數，既有紀錄仍會影響排序，Shift 造詞也仍可使用。"
-        )
-    }
-
-    private func makeDataSection() -> NSView {
-        let clearCharacters = NSButton(
-            title: "清除選字紀錄…",
-            target: self,
-            action: #selector(clearCharacterLearning(_:))
-        )
-        let clearPhrases = NSButton(
-            title: "清除使用者詞…",
-            target: self,
-            action: #selector(clearUserPhrases(_:))
-        )
-        let clearAll = NSButton(
-            title: "清除全部…",
-            target: self,
-            action: #selector(clearAllUserData(_:))
-        )
-
-        let row = NSStackView(views: [clearCharacters, clearPhrases, clearAll])
-        row.orientation = .horizontal
-        row.spacing = 10
-
-        return makeSection(
-            title: "使用者資料",
-            controls: [row],
-            note: "資料只存在這台 Mac，清除後無法復原。"
-        )
-    }
-
     private func makeSection(
         title: String,
         controls: [NSView],
@@ -165,7 +219,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let noteLabel = NSTextField(wrappingLabelWithString: note)
         noteLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         noteLabel.textColor = .secondaryLabelColor
-        noteLabel.preferredMaxLayoutWidth = 400
+        noteLabel.preferredMaxLayoutWidth = 440
 
         let stack = NSStackView(views: [titleLabel] + controls + [noteLabel])
         stack.orientation = .vertical
@@ -178,7 +232,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let separator = NSBox()
         separator.boxType = .separator
         separator.translatesAutoresizingMaskIntoConstraints = false
-        separator.widthAnchor.constraint(equalToConstant: 412).isActive = true
+        separator.widthAnchor.constraint(equalToConstant: 440).isActive = true
         return separator
     }
 
@@ -191,6 +245,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         automaticLearningButton?.state =
             current.automaticLearningEnabled ? .on : .off
+    }
+
+    private func reloadLists() {
+        characterList.reload()
+        phraseList.reload()
     }
 
     @objc private func shiftPreferenceDidChange(_ sender: NSPopUpButton) {
@@ -207,6 +266,87 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         preferences.update {
             $0.automaticLearningEnabled = sender.state == .on
         }
+    }
+
+    @objc private func exportUserData(_ sender: Any?) {
+        guard let archive = learning.exportArchive() else {
+            report(
+                failure: "無法讀取使用者資料",
+                informative: "資料庫目前無法讀取，沒有寫出任何檔案。"
+            )
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = Self.exportFileName()
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        do {
+            try archive.encoded().write(to: url, options: .atomic)
+        } catch {
+            report(
+                failure: "無法寫入匯出檔",
+                informative: error.localizedDescription
+            )
+            return
+        }
+
+        let done = NSAlert()
+        done.messageText = "已匯出使用者資料"
+        done.informativeText =
+            "包含 \(archive.characters.count) 筆選字紀錄與 \(archive.phrases.count) 個使用者詞。"
+        done.addButton(withTitle: "好")
+        done.runModal()
+    }
+
+    @objc private func importUserData(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        let archive: UserDataArchive
+        let issues: UserDataArchiveIssues
+        do {
+            (archive, issues) = try UserDataArchive.decoded(
+                from: try Data(contentsOf: url)
+            )
+        } catch {
+            report(
+                failure: "無法匯入這個檔案",
+                informative: error.localizedDescription
+            )
+            return
+        }
+
+        guard let summary = learning.merge(archive) else {
+            report(
+                failure: "無法匯入使用者資料",
+                informative: "資料庫目前無法寫入，既有資料仍然保留。"
+            )
+            return
+        }
+
+        reloadLists()
+
+        var informative =
+            "合併了 \(summary.mergedCharacters) 筆選字紀錄與 \(summary.mergedPhrases) 個使用者詞。"
+        if !issues.isEmpty {
+            informative +=
+                "\n略過 \(issues.skippedCharacters) 筆無法辨識的選字紀錄與 \(issues.skippedPhrases) 個無法辨識的詞。"
+        }
+        let done = NSAlert()
+        done.messageText = "已匯入使用者資料"
+        done.informativeText = informative
+        done.addButton(withTitle: "好")
+        done.runModal()
     }
 
     @objc private func clearCharacterLearning(_ sender: Any?) {
@@ -251,14 +391,30 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        guard operation() else {
-            let failure = NSAlert()
-            failure.alertStyle = .critical
-            failure.messageText = "無法清除使用者資料"
-            failure.informativeText = "資料庫目前無法寫入，既有資料仍然保留。"
-            failure.addButton(withTitle: "好")
-            failure.runModal()
+        let cleared = operation()
+        reloadLists()
+        guard cleared else {
+            report(
+                failure: "無法清除使用者資料",
+                informative: "資料庫目前無法寫入，既有資料仍然保留。"
+            )
             return
         }
+    }
+
+    private func report(failure message: String, informative: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = message
+        alert.informativeText = informative
+        alert.addButton(withTitle: "好")
+        alert.runModal()
+    }
+
+    private static func exportFileName() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd"
+        return "JiukongZhuyin-UserData-\(formatter.string(from: Date())).json"
     }
 }

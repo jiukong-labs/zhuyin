@@ -42,4 +42,9 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Automatic-learning switch that stops new counting without discarding existing ranking data.
 - Atomic clearing of character learning, user phrases, or all local user data.
 - Traditional Chinese settings window opened from the macOS input menu.
-- Milestone 8 preferences, settings, and verification documentation.
+- Searchable character and phrase management lists with per-entry pinning and deletion.
+- Versioned JSON export and idempotent, transactional import of local user data.
+- Milestone 8 preferences, settings, management, and verification documentation.
+- Full-width Chinese punctuation on Shift plus the three keys the Zhuyin arrangement leaves free.
+- Reading-free punctuation units that never join a user phrase or a phrase lookup.
+- Milestone 9 punctuation and verification documentation.

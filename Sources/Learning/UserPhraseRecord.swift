@@ -127,7 +127,7 @@ enum UserPhrasePronunciationKey {
 }
 
 /// Mirrors `BopomofoSyllable.text` without coupling persistence to parser state.
-private enum CanonicalBopomofoReading {
+enum CanonicalBopomofoReading {
     private static let initials = Set("ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙ")
     private static let medials = Set("ㄧㄨㄩ")
     private static let finals = Set("ㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ")

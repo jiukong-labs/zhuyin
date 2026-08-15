@@ -215,60 +215,12 @@ final class UserLearningStore: UserLearningStoring {
                     return
                 }
 
-                let insertPhrase = try database.prepare(
-                    """
-                    INSERT INTO user_phrases (
-                        phrase,
-                        pronunciation_key,
-                        created_at,
-                        last_used_at,
-                        selection_count,
-                        pinned
-                    ) VALUES (?, ?, ?, NULL, 0, 0)
-                    """
-                )
-                try insertPhrase.bind(identity.phrase, at: 1)
-                try insertPhrase.bind(identity.pronunciationKey, at: 2)
-                try insertPhrase.bind(
-                    Self.milliseconds(since1970: createdAt),
-                    at: 3
-                )
-                guard try insertPhrase.step() == .done else {
-                    throw UserLearningStoreError.invalidSchema(
-                        "user phrase insertion returned an unexpected row"
+                try insertPhraseLocked(
+                    identity: identity,
+                    createdAtMilliseconds: Self.milliseconds(
+                        since1970: createdAt
                     )
-                }
-
-                let phraseIDStatement = try database.prepare(
-                    "SELECT last_insert_rowid()"
                 )
-                guard try phraseIDStatement.step() == .row else {
-                    throw UserLearningStoreError.invalidSchema(
-                        "a user phrase identifier was not returned"
-                    )
-                }
-                let phraseID = phraseIDStatement.integer(at: 0)
-
-                let insertReading = try database.prepare(
-                    """
-                    INSERT INTO user_phrase_readings (
-                        phrase_id,
-                        reading_index,
-                        pronunciation
-                    ) VALUES (?, ?, ?)
-                    """
-                )
-                for (index, reading) in identity.pronunciationSequence.enumerated() {
-                    try insertReading.bind(phraseID, at: 1)
-                    try insertReading.bind(Int64(index), at: 2)
-                    try insertReading.bind(reading, at: 3)
-                    guard try insertReading.step() == .done else {
-                        throw UserLearningStoreError.invalidSchema(
-                            "user phrase reading insertion returned an unexpected row"
-                        )
-                    }
-                    try insertReading.reset()
-                }
             }
             try secureDatabaseSidecars()
         }
@@ -342,6 +294,106 @@ final class UserLearningStore: UserLearningStoring {
             }
             try secureDatabaseSidecars()
         }
+    }
+
+    /// Every learned character, ordered the way the settings list shows them:
+    /// pinned first, then most used, then most recent, then deterministically.
+    func allCharacterRecords() throws -> [CharacterLearningRecord] {
+        try withOperationLock {
+            let statement = try database.prepare(
+                """
+                SELECT character, pronunciation, selection_count,
+                       last_selected_at, pinned
+                FROM character_learning
+                ORDER BY pinned DESC,
+                         selection_count DESC,
+                         last_selected_at IS NULL,
+                         last_selected_at DESC,
+                         pronunciation,
+                         character
+                """
+            )
+
+            var result: [CharacterLearningRecord] = []
+            while try statement.step() == .row {
+                result.append(try makeRecord(from: statement))
+            }
+            return result
+        }
+    }
+
+    func allPhraseRecords() throws -> [UserPhraseRecord] {
+        try withOperationLock {
+            try phraseRecordsLocked(pronunciationKey: nil)
+        }
+    }
+
+    /// Removes one learned character. A missing row is not an error, so the
+    /// settings list stays usable when two windows delete the same entry.
+    func deleteCharacterRecord(
+        character: String,
+        pronunciation: String
+    ) throws {
+        try withOperationLock {
+            let statement = try database.prepare(
+                """
+                DELETE FROM character_learning
+                WHERE pronunciation = ? AND character = ?
+                """
+            )
+            try statement.bind(pronunciation, at: 1)
+            try statement.bind(character, at: 2)
+            guard try statement.step() == .done else {
+                throw UserLearningStoreError.invalidSchema(
+                    "character deletion returned an unexpected row"
+                )
+            }
+            try secureDatabaseSidecars()
+        }
+    }
+
+    /// Removes one user phrase and its ordered readings.
+    func deletePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws {
+        let identity = try UserPhraseValidator.validate(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence
+        )
+        try withOperationLock {
+            try withImmediateTransaction {
+                guard let phraseID = try phraseIDLocked(for: identity) else {
+                    return
+                }
+                try deletePhraseLocked(phraseID: phraseID)
+            }
+            try secureDatabaseSidecars()
+        }
+    }
+
+    /// Merges an imported archive into the existing data in one transaction.
+    ///
+    /// Merging is idempotent: counts and timestamps take the larger value, pins
+    /// are combined, and a phrase keeps the earliest creation time, so
+    /// importing the same file twice changes nothing the second time.
+    @discardableResult
+    func merge(_ archive: UserDataArchive) throws -> UserDataMergeSummary {
+        var summary = UserDataMergeSummary()
+        try withOperationLock {
+            try withImmediateTransaction {
+                for entry in archive.characters {
+                    try mergeCharacterLocked(entry)
+                    summary.mergedCharacters += 1
+                }
+                for entry in archive.phrases {
+                    try mergePhraseLocked(entry)
+                    summary.mergedPhrases += 1
+                }
+            }
+            try secureDatabaseSidecars()
+        }
+        return summary
     }
 
     /// Removes every learned character row and leaves user phrases intact.
@@ -831,8 +883,9 @@ final class UserLearningStore: UserLearningStoring {
         return statement.integer(at: 0)
     }
 
+    /// A `nil` key lists every stored phrase, which the settings window needs.
     private func phraseRecordsLocked(
-        pronunciationKey: String
+        pronunciationKey: String?
     ) throws -> [UserPhraseRecord] {
         let statement = try database.prepare(
             """
@@ -842,7 +895,7 @@ final class UserLearningStore: UserLearningStoring {
             FROM user_phrases AS p
             LEFT JOIN user_phrase_readings AS r
                 ON r.phrase_id = p.phrase_id
-            WHERE p.pronunciation_key = ?
+            \(pronunciationKey == nil ? "" : "WHERE p.pronunciation_key = ?")
             ORDER BY p.pinned DESC,
                      p.selection_count DESC,
                      p.last_used_at IS NULL,
@@ -853,7 +906,9 @@ final class UserLearningStore: UserLearningStoring {
                      r.reading_index
             """
         )
-        try statement.bind(pronunciationKey, at: 1)
+        if let pronunciationKey {
+            try statement.bind(pronunciationKey, at: 1)
+        }
 
         var orderedPhraseIDs: [Int64] = []
         var metadataByID: [Int64: PhraseRowMetadata] = [:]
@@ -905,7 +960,8 @@ final class UserLearningStore: UserLearningStoring {
             )
             guard identity.phrase == metadata.phrase,
                   identity.pronunciationSequence == readings,
-                  identity.pronunciationKey == pronunciationKey else {
+                  pronunciationKey == nil
+                    || identity.pronunciationKey == pronunciationKey else {
                 throw UserLearningStoreError.invalidSchema(
                     "a user phrase is not stored in canonical form"
                 )
@@ -922,6 +978,187 @@ final class UserLearningStore: UserLearningStoring {
                 },
                 selectionCount: metadata.selectionCount,
                 pinned: metadata.pinned
+            )
+        }
+    }
+
+    @discardableResult
+    private func insertPhraseLocked(
+        identity: ValidatedUserPhrase,
+        createdAtMilliseconds: Int64,
+        lastUsedAtMilliseconds: Int64? = nil,
+        selectionCount: Int64 = 0,
+        pinned: Bool = false
+    ) throws -> Int64 {
+        let insertPhrase = try database.prepare(
+            """
+            INSERT INTO user_phrases (
+                phrase,
+                pronunciation_key,
+                created_at,
+                last_used_at,
+                selection_count,
+                pinned
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """
+        )
+        try insertPhrase.bind(identity.phrase, at: 1)
+        try insertPhrase.bind(identity.pronunciationKey, at: 2)
+        try insertPhrase.bind(createdAtMilliseconds, at: 3)
+        if let lastUsedAtMilliseconds {
+            try insertPhrase.bind(lastUsedAtMilliseconds, at: 4)
+        } else {
+            try insertPhrase.bindNull(at: 4)
+        }
+        try insertPhrase.bind(max(0, selectionCount), at: 5)
+        try insertPhrase.bind(pinned ? 1 : 0, at: 6)
+        guard try insertPhrase.step() == .done else {
+            throw UserLearningStoreError.invalidSchema(
+                "user phrase insertion returned an unexpected row"
+            )
+        }
+
+        let phraseIDStatement = try database.prepare("SELECT last_insert_rowid()")
+        guard try phraseIDStatement.step() == .row else {
+            throw UserLearningStoreError.invalidSchema(
+                "a user phrase identifier was not returned"
+            )
+        }
+        let phraseID = phraseIDStatement.integer(at: 0)
+
+        let insertReading = try database.prepare(
+            """
+            INSERT INTO user_phrase_readings (
+                phrase_id,
+                reading_index,
+                pronunciation
+            ) VALUES (?, ?, ?)
+            """
+        )
+        for (index, reading) in identity.pronunciationSequence.enumerated() {
+            try insertReading.bind(phraseID, at: 1)
+            try insertReading.bind(Int64(index), at: 2)
+            try insertReading.bind(reading, at: 3)
+            guard try insertReading.step() == .done else {
+                throw UserLearningStoreError.invalidSchema(
+                    "user phrase reading insertion returned an unexpected row"
+                )
+            }
+            try insertReading.reset()
+        }
+        return phraseID
+    }
+
+    private func deletePhraseLocked(phraseID: Int64) throws {
+        for sql in [
+            "DELETE FROM user_phrase_readings WHERE phrase_id = ?",
+            "DELETE FROM user_phrases WHERE phrase_id = ?",
+        ] {
+            let statement = try database.prepare(sql)
+            try statement.bind(phraseID, at: 1)
+            guard try statement.step() == .done else {
+                throw UserLearningStoreError.invalidSchema(
+                    "user phrase deletion returned an unexpected row"
+                )
+            }
+        }
+    }
+
+    private func mergeCharacterLocked(_ entry: ArchivedCharacter) throws {
+        let statement = try database.prepare(
+            """
+            INSERT INTO character_learning (
+                pronunciation,
+                character,
+                selection_count,
+                last_selected_at,
+                pinned
+            ) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(pronunciation, character) DO UPDATE SET
+                selection_count = max(
+                    character_learning.selection_count,
+                    excluded.selection_count
+                ),
+                last_selected_at = CASE
+                    WHEN character_learning.last_selected_at IS NULL
+                    THEN excluded.last_selected_at
+                    WHEN excluded.last_selected_at IS NULL
+                    THEN character_learning.last_selected_at
+                    ELSE max(
+                        character_learning.last_selected_at,
+                        excluded.last_selected_at
+                    )
+                END,
+                pinned = max(character_learning.pinned, excluded.pinned)
+            """
+        )
+        try statement.bind(entry.pronunciation, at: 1)
+        try statement.bind(entry.character, at: 2)
+        try statement.bind(max(0, entry.selectionCount), at: 3)
+        if let lastSelectedAt = entry.lastSelectedAt {
+            try statement.bind(lastSelectedAt, at: 4)
+        } else {
+            try statement.bindNull(at: 4)
+        }
+        try statement.bind(entry.pinned ? 1 : 0, at: 5)
+        guard try statement.step() == .done else {
+            throw UserLearningStoreError.invalidSchema(
+                "character merge returned an unexpected row"
+            )
+        }
+    }
+
+    private func mergePhraseLocked(_ entry: ArchivedPhrase) throws {
+        let identity = try UserPhraseValidator.validate(
+            phrase: entry.phrase,
+            pronunciationSequence: entry.readings
+        )
+        guard let phraseID = try phraseIDLocked(for: identity) else {
+            try insertPhraseLocked(
+                identity: identity,
+                createdAtMilliseconds: entry.createdAt,
+                lastUsedAtMilliseconds: entry.lastUsedAt,
+                selectionCount: entry.selectionCount,
+                pinned: entry.pinned
+            )
+            return
+        }
+
+        guard try phraseReadingsLocked(phraseID: phraseID)
+            == identity.pronunciationSequence else {
+            throw UserLearningStoreError.invalidSchema(
+                "an existing user phrase has inconsistent readings"
+            )
+        }
+
+        let statement = try database.prepare(
+            """
+            UPDATE user_phrases
+            SET selection_count = max(selection_count, ?),
+                created_at = min(created_at, ?),
+                last_used_at = CASE
+                    WHEN last_used_at IS NULL THEN ?
+                    WHEN ? IS NULL THEN last_used_at
+                    ELSE max(last_used_at, ?)
+                END,
+                pinned = max(pinned, ?)
+            WHERE phrase_id = ?
+            """
+        )
+        try statement.bind(max(0, entry.selectionCount), at: 1)
+        try statement.bind(entry.createdAt, at: 2)
+        for index in 3 ... 5 {
+            if let lastUsedAt = entry.lastUsedAt {
+                try statement.bind(lastUsedAt, at: Int32(index))
+            } else {
+                try statement.bindNull(at: Int32(index))
+            }
+        }
+        try statement.bind(entry.pinned ? 1 : 0, at: 6)
+        try statement.bind(phraseID, at: 7)
+        guard try statement.step() == .done else {
+            throw UserLearningStoreError.invalidSchema(
+                "user phrase merge returned an unexpected row"
             )
         }
     }

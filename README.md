@@ -6,7 +6,7 @@
 
 Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
 
-> 開發狀態：Milestone 8 第一階段已加入可保存的偏好設定、設定視窗、自動學習開關與使用者資料清除。字與詞的學習資料只保存在目前 Mac。
+> 開發狀態：Milestone 9 已加入中文全形標點。字與詞的學習資料只保存在目前 Mac。
 
 ## Current features
 
@@ -18,16 +18,18 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Persistent, local character-selection learning and deterministic ranking
 - Multi-character marked composition and exact user-phrase learning
 - Persistent settings for Shift switching and automatic learning
-- Local user-data clearing from a settings window
+- Searchable user-dictionary management with pinning, deletion, and clearing
+- Local JSON export and merging import of personal learning data
+- Full-width Chinese punctuation on the standard Zhuyin arrangement
 - Fully offline
 - Open source
 - MIT-licensed source code
 
 ## Planned features
 
-- User-dictionary management and import/export
+- Punctuation candidate window and remappable symbol tables
 
-## Milestone 8 input
+## Milestone 9 input
 
 目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -54,6 +56,22 @@ Space 一聲
 
 `1`、`q`、`a`、`z` 都是聲母鍵；要連續驗證 `ㄅㄆㄇㄈ`，請在每個鍵後按 Enter 或一聲 Space 完成音節。直接連按四鍵會合理地以後一個聲母取代前一個。
 
+### 中文標點
+
+中文模式下的全形標點放在 Shift；注音鍵不加 Shift 時維持原本的注音：
+
+```text
+Shift+,  ，      Shift+.  。      Shift+/  ？      Shift+;  ：
+Shift+1  ！      Shift+6  …       Shift+9  （      Shift+0  ）
+Shift+-  —
+[  「            ]  」            \  、
+Shift+[  『      Shift+]  』
+```
+
+`…` 與 `—` 每次插入一個，慣用的 `……`、`——` 請按兩下。`[`、`]`、`\` 不在注音鍵盤配置內，所以不必按 Shift。表格以外的鍵仍交回目前 App 與 macOS 鍵盤配置，英文模式完全不受影響；也就是說中文模式下 `[` 不會再打出半形 `[`，需要半形時請切到英文模式。
+
+標點會結束目前的讀音但不結束整段組字：按下標點時會先把反白候選或未完成注音收進 buffer，再把標點接在後面，仍是 marked text，Return 時才一起送出，Backspace 也能直接刪掉標點。標點本身沒有讀音，因此不會參與造詞或詞查詢；`「久空` 這種情況前面的 `久空` 仍然可以造詞。
+
 ### 中英文切換
 
 中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換後會在游標附近短暫顯示「中」或「A」，不會搶走目前 App 的鍵盤焦點。
@@ -64,7 +82,7 @@ Space 一聲
 
 ### 個人選字學習
 
-Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與字面注音 fallback 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，逐項管理介面將在 Milestone 8 第二階段提供。
+Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與字面注音 fallback 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，可在設定視窗的清單中逐項調整。
 
 在設定視窗關閉「自動學習」後，就不再累積新的使用次數；既有紀錄仍會影響排序，Shift 造詞也仍可使用。
 
@@ -80,13 +98,20 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 ### 設定視窗
 
-在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗。目前提供：
+在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗，共四個分頁：
 
-- 中英文切換要用哪一側 Shift：左右皆可、只用左、只用右、關閉；
-- 自動學習開關；
-- 清除選字紀錄、清除使用者詞、清除全部使用者資料，每項都需再次確認。
+- **一般**：中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關；
+- **使用者詞**：列出所有自己造的詞與逐音注音，可搜尋、置頂或刪除單筆；
+- **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
+- **資料**：匯出／匯入 JSON，以及清除選字紀錄、清除使用者詞、清除全部。
 
-設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；清除動作只影響 `user.sqlite`，不會動到內建字典。開啟設定視窗前會先完成目前的組字。
+設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；所有刪除與清除動作只影響 `user.sqlite`，不會動到內建字典，且都需要再次確認。開啟設定視窗前會先完成目前的組字。
+
+刪除是以「文字 + 完整讀音」為單位，所以刪掉 `行／ㄒㄧㄥˊ` 不會影響 `行／ㄏㄤˊ`。
+
+### 匯出與匯入
+
+匯出會寫出帶版本的 JSON，時間一律使用 UTC 毫秒，不含本機的內部 ID。匯入是合併而非覆蓋：次數與時間取較大／較新者、建立時間取較早者、置頂取聯集，因此重複匯入同一個檔案不會重複累加，也不會把次數變小或取消置頂。無法辨識的資料列會被略過並回報數量；若其中一筆無法套用，整次匯入會完整回復原狀。匯出檔沒有加密，內容是你打過與選過的字，請比照個人檔案保管。
 
 ## Requirements
 
@@ -160,9 +185,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 8 第一階段提供可保存的偏好設定、輸入選單中的設定視窗、Shift 側邊選擇、自動學習開關與使用者資料清除。逐項詞庫管理與匯入／匯出屬 Milestone 8 第二階段。
+Milestone 9 提供標準注音鍵盤上的中文全形標點：注音鍵維持原義、標點放在 Shift，未使用的 `[`、`]`、`\` 直接對應括號類標點。標點候選視窗與可自訂符號表仍在後續里程碑。
 
-詳見 [Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [Milestone 9 notes](docs/MILESTONE_9.md)、[Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 

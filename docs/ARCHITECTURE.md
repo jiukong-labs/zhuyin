@@ -1,6 +1,6 @@
 # Architecture
 
-Milestone 8 adds persistent preferences and a settings window while keeping parsing, composition state, ranking, storage, candidate presentation, settings UI, InputMethodKit side effects, and reproducible dictionary tooling separate.
+Milestone 9 adds Chinese punctuation while keeping parsing, composition state, ranking, storage, candidate presentation, settings UI, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
@@ -28,6 +28,7 @@ NSEvent key code
 ```
 
 - `KeyboardLayout` is the extension point for a future keyboard arrangement. Milestone 2 provides only `StandardZhuyinLayout`.
+- `PunctuationLayout` is a separate pure table over the same physical keys. Bopomofo keys keep their meaning unshifted and carry punctuation on Shift; the three keys the arrangement never uses carry bracket-style marks directly. Caps Lock is ignored, and real shortcut modifiers still pass through.
 - `BopomofoSyllable` stores one optional initial, medial, final, and tone. It renders them in canonical order while separately preserving input order for Backspace.
 - Horizontal neutral tone is rendered before the syllable body, such as `˙ㄉㄜ`; first tone has no visible mark.
 - `BopomofoParser` completes and resets one syllable when a tone arrives.
@@ -35,7 +36,7 @@ NSEvent key code
 
 A tone-completed syllable remains distinct from forced raw text. The former starts dictionary conversion; Return on an unfinished syllable and pass-through finalization preserve literal Bopomofo as one unlearned buffer unit.
 
-`CompositionBuffer` owns every converted or literal unit not yet inserted into the client. Each unit keeps display text, exact reading, and a UUID. Candidate selections become pending learning events tied to surviving unit UUIDs. Phrase replacement or Backspace prunes events touching removed units; Escape can discard the buffer without producing learning. A real commit first detaches one immutable snapshot, resets all mutable state, inserts its full text once, and only then records the snapshot's surviving events.
+`CompositionBuffer` owns every converted or literal unit not yet inserted into the client. Each unit keeps display text, exact reading, a UUID, and a kind. A punctuation unit shares the buffer, the marked text, and Backspace with converted text but carries no reading: phrase lookups extend only across the trailing run of reading units, and neither a Shift selection nor a phrase candidate may cover a mark. Punctuation therefore never reaches the phrase store as a reading. Candidate selections become pending learning events tied to surviving unit UUIDs. Phrase replacement or Backspace prunes events touching removed units; Escape can discard the buffer without producing learning. A real commit first detaches one immutable snapshot, resets all mutable state, inserts its full text once, and only then records the snapshot's surviving events.
 
 The buffer selection is an end-anchored suffix. Shift+Left expands it one reading unit toward the beginning and Shift+Right shrinks it. Its `NSRange` is calculated from each unit's UTF-16 length. Starting a new raw syllable clears the range and returns the caret to the full marked string's UTF-16 end.
 
@@ -79,7 +80,9 @@ Unpinned candidates use `-baseRank + 8 × log2(selectionCount + 1) + recency`, w
 
 Automatic learning gates only implicit recording. Existing counts and pins still rank candidates while it is off, and explicit Shift phrase creation still works, because the user asked for that phrase directly. `UserLearningStore` clears character data, phrase data, or both inside one immediate transaction that revalidates the schema, so the database stays usable without reopening and a failure cannot half-clear the data.
 
-`SettingsWindowController` owns the single settings window for every client session. Because the bundle is an agent, it activates the process explicitly before ordering the window front and deactivates again on close. `InputController.menu()` contributes the input-menu item and finalizes any active composition before the window opens.
+`SettingsWindowController` owns the single settings window for every client session. Because the bundle is an agent, it activates the process explicitly before ordering the window front and deactivates again on close. `InputController.menu()` contributes the input-menu item and finalizes any active composition before the window opens. Four tabs separate general settings, the phrase list, the character list, and data transfer; each `UserDataListController` re-reads its snapshot after every edit so a list can never act on an entry another window already deleted.
+
+`UserDataArchive` is the portable JSON representation of both data sets, with UTC millisecond timestamps and no local row identifiers. Decoding refuses an unreadable file, a foreign format, or a newer version, and otherwise drops only unusable rows while reporting how many. Import merges inside one transaction — larger count, newer timestamp, earlier creation time, combined pin — so it is idempotent, cannot lower a count, and rolls back entirely if one entry cannot be applied.
 
 ## Candidate lifecycle
 
@@ -117,4 +120,4 @@ Milestones 1–3 used `LSBackgroundOnly`. Milestone 4 replaces it with `LSUIElem
 
 The current application-bundle lifecycle was also compared with [McBopomofo](https://github.com/openvanilla/McBopomofo/tree/73d0379eca621377fb46416ceb4a7dc9bb576d47) and [OpenVanilla](https://github.com/openvanilla/openvanilla/tree/8f09dc6a66f10aecfdc928e7ff63753d7bc19b25). Only their public architecture was studied; no source code or language data was copied.
 
-Punctuation mapping, user-dictionary management, and import/export remain outside the current milestone. Those modules will not be placed in `InputController`.
+A punctuation candidate window, a half-width/full-width toggle, and user-remappable symbol tables remain outside the current milestone. Those modules will not be placed in `InputController`.

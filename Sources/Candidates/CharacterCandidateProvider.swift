@@ -168,7 +168,8 @@ private extension CandidateCommitReason {
              .mouse,
              .implicitPassThrough,
              .lifecycle,
-             .clientHandoff:
+             .clientHandoff,
+             .punctuation:
             return true
         }
     }

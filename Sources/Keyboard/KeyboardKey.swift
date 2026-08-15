@@ -40,6 +40,10 @@ enum KeyboardKey: Hashable {
     case semicolon
     case slash
     case minus
+    // Not part of the Zhuyin arrangement; Milestone 9 uses them for punctuation.
+    case leftBracket
+    case rightBracket
+    case backslash
     case space
     case deleteBackward
     case escape

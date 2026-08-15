@@ -101,4 +101,5 @@ enum CandidateCommitReason: Equatable, Hashable {
     case implicitPassThrough
     case lifecycle
     case clientHandoff
+    case punctuation
 }

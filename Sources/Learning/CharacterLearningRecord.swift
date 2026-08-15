@@ -107,6 +107,22 @@ protocol UserLearningStoring: AnyObject {
     func clearCharacterLearning() throws
     func clearUserPhrases() throws
     func clearAllUserData() throws
+
+    func allCharacterRecords() throws -> [CharacterLearningRecord]
+    func allPhraseRecords() throws -> [UserPhraseRecord]
+
+    func deleteCharacterRecord(
+        character: String,
+        pronunciation: String
+    ) throws
+
+    func deletePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws
+
+    @discardableResult
+    func merge(_ archive: UserDataArchive) throws -> UserDataMergeSummary
 }
 
 extension UserLearningStoring {
@@ -137,4 +153,27 @@ extension UserLearningStoring {
     func clearCharacterLearning() throws {}
     func clearUserPhrases() throws {}
     func clearAllUserData() throws {}
+
+    func allCharacterRecords() throws -> [CharacterLearningRecord] {
+        []
+    }
+
+    func allPhraseRecords() throws -> [UserPhraseRecord] {
+        []
+    }
+
+    func deleteCharacterRecord(
+        character: String,
+        pronunciation: String
+    ) throws {}
+
+    func deletePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws {}
+
+    @discardableResult
+    func merge(_ archive: UserDataArchive) throws -> UserDataMergeSummary {
+        UserDataMergeSummary()
+    }
 }

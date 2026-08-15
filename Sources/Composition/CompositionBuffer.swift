@@ -6,18 +6,28 @@ import Foundation
 /// `String` also lets the input method preserve a raw Bopomofo syllable when
 /// dictionary conversion is unavailable.
 struct CompositionUnit: Identifiable, Equatable, Hashable {
+    /// Punctuation occupies the buffer like any other text, but it carries no
+    /// reading, so it can never take part in a user phrase or a phrase lookup.
+    enum Kind: Equatable, Hashable {
+        case reading
+        case punctuation
+    }
+
     let id: UUID
     let text: String
     let pronunciation: String
+    let kind: Kind
 
     init(
         id: UUID = UUID(),
         text: String,
-        pronunciation: String
+        pronunciation: String,
+        kind: Kind = .reading
     ) {
         self.id = id
         self.text = text
         self.pronunciation = pronunciation
+        self.kind = kind
     }
 }
 
@@ -129,10 +139,12 @@ struct CompositionBuffer: Equatable {
         )
     }
 
-    /// Returns a phrase only when at least two composition units are selected.
+    /// Returns a phrase only when at least two composition units are selected
+    /// and every one of them carries a reading.
     var selectedPhrase: CompositionPhraseSelection? {
         guard let selectedUnitRange,
-              selectedUnitRange.count >= Self.minimumPhraseUnitCount else {
+              selectedUnitRange.count >= Self.minimumPhraseUnitCount,
+              units[selectedUnitRange].allSatisfy({ $0.kind == .reading }) else {
             return nil
         }
 
@@ -145,13 +157,21 @@ struct CompositionBuffer: Equatable {
     @discardableResult
     mutating func append(
         text: String,
-        pronunciation: String
+        pronunciation: String,
+        kind: CompositionUnit.Kind = .reading
     ) -> CompositionUnit? {
         let unit = CompositionUnit(
             text: text,
-            pronunciation: pronunciation
+            pronunciation: pronunciation,
+            kind: kind
         )
         return append(unit) ? unit : nil
+    }
+
+    /// Adds punctuation, which occupies the buffer without a reading.
+    @discardableResult
+    mutating func appendPunctuation(_ text: String) -> CompositionUnit? {
+        append(text: text, pronunciation: text, kind: .punctuation)
     }
 
     /// Adds a pre-built unit. This overload is useful when another pure model
@@ -197,7 +217,9 @@ struct CompositionBuffer: Equatable {
             return []
         }
 
-        let longestCount = min(maximumUnitCount, units.count + 1)
+        // A phrase never spans punctuation, so only the trailing run of units
+        // that carry readings can extend the query.
+        let longestCount = min(maximumUnitCount, trailingReadingUnitCount + 1)
         guard longestCount >= minimumUnitCount else {
             return []
         }
@@ -221,12 +243,17 @@ struct CompositionBuffer: Equatable {
         pronunciationSequence: [String]
     ) -> Bool {
         guard !pronunciationSequence.isEmpty,
-              pronunciationSequence.count <= units.count else {
+              pronunciationSequence.count <= trailingReadingUnitCount else {
             return false
         }
 
         return units.suffix(pronunciationSequence.count)
             .map(\.pronunciation) == pronunciationSequence
+    }
+
+    /// How many units at the end of the buffer carry a reading.
+    private var trailingReadingUnitCount: Int {
+        units.reversed().prefix { $0.kind == .reading }.count
     }
 
     /// Extends the selected suffix by one unit toward the beginning.

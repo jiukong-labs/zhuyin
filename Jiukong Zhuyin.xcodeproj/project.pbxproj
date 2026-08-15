@@ -13,6 +13,7 @@
 		06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
 		09A6C56FD11D94F7A555F1D5 /* ShiftToggleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E03D98756138B225E54A9B /* ShiftToggleController.swift */; };
 		09E3DE5DDF04573C662D9C6D /* UserDataLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390A747ED6D62564F6523EAB /* UserDataLocationTests.swift */; };
+		0F0FA0A3E6356E1AA6EC69C2 /* PunctuationLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */; };
 		0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */; };
 		11D885D73DDF9A2F8185CF0E /* CandidateRankerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75066D454F50C29C343823FA /* CandidateRankerTests.swift */; };
@@ -36,6 +37,7 @@
 		32FFACF4D57F4C6532DE149F /* UserLearningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */; };
 		345D014A7644CB35C17E2839 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */; };
+		3C0828692509355D82A1D4EE /* CompositionPunctuationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F621FE5FB032FDAD27EBC2B0 /* CompositionPunctuationTests.swift */; };
 		3F7FC3F751DC27DE32D05449 /* UserPhraseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B8DDB6D74CA6EAD87FDDCF /* UserPhraseRecord.swift */; };
 		43C1C9045A125F542E8B2F95 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */; };
@@ -58,13 +60,16 @@
 		6DAD5D17BE31C20B736550B7 /* UserPhraseRecordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7F381FE59E194327DB4A8C /* UserPhraseRecordTests.swift */; };
 		6F33F5771F3E8FE49F86F21E /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
 		724300226842DB5D4E6188AA /* CandidateCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */; };
+		73B0C3C365AC586D955484A3 /* PunctuationLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590627441D682121FCF1B0A1 /* PunctuationLayout.swift */; };
 		7405CDDB31C191D8513124AB /* CompositionSelectionCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66A01410C21B39C42BD6E35 /* CompositionSelectionCommandRouter.swift */; };
 		748A37EAEF698053462FED9C /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */; };
 		74B209D9EA69393A3821C3CE /* BopomofoComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5D0B1D084CF9D4932B4A8 /* BopomofoComponent.swift */; };
+		7554A9A75EB55F73616FD4E3 /* UserDataListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AF04406192C10379BCF682 /* UserDataListController.swift */; };
 		75B45809505AAD2B711EEEEE /* PreferencesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03517B2F1F6C10948547B0A2 /* PreferencesStoreTests.swift */; };
 		76A3472BDB7EB02CB094A40B /* CandidateCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */; };
 		783D7541B400A444EFA62568 /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
 		7922B9A6DE6E65F931DB7893 /* CandidateInputSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */; };
+		7986DB8CBA3991C500C83732 /* UserDataArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94452FDF698E1AC4A512804 /* UserDataArchiveTests.swift */; };
 		7CC53D7DA8D6E018675A5127 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32EFC11EAB2C94A893A2CB57 /* main.swift */; };
 		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
 		80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */; };
@@ -78,14 +83,17 @@
 		8E799509AF0265E9ABF7D848 /* InputSourceRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */; };
 		9026C8DCE02772769169E368 /* StandardZhuyinLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7EC61447034D1CD5F119ABE /* StandardZhuyinLayoutTests.swift */; };
 		9039F5A7FF8C462C8DC0CE60 /* CandidateWindowGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */; };
+		911BE00DEAF2D048893B9BE4 /* UserDataManagementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41AD9FD532E11E8C8224086E /* UserDataManagementTests.swift */; };
 		9400F25BFE4125223C0A4C94 /* CharacterDictionaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */; };
 		95522E389CFF44DD09F42E1E /* CharacterLearningRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */; };
 		975D05A5C10F709BD3FD6780 /* CharacterCandidateProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34FE8366ECC04BA9E927190 /* CharacterCandidateProvider.swift */; };
 		978D9B4587E3BA9520629731 /* UserDataLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */; };
+		9D4AA24580EE764F6247165D /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		9E890B00268B9CE953688691 /* CompositionBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0205FBBB5182BEB7E74D732 /* CompositionBufferTests.swift */; };
 		9ED29E5445797849DC35D866 /* CompositionSelectionCommandRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 342935799C98E9EB5584AF78 /* CompositionSelectionCommandRouterTests.swift */; };
 		A0301C6A683601AA029AEB80 /* CandidateInputSourcePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */; };
 		A05333C1ECECB1A47CE36C80 /* Candidate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8896906B6EED89C1949CC6BF /* Candidate.swift */; };
+		A0A1101F2A6E54631335AB66 /* PunctuationLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590627441D682121FCF1B0A1 /* PunctuationLayout.swift */; };
 		A26F4F32F9F39B2A4A7087DB /* BopomofoInputSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */; };
 		A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
 		A8D5A9719E6F91407BCE6469 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
@@ -120,6 +128,7 @@
 		E0E3E8A547EFCC37BACA41EA /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		E28F248C99C7DF51EDAF39E1 /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
 		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
+		EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
 		F32A31CF08E28712EA537A8F /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30667214FEE41C9496CF28D /* main.swift */; };
 		F370DC600E90D9AD024FBEC4 /* DictionaryDatabaseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */; };
@@ -146,11 +155,14 @@
 		3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducer.swift; sourceTree = "<group>"; };
 		3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllableTests.swift; sourceTree = "<group>"; };
 		419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSession.swift; sourceTree = "<group>"; };
+		41AD9FD532E11E8C8224086E /* UserDataManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataManagementTests.swift; sourceTree = "<group>"; };
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
 		4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuffer.swift; sourceTree = "<group>"; };
+		516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PunctuationLayoutTests.swift; sourceTree = "<group>"; };
 		526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
 		57E03D98756138B225E54A9B /* ShiftToggleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftToggleController.swift; sourceTree = "<group>"; };
 		587C51C5637FCED202A4E35B /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		590627441D682121FCF1B0A1 /* PunctuationLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PunctuationLayout.swift; sourceTree = "<group>"; };
 		5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandRouterTests.swift; sourceTree = "<group>"; };
 		5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSessionTests.swift; sourceTree = "<group>"; };
 		64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayout.swift; sourceTree = "<group>"; };
@@ -194,6 +206,7 @@
 		C26E20F48A99B95459A0E4A7 /* BopomofoParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoParserTests.swift; sourceTree = "<group>"; };
 		C30667214FEE41C9496CF28D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateInputSourcePolicyTests.swift; sourceTree = "<group>"; };
+		C4AF04406192C10379BCF682 /* UserDataListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataListController.swift; sourceTree = "<group>"; };
 		C5F39349259F1AB560B2117D /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		D01F60E94243161D89FAC2DA /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowPresenter.swift; sourceTree = "<group>"; };
@@ -207,12 +220,15 @@
 		E0205FBBB5182BEB7E74D732 /* CompositionBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBufferTests.swift; sourceTree = "<group>"; };
 		E7EC61447034D1CD5F119ABE /* StandardZhuyinLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayoutTests.swift; sourceTree = "<group>"; };
 		E8118F46308D10E62E4662D8 /* CompositionPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionPresentation.swift; sourceTree = "<group>"; };
+		E94452FDF698E1AC4A512804 /* UserDataArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchiveTests.swift; sourceTree = "<group>"; };
 		E9502DD5E44CA13CFA608D85 /* CNS11643Manifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643Manifest.swift; sourceTree = "<group>"; };
 		EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesControllerTests.swift; sourceTree = "<group>"; };
 		EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningStore.swift; sourceTree = "<group>"; };
 		F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometry.swift; sourceTree = "<group>"; };
 		F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVirtualKeyResolver.swift; sourceTree = "<group>"; };
+		F621FE5FB032FDAD27EBC2B0 /* CompositionPunctuationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionPunctuationTests.swift; sourceTree = "<group>"; };
 		FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesController.swift; sourceTree = "<group>"; };
+		FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchive.swift; sourceTree = "<group>"; };
 		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -272,6 +288,7 @@
 			isa = PBXGroup;
 			children = (
 				8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */,
+				FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */,
 				1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */,
 				6B19ADC9CB48766F2114ADEA /* UserLearningService.swift */,
 				EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */,
@@ -286,6 +303,7 @@
 				5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */,
 				E0205FBBB5182BEB7E74D732 /* CompositionBufferTests.swift */,
 				B14C51C5EA239A803E995F77 /* CompositionPresentationTests.swift */,
+				F621FE5FB032FDAD27EBC2B0 /* CompositionPunctuationTests.swift */,
 				342935799C98E9EB5584AF78 /* CompositionSelectionCommandRouterTests.swift */,
 			);
 			path = CompositionTests;
@@ -348,8 +366,10 @@
 		64D21D615D606C1C4AF69116 /* LearningTests */ = {
 			isa = PBXGroup;
 			children = (
+				E94452FDF698E1AC4A512804 /* UserDataArchiveTests.swift */,
 				7B186CA5B924FBF653433399 /* UserDataClearingTests.swift */,
 				390A747ED6D62564F6523EAB /* UserDataLocationTests.swift */,
+				41AD9FD532E11E8C8224086E /* UserDataManagementTests.swift */,
 				DB6A7847C769C7EBFA02807B /* UserLearningServiceTests.swift */,
 				6B33CE5FC1C0E74BBF4DB33B /* UserLearningStoreTests.swift */,
 				8B7F381FE59E194327DB4A8C /* UserPhraseRecordTests.swift */,
@@ -449,6 +469,7 @@
 			isa = PBXGroup;
 			children = (
 				C5F39349259F1AB560B2117D /* SettingsWindowController.swift */,
+				C4AF04406192C10379BCF682 /* UserDataListController.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -515,6 +536,7 @@
 				107AA4C2629FAE0343555A77 /* KeyboardKey.swift */,
 				66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */,
 				F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */,
+				590627441D682121FCF1B0A1 /* PunctuationLayout.swift */,
 				64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */,
 			);
 			path = Keyboard;
@@ -561,6 +583,7 @@
 		F157BC4DB305679070228F51 /* KeyboardTests */ = {
 			isa = PBXGroup;
 			children = (
+				516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */,
 				E7EC61447034D1CD5F119ABE /* StandardZhuyinLayoutTests.swift */,
 			);
 			path = KeyboardTests;
@@ -740,10 +763,13 @@
 				A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */,
 				10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */,
 				C79D565EE382F7DF72B0B86E /* PreferencesStore.swift in Sources */,
+				73B0C3C365AC586D955484A3 /* PunctuationLayout.swift in Sources */,
 				3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */,
 				5A34442CA12BB28D8BDD49D4 /* SettingsWindowController.swift in Sources */,
 				4EE56011674AE8700780FC80 /* ShiftToggleController.swift in Sources */,
 				AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */,
+				EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */,
+				7554A9A75EB55F73616FD4E3 /* UserDataListController.swift in Sources */,
 				1456C798D4B7A0C1F6ED8AEE /* UserDataLocation.swift in Sources */,
 				84FAFD8A15D9C4EAB7774211 /* UserLearningService.swift in Sources */,
 				32FFACF4D57F4C6532DE149F /* UserLearningStore.swift in Sources */,
@@ -788,6 +814,7 @@
 				9E890B00268B9CE953688691 /* CompositionBufferTests.swift in Sources */,
 				52262D0D1FE7C1B84A323476 /* CompositionPresentation.swift in Sources */,
 				4E179BBFE7B49DD47A04264B /* CompositionPresentationTests.swift in Sources */,
+				3C0828692509355D82A1D4EE /* CompositionPunctuationTests.swift in Sources */,
 				7405CDDB31C191D8513124AB /* CompositionSelectionCommandRouter.swift in Sources */,
 				9ED29E5445797849DC35D866 /* CompositionSelectionCommandRouterTests.swift in Sources */,
 				F370DC600E90D9AD024FBEC4 /* DictionaryDatabaseBuilder.swift in Sources */,
@@ -804,14 +831,19 @@
 				5B46C5E8B79F4EB84B727D15 /* PreferencesStore.swift in Sources */,
 				75B45809505AAD2B711EEEEE /* PreferencesStoreTests.swift in Sources */,
 				CB892CD22D17228E5671B987 /* PreferencesTests.swift in Sources */,
+				A0A1101F2A6E54631335AB66 /* PunctuationLayout.swift in Sources */,
+				0F0FA0A3E6356E1AA6EC69C2 /* PunctuationLayoutTests.swift in Sources */,
 				F7761C7EF89808E052F64C42 /* SQLiteDatabase.swift in Sources */,
 				09A6C56FD11D94F7A555F1D5 /* ShiftToggleController.swift in Sources */,
 				AECF58023168697EB29690B7 /* ShiftToggleControllerTests.swift in Sources */,
 				14C4230B00D5EC61B7A8901F /* StandardZhuyinLayout.swift in Sources */,
 				9026C8DCE02772769169E368 /* StandardZhuyinLayoutTests.swift in Sources */,
+				9D4AA24580EE764F6247165D /* UserDataArchive.swift in Sources */,
+				7986DB8CBA3991C500C83732 /* UserDataArchiveTests.swift in Sources */,
 				649EFD22D39CABBFDFC713E0 /* UserDataClearingTests.swift in Sources */,
 				978D9B4587E3BA9520629731 /* UserDataLocation.swift in Sources */,
 				09E3DE5DDF04573C662D9C6D /* UserDataLocationTests.swift in Sources */,
+				911BE00DEAF2D048893B9BE4 /* UserDataManagementTests.swift in Sources */,
 				2D4263F656A8941B5D8AAF7D /* UserLearningService.swift in Sources */,
 				BE4808863CB14E5266F27157 /* UserLearningServiceTests.swift in Sources */,
 				D8F7B09EB7E71F6893ACE77A /* UserLearningStore.swift in Sources */,

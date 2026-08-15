@@ -13,6 +13,8 @@ final class InputController: IMKInputController {
         .shift
     ]
 
+    private static let punctuationLayout = PunctuationLayout.standard
+
     private static let currentSelectionRange = NSRange(
         location: NSNotFound,
         length: NSNotFound
@@ -122,6 +124,18 @@ final class InputController: IMKInputController {
            ) {
             perform(command, inputClient: inputClient)
             return true
+        }
+
+        // Caps Lock does not change Bopomofo input, so it must not change
+        // punctuation either. Any real shortcut modifier still passes through.
+        let punctuationModifiers = modifiers.subtracting(.capsLock)
+        if punctuationModifiers.subtracting(.shift).isEmpty,
+           let key = MacVirtualKeyResolver.key(for: event.keyCode),
+           let punctuation = Self.punctuationLayout.punctuation(
+               for: key,
+               shifted: punctuationModifiers.contains(.shift)
+           ) {
+            return handlePunctuation(punctuation, inputClient: inputClient)
         }
 
         if !modifiers.intersection(Self.passThroughModifiers).isEmpty {
@@ -465,6 +479,28 @@ final class InputController: IMKInputController {
         case .handledWithoutChange:
             break
         }
+    }
+
+    /// Punctuation ends the active reading without ending the composition: the
+    /// current candidate or raw syllable is accepted into the buffer, then the
+    /// mark itself is appended as a unit that carries no reading.
+    private func handlePunctuation(
+        _ punctuation: String,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        _ = acceptPreferredCandidate(reason: .punctuation)
+
+        if let rawText = inputSession.takeRawComposition() {
+            _ = compositionBuffer.append(
+                text: rawText,
+                pronunciation: rawText
+            )
+        }
+
+        compositionBuffer.clearSelection()
+        _ = compositionBuffer.appendPunctuation(punctuation)
+        updateMarkedComposition(on: inputClient)
+        return true
     }
 
     @discardableResult
