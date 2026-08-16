@@ -9,7 +9,7 @@ import Foundation
 /// `current` without deadlocking.
 final class PreferencesController {
     static let didChangeNotification = Notification.Name(
-        "tw.org.cloudgate.jiukong.PreferencesDidChange"
+        "tw.idv.jiukong.PreferencesDidChange"
     )
 
     static let shared = PreferencesController()

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-bundle_identifier="tw.org.cloudgate.jiukong.inputmethod.zhuyin"
+bundle_identifier="tw.idv.jiukong.zhuyin"
 installation_directory="$HOME/Library/Input Methods"
 installed_application="$installation_directory/Jiukong Zhuyin.app"
 

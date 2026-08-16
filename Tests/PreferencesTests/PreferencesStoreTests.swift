@@ -7,7 +7,7 @@ final class PreferencesStoreTests: XCTestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        suiteName = "tw.org.cloudgate.jiukong.tests.\(UUID().uuidString)"
+        suiteName = "tw.idv.jiukong.tests.\(UUID().uuidString)"
         defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
     }
 

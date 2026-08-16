@@ -5,7 +5,7 @@ final class UserLearningService: UserLearningProviding {
     static let shared = UserLearningService()
 
     private static let logger = Logger(
-        subsystem: "tw.org.cloudgate.jiukong.inputmethod.zhuyin",
+        subsystem: "tw.idv.jiukong.zhuyin",
         category: "UserLearning"
     )
 
@@ -30,7 +30,7 @@ final class UserLearningService: UserLearningProviding {
     init(
         store: UserLearningStoring?,
         now: @escaping () -> Date = Date.init,
-        queueLabel: String = "tw.org.cloudgate.jiukong.user-learning"
+        queueLabel: String = "tw.idv.jiukong.user-learning"
     ) {
         self.store = store
         self.now = now

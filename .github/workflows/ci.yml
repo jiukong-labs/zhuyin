@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      # The Xcode project is checked in, so a new file that was never added to
+      # it silently stops being compiled or tested. This has happened before.
+      - name: Check every Swift file is in the Xcode project
+        run: ./scripts/check-project-sources.sh
+
+      - name: Test (Debug)
+        run: |
+          xcodebuild \
+            -project "Jiukong Zhuyin.xcodeproj" \
+            -scheme "Jiukong Zhuyin" \
+            -configuration Debug \
+            -destination "platform=macOS,arch=$(uname -m)" \
+            -derivedDataPath .build/DerivedData \
+            test
+
+      - name: Build (Release, universal)
+        run: |
+          xcodebuild \
+            -project "Jiukong Zhuyin.xcodeproj" \
+            -scheme "Jiukong Zhuyin" \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -derivedDataPath .build/DerivedData \
+            build
+
+      # The harness needs Accessibility permission, so it cannot run here.
+      # Building it still keeps it from rotting against the sources it drives.
+      - name: Build the acceptance harness
+        run: |
+          xcodebuild \
+            -project "Jiukong Zhuyin.xcodeproj" \
+            -scheme "Jiukong Acceptance Harness" \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -derivedDataPath .build/AcceptanceHarness \
+            build
+
+      - name: Check the Release build is a universal binary
+        run: |
+          binary=".build/DerivedData/Build/Products/Release/Jiukong Zhuyin.app/Contents/MacOS/Jiukong Zhuyin"
+          architectures="$(lipo -archs "$binary")"
+          echo "$architectures"
+          for architecture in arm64 x86_64; do
+            case "$architectures" in
+              *"$architecture"*) ;;
+              *) echo "::error::Release binary is missing $architecture"; exit 1 ;;
+            esac
+          done
+
+  dictionary:
+    name: Dictionary reproducibility
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runtime dictionary is checked in. Rebuilding it from the pinned,
+      # hash-validated CNS11643 snapshot must reproduce it byte for byte.
+      - name: Rebuild the dictionary from the pinned snapshot
+        run: ./scripts/build-dictionary.sh
+
+      - name: Check the checked-in dictionary is unchanged
+        run: |
+          git diff --exit-code -- Resources/Dictionary/JiukongZhuyin.sqlite3 \
+            || { echo "::error::The checked-in dictionary does not match its sources"; exit 1; }
+
+  project-drift:
+    name: Generated project is current
+    runs-on: macos-latest
+    # XcodeGen formatting can change between releases, so this job reports
+    # drift without gating the build-and-test job above.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Regenerate and compare
+        run: |
+          xcodegen --version
+          xcodegen generate
+          git diff --exit-code -- "Jiukong Zhuyin.xcodeproj" \
+            || { echo "::warning::The checked-in project differs from project.yml"; exit 1; }

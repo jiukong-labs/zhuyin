@@ -25,7 +25,11 @@ final class InputController: IMKInputController {
     private lazy var languageModeHUD = LanguageModeHUD.shared
     private let languageModeController = LanguageModeController.shared
     private let preferences = PreferencesController.shared
-    private var inputSession = BopomofoInputSession()
+    private var keyboardArrangement = PreferencesController.shared.current
+        .keyboardArrangement
+    private lazy var inputSession = BopomofoInputSession(
+        keyboardLayout: keyboardArrangement.layout
+    )
     private var compositionBuffer = CompositionBuffer()
     private var shiftToggleController = ShiftToggleController()
     private var candidateSession: CandidateSession?
@@ -104,6 +108,8 @@ final class InputController: IMKInputController {
         guard languageModeController.mode == .chinese else {
             return false
         }
+
+        adoptKeyboardArrangementIfChanged(using: inputClient)
 
         if let command = CompositionSelectionCommandRouter.command(
             keyCode: event.keyCode,
@@ -276,6 +282,21 @@ final class InputController: IMKInputController {
             clientWindowLevel: inputClient.windowLevel()
         )
         return false
+    }
+
+    /// Changing the arrangement mid-composition would reinterpret keys the user
+    /// already pressed, so the current composition is finalized first.
+    private func adoptKeyboardArrangementIfChanged(
+        using inputClient: any IMKTextInput
+    ) {
+        let arrangement = preferences.current.keyboardArrangement
+        guard arrangement != keyboardArrangement else {
+            return
+        }
+
+        finishComposition(reason: .lifecycle, using: inputClient)
+        keyboardArrangement = arrangement
+        inputSession = BopomofoInputSession(keyboardLayout: arrangement.layout)
     }
 
     private func resetTransientInputState() {

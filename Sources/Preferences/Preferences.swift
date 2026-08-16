@@ -10,13 +10,16 @@ struct Preferences: Equatable {
 
     var shiftKeyPreference: ShiftKeyPreference
     var automaticLearningEnabled: Bool
+    var keyboardArrangement: ZhuyinKeyboardArrangement
 
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
-        automaticLearningEnabled: Bool = true
+        automaticLearningEnabled: Bool = true,
+        keyboardArrangement: ZhuyinKeyboardArrangement = .standard
     ) {
         self.shiftKeyPreference = shiftKeyPreference
         self.automaticLearningEnabled = automaticLearningEnabled
+        self.keyboardArrangement = keyboardArrangement
     }
 }
 
@@ -26,6 +29,7 @@ enum PreferenceKey: String, CaseIterable {
     case version = "JiukongPreferencesVersion"
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
+    case keyboardArrangement = "JiukongKeyboardArrangement"
 }
 
 extension Preferences {
@@ -53,6 +57,8 @@ extension Preferences {
                 shiftKeyPreference.rawValue,
             PreferenceKey.automaticLearningEnabled.rawValue:
                 automaticLearningEnabled,
+            PreferenceKey.keyboardArrangement.rawValue:
+                keyboardArrangement.rawValue,
         ]
     }
 
@@ -69,6 +75,12 @@ extension Preferences {
             from: values[PreferenceKey.automaticLearningEnabled.rawValue]
         ) {
             preferences.automaticLearningEnabled = enabled
+        }
+
+        if let rawValue = values[PreferenceKey.keyboardArrangement.rawValue]
+            as? String,
+           let arrangement = ZhuyinKeyboardArrangement(rawValue: rawValue) {
+            preferences.keyboardArrangement = arrangement
         }
 
         return preferences

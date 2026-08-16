@@ -25,23 +25,23 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>InputMethodConnectionName</key>
-	<string>tw_org_cloudgate_jiukong_inputmethod_zhuyin_Connection</string>
+	<string>tw_idv_jiukong_zhuyin_Connection</string>
 	<key>InputMethodServerControllerClass</key>
 	<string>JiukongInputController</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
-	<key>LSUIElement</key>
-	<true/>
 	<key>LSHasLocalizedDisplayName</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 oldming101.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>TISInputSourceID</key>
-	<string>tw.org.cloudgate.jiukong.inputmethod.zhuyin</string>
+	<string>tw.idv.jiukong.zhuyin</string>
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hant</string>
 	<key>tsInputMethodCharacterRepertoireKey</key>

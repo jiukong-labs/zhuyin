@@ -40,7 +40,10 @@ enum KeyboardKey: Hashable {
     case semicolon
     case slash
     case minus
-    // Not part of the Zhuyin arrangement; Milestone 9 uses them for punctuation.
+    // Unused by the standard arrangement. Milestone 9 places punctuation on the
+    // bracket keys; Milestone 10 uses quote and equal for other arrangements.
+    case quote
+    case equal
     case leftBracket
     case rightBracket
     case backslash

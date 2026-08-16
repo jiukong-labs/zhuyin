@@ -112,7 +112,20 @@ On 2026-08-15, Xcode 26.6 with the macOS 26.5 SDK completed all 194 Debug tests 
 
 The Milestone 7 sources were added without regenerating the checked-in Xcode project, so the first Debug test run failed to build until `xcodegen generate` was run again. Maintainers who add a file must regenerate the project in the same change.
 
-Installed TextEdit acceptance for the Milestone 7 gestures has not been recorded yet; the Milestone 5 and 6 installed runs remain the latest acceptance evidence.
+## Installed acceptance results
+
+On 2026-08-16 the ad-hoc-signed Release bundle was installed and driven through real `CGEvent` delivery to isolated, UUID-named TextEdit documents. The installed executable matched the Release build byte for byte (SHA-256 `35b202c5939fb3671e0f8851cdc9b5a61392fb80d76025d438aa0d168b555be5`), strict signature verification passed, and the input source reported itself enabled and selectable.
+
+Each run first proved that the client was actually talking to Jiukong: a probe syllable had to raise Jiukong's own candidate panel, identified by window owner. Without that proof a run aborts, because the system's own Zhuyin input method composes the same Bopomofo from the same keys and would otherwise be mistaken for this one. The runs are repeatable through `./scripts/run-acceptance.sh`.
+
+```text
+j i 3, Return, Return                  → 我 committed exactly once, no stray newline
+j i 3, Escape, Escape                  → empty document; nothing committed
+r u . 3, Space, d j / Space, Space,
+  Shift+Left ×2, Return                → 九空 committed, and stored as one user phrase
+```
+
+The created phrase appeared in `user.sqlite` as `九空` with ordered readings `ㄐㄧㄡˇ ㄎㄨㄥ` at schema version 2, and the character counts for 九 and 空 advanced to 1 each, confirming that learning happens only on the real client commit.
 
 ## Intentional limitations
 

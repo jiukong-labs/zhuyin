@@ -29,6 +29,30 @@ final class PreferencesTests: XCTestCase {
         }
     }
 
+    func testEveryKeyboardArrangementRoundTrips() {
+        for arrangement in ZhuyinKeyboardArrangement.allCases {
+            let stored = Preferences(keyboardArrangement: arrangement).encoded()
+
+            XCTAssertEqual(
+                Preferences.decoded(from: stored).keyboardArrangement,
+                arrangement
+            )
+        }
+    }
+
+    func testUnknownKeyboardArrangementFallsBackToStandard() {
+        let preferences = Preferences.decoded(
+            from: [
+                PreferenceKey.version.rawValue: 1,
+                PreferenceKey.keyboardArrangement.rawValue: "dvorak",
+                PreferenceKey.automaticLearningEnabled.rawValue: false,
+            ]
+        )
+
+        XCTAssertEqual(preferences.keyboardArrangement, .standard)
+        XCTAssertFalse(preferences.automaticLearningEnabled)
+    }
+
     func testEncodingStampsTheCurrentVersion() {
         let stored = Preferences.default.encoded()
 

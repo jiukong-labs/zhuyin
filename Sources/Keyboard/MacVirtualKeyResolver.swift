@@ -44,6 +44,8 @@ enum MacVirtualKeyResolver {
         case kVK_ANSI_Semicolon: return .semicolon
         case kVK_ANSI_Slash: return .slash
         case kVK_ANSI_Minus: return .minus
+        case kVK_ANSI_Quote: return .quote
+        case kVK_ANSI_Equal: return .equal
         case kVK_ANSI_LeftBracket: return .leftBracket
         case kVK_ANSI_RightBracket: return .rightBracket
         case kVK_ANSI_Backslash: return .backslash

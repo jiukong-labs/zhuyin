@@ -62,6 +62,16 @@ final class StandardZhuyinLayoutTests: XCTestCase {
     }
 
     func testLeavesUnmappedPhysicalKeyAlone() {
-        XCTAssertNil(MacVirtualKeyResolver.key(for: UInt16(kVK_ANSI_Equal)))
+        // Quote and equal became resolvable in Milestone 10 because other
+        // arrangements use them; grave and Tab still belong to the client.
+        XCTAssertNil(MacVirtualKeyResolver.key(for: UInt16(kVK_ANSI_Grave)))
+        XCTAssertNil(MacVirtualKeyResolver.key(for: UInt16(kVK_Tab)))
+    }
+
+    func testStandardArrangementIgnoresKeysOtherArrangementsUse() {
+        let layout = StandardZhuyinLayout()
+
+        XCTAssertNil(layout.component(for: .quote))
+        XCTAssertNil(layout.component(for: .equal))
     }
 }

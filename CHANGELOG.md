@@ -48,3 +48,9 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Full-width Chinese punctuation on Shift plus the three keys the Zhuyin arrangement leaves free.
 - Reading-free punctuation units that never join a user phrase or a phrase lookup.
 - Milestone 9 punctuation and verification documentation.
+- Selectable 倚天傳統 and IBM Bopomofo arrangements beside the standard one.
+- Live arrangement switching that finalizes the composition before rebuilding the session.
+- Milestone 10 arrangement and verification documentation.
+- GitHub Actions workflow running tests, a universal Release build, and dictionary reproducibility.
+- Source-membership check that fails when a Swift file is missing from the checked-in Xcode project.
+- Repeatable installed-acceptance harness that drives the installed bundle and proves which input method composed the text.

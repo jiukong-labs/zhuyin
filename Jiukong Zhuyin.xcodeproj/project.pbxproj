@@ -17,6 +17,7 @@
 		0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */; };
 		11D885D73DDF9A2F8185CF0E /* CandidateRankerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75066D454F50C29C343823FA /* CandidateRankerTests.swift */; };
+		13690FD1D6254FFFE84EE809 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
 		1456C798D4B7A0C1F6ED8AEE /* UserDataLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */; };
 		14C4230B00D5EC61B7A8901F /* StandardZhuyinLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */; };
 		174786A95696AC964BBB4E9C /* CNS11643_NOTICE.txt in Resources */ = {isa = PBXBuildFile; fileRef = DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */; };
@@ -66,6 +67,7 @@
 		74B209D9EA69393A3821C3CE /* BopomofoComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5D0B1D084CF9D4932B4A8 /* BopomofoComponent.swift */; };
 		7554A9A75EB55F73616FD4E3 /* UserDataListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AF04406192C10379BCF682 /* UserDataListController.swift */; };
 		75B45809505AAD2B711EEEEE /* PreferencesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03517B2F1F6C10948547B0A2 /* PreferencesStoreTests.swift */; };
+		7692788946787A42FBFD1C1D /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */; };
 		76A3472BDB7EB02CB094A40B /* CandidateCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */; };
 		783D7541B400A444EFA62568 /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
 		7922B9A6DE6E65F931DB7893 /* CandidateInputSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */; };
@@ -88,6 +90,7 @@
 		95522E389CFF44DD09F42E1E /* CharacterLearningRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */; };
 		975D05A5C10F709BD3FD6780 /* CharacterCandidateProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34FE8366ECC04BA9E927190 /* CharacterCandidateProvider.swift */; };
 		978D9B4587E3BA9520629731 /* UserDataLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */; };
+		99047DAB7FB6584F657027DC /* ZhuyinKeyboardArrangementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E22AD0F0E53E2614E50243E /* ZhuyinKeyboardArrangementTests.swift */; };
 		9D4AA24580EE764F6247165D /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		9E890B00268B9CE953688691 /* CompositionBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0205FBBB5182BEB7E74D732 /* CompositionBufferTests.swift */; };
 		9ED29E5445797849DC35D866 /* CompositionSelectionCommandRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 342935799C98E9EB5584AF78 /* CompositionSelectionCommandRouterTests.swift */; };
@@ -100,6 +103,7 @@
 		AECF58023168697EB29690B7 /* ShiftToggleControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15074F31AE6BAC12F61FA8C2 /* ShiftToggleControllerTests.swift */; };
 		AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */; };
 		B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
+		B1D7C34297C2E2B4608380FF /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C138C15B074BE10308B20A49 /* AppKit.framework */; };
 		B4CEC073646B884FDA6B3D07 /* CharacterCandidateProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34FE8366ECC04BA9E927190 /* CharacterCandidateProvider.swift */; };
 		B64D231C81DD6D492AECD234 /* CompositionBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */; };
 		B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */; };
@@ -112,10 +116,13 @@
 		C22E96D6B767D834A219EA83 /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		C246AB747EDFD6E92B592CF2 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		C68A40019CFABADFB86AFB8F /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
+		C784F5A3F57A6FB557A6B56E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE5DFE6245A13D720524505 /* main.swift */; };
 		C79D565EE382F7DF72B0B86E /* PreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4EAFAF400FF306E24BD9EE /* PreferencesStore.swift */; };
 		C916E036900B4B6FDD26D113 /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
 		CA9939E6A9E47F07A760DF9C /* LanguageMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFB253696548963758C54D3 /* LanguageMode.swift */; };
 		CB892CD22D17228E5671B987 /* PreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119722559BC5DEFC2BB0D86C /* PreferencesTests.swift */; };
+		CCDC2BE780CFAC5622DF6ED0 /* ZhuyinKeyboardArrangement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864E157C1B491375C06D884F /* ZhuyinKeyboardArrangement.swift */; };
+		D242D1A724515FE9CBB3864F /* ZhuyinKeyboardArrangement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864E157C1B491375C06D884F /* ZhuyinKeyboardArrangement.swift */; };
 		D7E75B586FA82EAACCF6E0D8 /* CandidateCommandReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */; };
 		D8F7B09EB7E71F6893ACE77A /* UserLearningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */; };
 		D967BA129A655FE1FDD923CC /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
@@ -140,6 +147,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Acceptance Harness"; sourceTree = BUILT_PRODUCTS_DIR; };
 		03517B2F1F6C10948547B0A2 /* PreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesStoreTests.swift; sourceTree = "<group>"; };
 		0748FDE71A052EB86AE9FC0B /* InputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputController.swift; sourceTree = "<group>"; };
 		107AA4C2629FAE0343555A77 /* KeyboardKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardKey.swift; sourceTree = "<group>"; };
@@ -147,6 +155,7 @@
 		1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataLocation.swift; sourceTree = "<group>"; };
 		15074F31AE6BAC12F61FA8C2 /* ShiftToggleControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftToggleControllerTests.swift; sourceTree = "<group>"; };
 		2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoParser.swift; sourceTree = "<group>"; };
+		2EE5DFE6245A13D720524505 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllable.swift; sourceTree = "<group>"; };
 		2F5407D4BBBCF115C2FE4D7C /* CandidateCommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandRouter.swift; sourceTree = "<group>"; };
 		32EFC11EAB2C94A893A2CB57 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -157,6 +166,7 @@
 		419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSession.swift; sourceTree = "<group>"; };
 		41AD9FD532E11E8C8224086E /* UserDataManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataManagementTests.swift; sourceTree = "<group>"; };
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
+		4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuffer.swift; sourceTree = "<group>"; };
 		516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PunctuationLayoutTests.swift; sourceTree = "<group>"; };
 		526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
@@ -165,6 +175,7 @@
 		590627441D682121FCF1B0A1 /* PunctuationLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PunctuationLayout.swift; sourceTree = "<group>"; };
 		5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandRouterTests.swift; sourceTree = "<group>"; };
 		5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSessionTests.swift; sourceTree = "<group>"; };
+		5E22AD0F0E53E2614E50243E /* ZhuyinKeyboardArrangementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhuyinKeyboardArrangementTests.swift; sourceTree = "<group>"; };
 		64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayout.swift; sourceTree = "<group>"; };
 		66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayout.swift; sourceTree = "<group>"; };
 		6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducerTests.swift; sourceTree = "<group>"; };
@@ -180,6 +191,7 @@
 		7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDictionaryTests.swift; sourceTree = "<group>"; };
 		7B186CA5B924FBF653433399 /* UserDataClearingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataClearingTests.swift; sourceTree = "<group>"; };
 		8310435AE00955EBEFC673B6 /* CandidateSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSession.swift; sourceTree = "<group>"; };
+		864E157C1B491375C06D884F /* ZhuyinKeyboardArrangement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhuyinKeyboardArrangement.swift; sourceTree = "<group>"; };
 		8896906B6EED89C1949CC6BF /* Candidate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Candidate.swift; sourceTree = "<group>"; };
 		8B7F381FE59E194327DB4A8C /* UserPhraseRecordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPhraseRecordTests.swift; sourceTree = "<group>"; };
 		8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterLearningRecord.swift; sourceTree = "<group>"; };
@@ -262,6 +274,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A5386410F462DC8A999CA022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1D7C34297C2E2B4608380FF /* AppKit.framework in Frameworks */,
+				7692788946787A42FBFD1C1D /* ApplicationServices.framework in Frameworks */,
+				13690FD1D6254FFFE84EE809 /* Carbon.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -312,6 +334,7 @@
 		30EA4653BE43CC46CCCD9EF7 /* Tools */ = {
 			isa = PBXGroup;
 			children = (
+				CEF87DAD0EA65CBC10376395 /* AcceptanceHarness */,
 				5B9349B530B651097A0936EE /* DictionaryBuilder */,
 			);
 			path = Tools;
@@ -329,6 +352,7 @@
 		3DAD93E3A197630F86AB6EF8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */,
 				715321CFA6F26EE6DA16640F /* Jiukong Dictionary Builder */,
 				FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */,
 				A096BED47B33FD3425B6DF35 /* Jiukong Zhuyin.app */,
@@ -519,10 +543,19 @@
 			path = Tests;
 			sourceTree = "<group>";
 		};
+		CEF87DAD0EA65CBC10376395 /* AcceptanceHarness */ = {
+			isa = PBXGroup;
+			children = (
+				2EE5DFE6245A13D720524505 /* main.swift */,
+			);
+			path = AcceptanceHarness;
+			sourceTree = "<group>";
+		};
 		D2FF5CAA2635C6E1EE58A6DE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				C138C15B074BE10308B20A49 /* AppKit.framework */,
+				4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */,
 				587C51C5637FCED202A4E35B /* Carbon.framework */,
 				BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */,
 				D01F60E94243161D89FAC2DA /* libsqlite3.tbd */,
@@ -538,6 +571,7 @@
 				F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */,
 				590627441D682121FCF1B0A1 /* PunctuationLayout.swift */,
 				64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */,
+				864E157C1B491375C06D884F /* ZhuyinKeyboardArrangement.swift */,
 			);
 			path = Keyboard;
 			sourceTree = "<group>";
@@ -585,6 +619,7 @@
 			children = (
 				516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */,
 				E7EC61447034D1CD5F119ABE /* StandardZhuyinLayoutTests.swift */,
+				5E22AD0F0E53E2614E50243E /* ZhuyinKeyboardArrangementTests.swift */,
 			);
 			path = KeyboardTests;
 			sourceTree = "<group>";
@@ -621,6 +656,24 @@
 			productName = "Jiukong Zhuyin Tests";
 			productReference = FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4CF5D70EB81B4BCFF4E05F24 /* Jiukong Acceptance Harness */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F0E2FC3678531628ACD5B887 /* Build configuration list for PBXNativeTarget "Jiukong Acceptance Harness" */;
+			buildPhases = (
+				78342CDA343D404CC056A7DE /* Sources */,
+				A5386410F462DC8A999CA022 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Jiukong Acceptance Harness";
+			packageProductDependencies = (
+			);
+			productName = "Jiukong Acceptance Harness";
+			productReference = 03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */;
+			productType = "com.apple.product-type.tool";
 		};
 		ADDAB8049B125A436A92B854 /* Jiukong Dictionary Builder */ = {
 			isa = PBXNativeTarget;
@@ -671,6 +724,9 @@
 					0B867B0EA3989DA65CEE42AA = {
 						ProvisioningStyle = Manual;
 					};
+					4CF5D70EB81B4BCFF4E05F24 = {
+						ProvisioningStyle = Manual;
+					};
 					ADDAB8049B125A436A92B854 = {
 						ProvisioningStyle = Manual;
 					};
@@ -695,6 +751,7 @@
 			targets = (
 				FEACA4DCDDB5E1A1F2154B49 /* Jiukong Zhuyin */,
 				0B867B0EA3989DA65CEE42AA /* Jiukong Zhuyin Tests */,
+				4CF5D70EB81B4BCFF4E05F24 /* Jiukong Acceptance Harness */,
 				ADDAB8049B125A436A92B854 /* Jiukong Dictionary Builder */,
 			);
 		};
@@ -727,6 +784,14 @@
 				2538A2B3C7B9A89AE53CC398 /* DictionaryDatabaseBuilder.swift in Sources */,
 				748A37EAEF698053462FED9C /* SQLiteDatabase.swift in Sources */,
 				7CC53D7DA8D6E018675A5127 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		78342CDA343D404CC056A7DE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C784F5A3F57A6FB557A6B56E /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -774,6 +839,7 @@
 				84FAFD8A15D9C4EAB7774211 /* UserLearningService.swift in Sources */,
 				32FFACF4D57F4C6532DE149F /* UserLearningStore.swift in Sources */,
 				DE72C8816E0AB3015D3E6A41 /* UserPhraseRecord.swift in Sources */,
+				D242D1A724515FE9CBB3864F /* ZhuyinKeyboardArrangement.swift in Sources */,
 				F32A31CF08E28712EA537A8F /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -851,12 +917,32 @@
 				3F7FC3F751DC27DE32D05449 /* UserPhraseRecord.swift in Sources */,
 				6DAD5D17BE31C20B736550B7 /* UserPhraseRecordTests.swift in Sources */,
 				1B00F60DE3439C7B17350472 /* UserPhraseStoreTests.swift in Sources */,
+				CCDC2BE780CFAC5622DF6ED0 /* ZhuyinKeyboardArrangement.swift in Sources */,
+				99047DAB7FB6584F657027DC /* ZhuyinKeyboardArrangementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		100C1C9FCEA3037EC80FAC7A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "tw.idv.jiukong.acceptance-harness";
+				PRODUCT_MODULE_NAME = JiukongAcceptanceHarness;
+				PRODUCT_NAME = JiukongAcceptanceHarness;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		14B2702B1B5BDCF86B897FAE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -874,7 +960,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
 				SDKROOT = macosx;
@@ -896,9 +982,27 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.zhuyin.tests;
 				PRODUCT_MODULE_NAME = JiukongZhuyinTests;
 				PRODUCT_NAME = "Jiukong Zhuyin Tests";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		2F830ACA6082A53B1A0533D4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "tw.idv.jiukong.acceptance-harness";
+				PRODUCT_MODULE_NAME = JiukongAcceptanceHarness;
+				PRODUCT_NAME = JiukongAcceptanceHarness;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -979,7 +1083,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "tw.org.cloudgate.jiukong.dictionary-builder";
+				PRODUCT_BUNDLE_IDENTIFIER = "tw.idv.jiukong.dictionary-builder";
 				PRODUCT_MODULE_NAME = JiukongDictionaryBuilder;
 				PRODUCT_NAME = JiukongDictionaryBuilder;
 				SDKROOT = macosx;
@@ -1003,7 +1107,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
 				SDKROOT = macosx;
@@ -1021,7 +1125,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "tw.org.cloudgate.jiukong.dictionary-builder";
+				PRODUCT_BUNDLE_IDENTIFIER = "tw.idv.jiukong.dictionary-builder";
 				PRODUCT_MODULE_NAME = JiukongDictionaryBuilder;
 				PRODUCT_NAME = JiukongDictionaryBuilder;
 				SDKROOT = macosx;
@@ -1101,7 +1205,7 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tw.org.cloudgate.jiukong.inputmethod.zhuyin.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.zhuyin.tests;
 				PRODUCT_MODULE_NAME = JiukongZhuyinTests;
 				PRODUCT_NAME = "Jiukong Zhuyin Tests";
 				SDKROOT = macosx;
@@ -1143,6 +1247,15 @@
 			buildConfigurations = (
 				895052FB5831D016909DC72B /* Debug */,
 				14B2702B1B5BDCF86B897FAE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F0E2FC3678531628ACD5B887 /* Build configuration list for PBXNativeTarget "Jiukong Acceptance Harness" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2F830ACA6082A53B1A0533D4 /* Debug */,
+				100C1C9FCEA3037EC80FAC7A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

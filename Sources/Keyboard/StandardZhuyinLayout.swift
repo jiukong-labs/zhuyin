@@ -43,7 +43,8 @@ struct StandardZhuyinLayout: KeyboardLayout {
         case .digit3: return .tone(.third)
         case .digit4: return .tone(.fourth)
         case .digit7: return .tone(.neutral)
-        case .leftBracket, .rightBracket, .backslash,
+        case .quote, .equal,
+             .leftBracket, .rightBracket, .backslash,
              .deleteBackward, .escape, .returnKey, .keypadEnter:
             return nil
         }

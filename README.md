@@ -6,7 +6,7 @@
 
 Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
 
-> 開發狀態：Milestone 9 已加入中文全形標點。字與詞的學習資料只保存在目前 Mac。
+> 開發狀態：Milestone 10 已加入倚天傳統與 IBM 注音鍵盤配置。字與詞的學習資料只保存在目前 Mac。
 
 ## Current features
 
@@ -20,7 +20,8 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Persistent settings for Shift switching and automatic learning
 - Searchable user-dictionary management with pinning, deletion, and clearing
 - Local JSON export and merging import of personal learning data
-- Full-width Chinese punctuation on the standard Zhuyin arrangement
+- Full-width Chinese punctuation on every arrangement
+- Standard, Eten Traditional, and IBM Bopomofo arrangements
 - Fully offline
 - Open source
 - MIT-licensed source code
@@ -29,9 +30,9 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 
 - Punctuation candidate window and remappable symbol tables
 
-## Milestone 9 input
+## Milestone 10 input
 
-目前版本使用台灣標準注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
+預設使用台灣標準（大千）注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
 ```text
 1 ㄅ  2 ㄉ  3 ˇ  4 ˋ  5 ㄓ  6 ˊ  7 ˙  8 ㄚ  9 ㄞ  0 ㄢ  - ㄦ
@@ -40,6 +41,24 @@ a ㄇ  s ㄋ  d ㄎ  f ㄑ  g ㄕ  h ㄘ  j ㄨ  k ㄜ  l ㄠ  ; ㄤ
 z ㄈ  x ㄌ  c ㄏ  v ㄒ  b ㄖ  n ㄙ  m ㄩ  , ㄝ  . ㄡ  / ㄥ
 Space 一聲
 ```
+
+也可在設定視窗改用「倚天傳統」或「IBM」配置：
+
+```text
+倚天傳統
+1 ˙   2 ˊ   3 ˇ   4 ˋ   7 ㄑ  8 ㄢ  9 ㄣ  0 ㄤ  - ㄥ  = ㄦ
+q ㄟ  w ㄝ  e ㄧ  r ㄜ  t ㄊ  y ㄡ  u ㄩ  i ㄞ  o ㄛ  p ㄆ
+a ㄚ  s ㄙ  d ㄉ  f ㄈ  g ㄐ  h ㄏ  j ㄖ  k ㄎ  l ㄌ  ; ㄗ  ' ㄘ
+z ㄠ  x ㄨ  c ㄒ  v ㄍ  b ㄅ  n ㄋ  m ㄇ  , ㄓ  . ㄔ  / ㄕ
+
+IBM
+1 ㄅ  2 ㄆ  3 ㄇ  4 ㄈ  5 ㄉ  6 ㄊ  7 ㄋ  8 ㄌ  9 ㄍ  0 ㄎ  - ㄏ
+q ㄐ  w ㄑ  e ㄒ  r ㄓ  t ㄔ  y ㄕ  u ㄖ  i ㄗ  o ㄘ  p ㄙ
+a ㄧ  s ㄨ  d ㄩ  f ㄚ  g ㄛ  h ㄜ  j ㄝ  k ㄞ  l ㄟ  ; ㄠ
+z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
+```
+
+三種配置都是一鍵一符號，Space 都是一聲。切換配置會先送出尚未完成的組字，下一次按鍵立即生效，不需重新啟動。倚天26鍵與許氏這類一鍵多符號的配置不在目前範圍內。標點不受配置影響。
 
 例如 `j i 3` 會完成 `ㄨㄛˇ` 並顯示候選，第一個候選是「我」；`r u 0 4` 會顯示 `ㄐㄧㄢˋ` 的同音候選。輸入中的注音會先顯示為 marked text；聲調鍵會完成音節並查詢字典。候選窗起初顯示目前一列、最多 9 個候選；第一次按 ↓ 只展開視窗，不移動反白，展開後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看。
 
@@ -100,7 +119,7 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗，共四個分頁：
 
-- **一般**：中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關；
+- **一般**：注音鍵盤配置（標準／倚天傳統／IBM）、中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關；
 - **使用者詞**：列出所有自己造的詞與逐音注音，可搜尋、置頂或刪除單筆；
 - **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
 - **資料**：匯出／匯入 JSON，以及清除選字紀錄、清除使用者詞、清除全部。
@@ -139,11 +158,19 @@ xcodebuild \
   test
 ```
 
-The checked-in Xcode project builds without XcodeGen. Maintainers who change `project.yml` can regenerate it with XcodeGen 2.46 or later:
+The checked-in Xcode project builds without XcodeGen. Maintainers who add a file or change `project.yml` must regenerate it with XcodeGen 2.46 or later and commit the result:
 
 ```sh
 xcodegen generate
 ```
+
+A file that exists on disk but is missing from the checked-in project is silently not compiled and its tests never run, so verify membership before committing:
+
+```sh
+./scripts/check-project-sources.sh
+```
+
+GitHub Actions runs the same checks on every push and pull request: the source-membership check, the Debug test suite, a universal Release build, and a rebuild of the dictionary from its pinned snapshot that must reproduce the checked-in artifact byte for byte. A separate advisory job reports when the checked-in project no longer matches `project.yml`.
 
 The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot without network access:
 
@@ -167,13 +194,38 @@ The default build uses an ad-hoc local signature. A maintainer with an Apple Dev
 SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./scripts/install.sh
 ```
 
-On current macOS versions, enabling a newly installed third-party input method can require explicit user approval. Then verify or approve the input source:
+macOS keeps its input-source database per login session, and a bundle identifier the session has never seen stays invisible to Text Input Sources however often it is registered. The first install of a new identifier therefore ends with:
+
+```text
+The bundle is installed, but macOS did not register the input source.
+Log out and back in once, then run this installer again.
+```
+
+That is expected, not a build failure. The identifier is `tw.idv.jiukong.zhuyin`.
+
+On current macOS versions, enabling a newly installed third-party input method can also require explicit user approval. Then verify or approve the input source:
 
 1. Open **System Settings**.
 2. Choose **Keyboard**.
 3. Under **Text Input**, click **Edit…**.
 4. Confirm **久空輸入法** is present. If it is not already enabled, click **+**, select **Traditional Chinese**, choose **久空輸入法**, and approve the prompt.
 5. If the newly installed input method does not appear immediately, sign out and back in once, then repeat the steps.
+
+## Installed acceptance
+
+Unit tests cannot reach the InputMethodKit event path, so the behavior that only exists in a real client is checked by driving the installed bundle:
+
+```sh
+./scripts/install.sh
+./scripts/run-acceptance.sh              # single, escape, punctuation, brackets, phrase
+./scripts/run-acceptance.sh eten         # after setting the arrangement preference
+```
+
+Each run launches its own TextEdit instance, types with real `CGEvent` delivery, compares the resulting text with the expectation, then restores the previous input source and closes the instance it launched. Existing TextEdit windows are untouched.
+
+Every run first requires Jiukong's own candidate panel to appear before it types anything. Without that check a run can silently be composed by the system's built-in Zhuyin input method, which produces the same Bopomofo from the same keys and would look like a pass. A run that cannot prove the connection aborts instead of reporting a result.
+
+The `phrase` script creates the user phrase 九空 in the local learning database, and every run that commits text advances that character's count. Clear them from the settings window if the data is unwanted. The harness needs Accessibility and event-posting permission for the terminal running it, which is why it is not part of continuous integration.
 
 To disable the development input source and remove only its installed bundle:
 
@@ -185,9 +237,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 9 提供標準注音鍵盤上的中文全形標點：注音鍵維持原義、標點放在 Shift，未使用的 `[`、`]`、`\` 直接對應括號類標點。標點候選視窗與可自訂符號表仍在後續里程碑。
+Milestone 10 提供倚天傳統與 IBM 兩種一鍵一符號的注音配置，可在設定視窗切換；配置只影響鍵位對應，組字、選字、學習與標點都不受影響。一鍵多符號的 26 鍵配置與自訂配置仍在後續里程碑。
 
-詳見 [Milestone 9 notes](docs/MILESTONE_9.md)、[Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [Milestone 10 notes](docs/MILESTONE_10.md)、[Milestone 9 notes](docs/MILESTONE_9.md)、[Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 

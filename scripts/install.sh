@@ -10,7 +10,7 @@ build_configuration="${CONFIGURATION:-Release}"
 build_architecture="$(uname -m)"
 derived_data_path="${DERIVED_DATA_PATH:-$repository_root/.build/DerivedData}"
 signing_identity="${SIGNING_IDENTITY:--}"
-bundle_identifier="tw.org.cloudgate.jiukong.inputmethod.zhuyin"
+bundle_identifier="tw.idv.jiukong.zhuyin"
 built_application="$derived_data_path/Build/Products/$build_configuration/Jiukong Zhuyin.app"
 installation_directory="$HOME/Library/Input Methods"
 installed_application="$installation_directory/Jiukong Zhuyin.app"
@@ -60,10 +60,22 @@ fi
 /bin/mv "$staged_application" "$installed_application"
 /usr/bin/touch "$installation_directory"
 
-"$installed_application/Contents/MacOS/Jiukong Zhuyin" --register
-
 print "Installed Jiukong Zhuyin at:"
 print "  $installed_application"
+
+# macOS keeps its input-source database per login session. A bundle identifier
+# this session has never seen stays invisible to Text Input Sources until the
+# next login, no matter how often it is registered, so the bundle is left in
+# place and the user is told what the remaining step is.
+if ! "$installed_application/Contents/MacOS/Jiukong Zhuyin" --register; then
+    print ""
+    print "The bundle is installed, but macOS did not register the input source."
+    print "This is expected the first time a new bundle identifier is installed:"
+    print "  $bundle_identifier"
+    print "Log out and back in once, then run this installer again."
+    exit 1
+fi
+
 print "macOS accepted the enable request but may require your approval."
 print "Open System Settings > Keyboard > Text Input > Edit… and confirm 久空輸入法."
 print "The installer did not select or switch your current input source."

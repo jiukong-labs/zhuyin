@@ -63,7 +63,18 @@ xcodebuild -project "Jiukong Zhuyin.xcodeproj" -scheme "Jiukong Zhuyin" -configu
 
 On 2026-08-16, Xcode 26.6 with the macOS 26.5 SDK completed all 258 Debug tests with no failures, and the generic Release build produced a universal `arm64`/`x86_64` application.
 
-Installed acceptance in a real client — typing each mark, checking that `[` no longer produces ASCII in Chinese mode, and confirming that English mode still does — has not been recorded yet.
+## Installed acceptance results
+
+On 2026-08-16 the installed Release bundle was driven through real `CGEvent` delivery to isolated TextEdit documents, with each run first proving that the client was routing keys through Jiukong rather than the system's own Zhuyin input method:
+
+```text
+j i 3, Shift+comma, j i 3, Return, Return   → 我，我
+[ , j i 3, ] , \ , Return                   → 「我」、
+```
+
+Both confirm the intended composition behavior: `Shift+,` accepted the highlighted candidate on its own before inserting the mark, the unshifted bracket and backslash keys produced full-width marks instead of ASCII, and the whole run — converted text and punctuation together — reached the client as one commit on Return.
+
+Typing each remaining mark, and confirming that English mode still yields ASCII for these keys, has not been recorded yet.
 
 ## Intentional limitations
 

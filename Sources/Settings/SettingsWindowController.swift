@@ -17,7 +17,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private var window: NSWindow?
     private var shiftPopUpButton: NSPopUpButton?
+    private var arrangementPopUpButton: NSPopUpButton?
     private var automaticLearningButton: NSButton?
+
+    private static let arrangements = ZhuyinKeyboardArrangement.allCases
 
     private static let shiftOptions: [(title: String, value: ShiftKeyPreference)] = [
         ("左右 Shift 皆可", .both),
@@ -128,8 +131,21 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         )
         automaticLearningButton = checkbox
 
+        let arrangementButton = NSPopUpButton(frame: .zero, pullsDown: false)
+        for arrangement in Self.arrangements {
+            arrangementButton.addItem(withTitle: arrangement.localizedName)
+        }
+        arrangementButton.target = self
+        arrangementButton.action = #selector(arrangementDidChange(_:))
+        arrangementPopUpButton = arrangementButton
+
         return makePane(
             sections: [
+                makeSection(
+                    title: "注音鍵盤配置",
+                    controls: [arrangementButton],
+                    note: "與目前選用的英文字母鍵盤配置無關。切換時會先送出尚未完成的組字。"
+                ),
                 makeSection(
                     title: "中英文切換",
                     controls: [popUpButton],
@@ -243,6 +259,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         ) {
             shiftPopUpButton?.selectItem(at: index)
         }
+        if let index = Self.arrangements.firstIndex(
+            of: current.keyboardArrangement
+        ) {
+            arrangementPopUpButton?.selectItem(at: index)
+        }
         automaticLearningButton?.state =
             current.automaticLearningEnabled ? .on : .off
     }
@@ -259,6 +280,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         preferences.update {
             $0.shiftKeyPreference = Self.shiftOptions[index].value
+        }
+    }
+
+    @objc private func arrangementDidChange(_ sender: NSPopUpButton) {
+        let index = sender.indexOfSelectedItem
+        guard Self.arrangements.indices.contains(index) else {
+            return
+        }
+        preferences.update {
+            $0.keyboardArrangement = Self.arrangements[index]
         }
     }
 

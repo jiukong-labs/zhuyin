@@ -1,6 +1,6 @@
 # Architecture
 
-Milestone 9 adds Chinese punctuation while keeping parsing, composition state, ranking, storage, candidate presentation, settings UI, InputMethodKit side effects, and reproducible dictionary tooling separate.
+Milestone 10 adds alternative Bopomofo arrangements while keeping parsing, composition state, ranking, storage, candidate presentation, settings UI, InputMethodKit side effects, and reproducible dictionary tooling separate.
 
 ## Process boundary
 
@@ -27,7 +27,7 @@ NSEvent key code
   → IMKTextInput marked text or committed character
 ```
 
-- `KeyboardLayout` is the extension point for a future keyboard arrangement. Milestone 2 provides only `StandardZhuyinLayout`.
+- `KeyboardLayout` is the arrangement extension point. `ZhuyinKeyboardArrangement` selects between the standard 大千 switch-based layout and the 倚天傳統 and IBM tables, all of them one-to-one; ambiguous 26-key arrangements are out of scope. Everything downstream works on `BopomofoComponent`, never on key codes, so only this layer is arrangement-aware. The controller rebuilds its session after finalizing the composition when the persisted arrangement changes.
 - `PunctuationLayout` is a separate pure table over the same physical keys. Bopomofo keys keep their meaning unshifted and carry punctuation on Shift; the three keys the arrangement never uses carry bracket-style marks directly. Caps Lock is ignored, and real shortcut modifiers still pass through.
 - `BopomofoSyllable` stores one optional initial, medial, final, and tone. It renders them in canonical order while separately preserving input order for Backspace.
 - Horizontal neutral tone is rendered before the syllable body, such as `˙ㄉㄜ`; first tone has no visible mark.
@@ -59,6 +59,8 @@ Pinned CNS11643 phonetic and CNS/Unicode TSV files
   → indexed, versioned SQLite artifact
   → read-only CharacterDictionary queries at runtime
 ```
+
+The generated artifact is byte-for-byte reproducible from the pinned snapshot, so continuous integration rebuilds it on every change and fails if the checked-in database no longer matches its sources.
 
 The normal app build never downloads data and never parses raw TSV files. `JiukongDictionaryBuilder` is a separate command-line target. It records the upstream version, source archive hashes, transformation, license, and exact row statistics in the generated database. The runtime validates SQLite `application_id` and `user_version`, opens one full-mutex read-only connection per input controller, and enables `query_only`.
 
@@ -103,6 +105,16 @@ Active composition is sent with `setMarkedText`; its caret range is relative to 
 Client-driven commit, input-source change notification or deactivation, palette hiding, and controller closure all use the same idempotent session finalization path. The public distributed source-change notification is registered for immediate delivery and only finalizes after the current source identifier confirms a switch away from Jiukong.
 
 Milestone 5 must recognize `flagsChanged`, so InputMethodKit no longer provides its key-down-only default mouse finalization. The controller explicitly recognizes client left/right/other mouse-down events, resets a pending Shift gesture, finalizes active composition once, and returns the mouse event to the client. No global event monitor or Accessibility-based document reading is used.
+
+## Installed acceptance
+
+`Tools/AcceptanceHarness` is a separate command-line target that drives the installed bundle through real `CGEvent` delivery to its own TextEdit instance, then restores the previous input source. It exists because no unit test can reach the InputMethodKit event path.
+
+Two rules in it are load-bearing. The system's own Zhuyin input method composes identical Bopomofo from identical keys, so every run must first raise Jiukong's own candidate panel, identified by window owner, or abort; without that check a run that never reached this input method looks like a pass. And because a running application keeps the input source it already adopted, the harness selects the source first and then launches a new client instance rather than trying to convert an existing one.
+
+## Continuous integration
+
+The Xcode project is checked in so the repository builds without XcodeGen, which means a file added to disk but not to the project is compiled by nobody and tested by nobody. `scripts/check-project-sources.sh` fails on exactly that, and it gates the GitHub Actions build, which then runs the Debug suite, produces a universal Release binary, and verifies the architectures. It also builds the acceptance harness, which cannot run there but must not rot against the sources it drives. A second job rebuilds the dictionary from its pinned snapshot and requires the checked-in artifact to be unchanged. A third job regenerates the project from `project.yml` and reports any difference, kept advisory because XcodeGen formatting can change between releases.
 
 ## Configuration
 
