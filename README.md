@@ -6,7 +6,7 @@
 
 Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
 
-> 開發狀態：Milestone 10 已加入倚天傳統與 IBM 注音鍵盤配置。字與詞的學習資料只保存在目前 Mac。
+> 開發狀態：Milestone 11 已加入跟隨游標的輸入模式指示器。字與詞的學習資料只保存在目前 Mac。
 
 ## Current features
 
@@ -22,6 +22,7 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Local JSON export and merging import of personal learning data
 - Full-width Chinese punctuation on every arrangement
 - Standard, Eten Traditional, and IBM Bopomofo arrangements
+- Optional cursor-following indicator for the current input mode
 - Fully offline
 - Open source
 - MIT-licensed source code
@@ -30,7 +31,7 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 
 - Punctuation candidate window and remappable symbol tables
 
-## Milestone 10 input
+## Milestone 11 input
 
 預設使用台灣標準（大千）注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -93,11 +94,23 @@ Shift+[  『      Shift+]  』
 
 ### 中英文切換
 
-中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換後會在游標附近短暫顯示「中」或「A」，不會搶走目前 App 的鍵盤焦點。
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換後會在游標附近短暫顯示「中」或「A」，不會搶走目前 App 的鍵盤焦點；若已開啟游標指示器，就改由它常駐顯示，不再另外閃現提示。
 
 英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
 若切換模式時仍有未完成注音或候選，久空會先完成一次目前組字再切換，避免吃字或重複插入。因 Milestone 5 需要接收 Shift 的 modifier 事件，久空也會透過 InputMethodKit 公開事件路徑處理 client 內的滑鼠按下：先完成現有組字，再把點擊交回 App。
+
+### 游標指示器
+
+設定視窗的「游標指示器」分頁可讓目前輸入模式常駐顯示在滑鼠游標旁，功能來自獨立工具 `lang-cursor`（付費的 StoreKit 授權部分未移植）：
+
+- 位置：游標右上／右側／右下；
+- 追蹤：固定距離（貼齊游標）或跟隨游標（帶尾隨感的緩動）；
+- 文字大小五段；
+- Caps Lock 開啟時可一併顯示 `⇪`，並有五段大小；
+- 中文與英文各自的自訂文字（最多 4 字元）與顏色，留空即用預設的「中」「A」與紅／藍。
+
+指示器**預設關閉**。它只在久空是目前輸入來源時顯示，切換到其他輸入法會自動消失 —— 想在所有輸入法下都看得到，仍需使用獨立的 `lang-cursor`。Caps Lock 狀態以每 0.2 秒輪詢取得，不需要輸入監控權限。
 
 ### 個人選字學習
 
@@ -120,6 +133,7 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗，共四個分頁：
 
 - **一般**：注音鍵盤配置（標準／倚天傳統／IBM）、中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關；
+- **游標指示器**：在游標旁顯示目前輸入模式，可設定位置、追蹤方式、文字大小、Caps Lock 指示，以及中／英文各自的文字與顏色；
 - **使用者詞**：列出所有自己造的詞與逐音注音，可搜尋、置頂或刪除單筆；
 - **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
 - **資料**：匯出／匯入 JSON，以及清除選字紀錄、清除使用者詞、清除全部。
@@ -194,14 +208,20 @@ The default build uses an ad-hoc local signature. A maintainer with an Apple Dev
 SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./scripts/install.sh
 ```
 
-macOS keeps its input-source database per login session, and a bundle identifier the session has never seen stays invisible to Text Input Sources however often it is registered. The first install of a new identifier therefore ends with:
+The bundle identifier is `tw.idv.jiukong.inputmethod.zhuyin`. Two constraints were established by experiment on macOS 26 and both make registration fail silently:
 
-```text
-The bundle is installed, but macOS did not register the input source.
-Log out and back in once, then run this installer again.
+- **The identifier must contain an `inputmethod` component that is not the last one.** `tw.idv.jiukong.inputmethod.zhuyin` and `tw.idv.inputmethod.zhuyin` register; `tw.idv.jiukong.zhuyin`, `tw.idv.jiukong.zhuyinim`, and `tw.idv.jiukong.zhuyin.inputmethod` do not. `TISRegisterInputSource` still returns `noErr` for the rejected ones, so the only symptom is that the source never appears.
+- **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
+
+```sh
+lsregister=/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister
+"$lsregister" -f -R -trusted ~/Library/Input\ Methods/Jiukong\ Zhuyin.app
+~/Library/Input\ Methods/Jiukong\ Zhuyin.app/Contents/MacOS/Jiukong\ Zhuyin --register
 ```
 
-That is expected, not a build failure. The identifier is `tw.idv.jiukong.zhuyin`.
+If the installer reports that macOS did not register the input source, check both of those before anything else.
+
+A registered source still has to be enabled, and that is a user decision macOS does not delegate: `TISEnableInputSource` returns `noErr` while leaving the source disabled, and `TISSelectInputSource` then fails with `-50`. A newly registered identifier may also not appear in **System Settings > Keyboard > Text Input > Edit… > +** until the next login, so log out and back in once if it is missing there.
 
 On current macOS versions, enabling a newly installed third-party input method can also require explicit user approval. Then verify or approve the input source:
 
@@ -237,9 +257,9 @@ No root access, SIP changes, or private APIs are required.
 
 ## Current milestone scope
 
-Milestone 10 提供倚天傳統與 IBM 兩種一鍵一符號的注音配置，可在設定視窗切換；配置只影響鍵位對應，組字、選字、學習與標點都不受影響。一鍵多符號的 26 鍵配置與自訂配置仍在後續里程碑。
+Milestone 11 把獨立工具 `lang-cursor` 的免費功能併入輸入法：跟隨游標的模式指示器（位置、追蹤方式、五種大小、Caps Lock 指示、中／英文自訂文字與顏色），付費的 StoreKit 授權部分未移植。Milestone 10 提供倚天傳統與 IBM 兩種一鍵一符號的注音配置，可在設定視窗切換；配置只影響鍵位對應，組字、選字、學習與標點都不受影響。一鍵多符號的 26 鍵配置與自訂配置仍在後續里程碑。
 
-詳見 [Milestone 10 notes](docs/MILESTONE_10.md)、[Milestone 9 notes](docs/MILESTONE_9.md)、[Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [Milestone 11 notes](docs/MILESTONE_11.md)、[Milestone 10 notes](docs/MILESTONE_10.md)、[Milestone 9 notes](docs/MILESTONE_9.md)、[Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
 
 ## Privacy
 

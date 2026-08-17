@@ -11,15 +11,50 @@ struct Preferences: Equatable {
     var shiftKeyPreference: ShiftKeyPreference
     var automaticLearningEnabled: Bool
     var keyboardArrangement: ZhuyinKeyboardArrangement
+    var cursorIndicator: CursorIndicatorPreferences
 
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
         automaticLearningEnabled: Bool = true,
-        keyboardArrangement: ZhuyinKeyboardArrangement = .standard
+        keyboardArrangement: ZhuyinKeyboardArrangement = .standard,
+        cursorIndicator: CursorIndicatorPreferences = CursorIndicatorPreferences()
     ) {
         self.shiftKeyPreference = shiftKeyPreference
         self.automaticLearningEnabled = automaticLearningEnabled
         self.keyboardArrangement = keyboardArrangement
+        self.cursorIndicator = cursorIndicator
+    }
+}
+
+/// The cursor-following mode indicator.
+///
+/// It is off by default: an input method that already shows a transient HUD
+/// should not start painting a persistent overlay without being asked.
+struct CursorIndicatorPreferences: Equatable {
+    var isEnabled: Bool
+    var placement: CursorIndicatorPlacement
+    var tracking: CursorIndicatorTracking
+    var textSize: CursorIndicatorTextSize
+    var showsCapsLockIndicator: Bool
+    var capsLockIndicatorSize: CapsLockIndicatorSize
+    var appearance: CursorIndicatorAppearance
+
+    init(
+        isEnabled: Bool = false,
+        placement: CursorIndicatorPlacement = .lowerRight,
+        tracking: CursorIndicatorTracking = .fixedDistance,
+        textSize: CursorIndicatorTextSize = .small,
+        showsCapsLockIndicator: Bool = true,
+        capsLockIndicatorSize: CapsLockIndicatorSize = .extraLarge,
+        appearance: CursorIndicatorAppearance = CursorIndicatorAppearance()
+    ) {
+        self.isEnabled = isEnabled
+        self.placement = placement
+        self.tracking = tracking
+        self.textSize = textSize
+        self.showsCapsLockIndicator = showsCapsLockIndicator
+        self.capsLockIndicatorSize = capsLockIndicatorSize
+        self.appearance = appearance
     }
 }
 
@@ -30,6 +65,16 @@ enum PreferenceKey: String, CaseIterable {
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
     case keyboardArrangement = "JiukongKeyboardArrangement"
+    case cursorIndicatorEnabled = "JiukongCursorIndicatorEnabled"
+    case cursorIndicatorPlacement = "JiukongCursorIndicatorPlacement"
+    case cursorIndicatorTracking = "JiukongCursorIndicatorTracking"
+    case cursorIndicatorTextSize = "JiukongCursorIndicatorTextSize"
+    case cursorIndicatorShowsCapsLock = "JiukongCursorIndicatorShowsCapsLock"
+    case cursorIndicatorCapsLockSize = "JiukongCursorIndicatorCapsLockSize"
+    case cursorIndicatorChineseText = "JiukongCursorIndicatorChineseText"
+    case cursorIndicatorEnglishText = "JiukongCursorIndicatorEnglishText"
+    case cursorIndicatorChineseColor = "JiukongCursorIndicatorChineseColor"
+    case cursorIndicatorEnglishColor = "JiukongCursorIndicatorEnglishColor"
 }
 
 extension Preferences {
@@ -59,6 +104,26 @@ extension Preferences {
                 automaticLearningEnabled,
             PreferenceKey.keyboardArrangement.rawValue:
                 keyboardArrangement.rawValue,
+            PreferenceKey.cursorIndicatorEnabled.rawValue:
+                cursorIndicator.isEnabled,
+            PreferenceKey.cursorIndicatorPlacement.rawValue:
+                cursorIndicator.placement.rawValue,
+            PreferenceKey.cursorIndicatorTracking.rawValue:
+                cursorIndicator.tracking.rawValue,
+            PreferenceKey.cursorIndicatorTextSize.rawValue:
+                cursorIndicator.textSize.rawValue,
+            PreferenceKey.cursorIndicatorShowsCapsLock.rawValue:
+                cursorIndicator.showsCapsLockIndicator,
+            PreferenceKey.cursorIndicatorCapsLockSize.rawValue:
+                cursorIndicator.capsLockIndicatorSize.rawValue,
+            PreferenceKey.cursorIndicatorChineseText.rawValue:
+                cursorIndicator.appearance.chineseText ?? "",
+            PreferenceKey.cursorIndicatorEnglishText.rawValue:
+                cursorIndicator.appearance.englishText ?? "",
+            PreferenceKey.cursorIndicatorChineseColor.rawValue:
+                cursorIndicator.appearance.chineseColorHex ?? "",
+            PreferenceKey.cursorIndicatorEnglishColor.rawValue:
+                cursorIndicator.appearance.englishColorHex ?? "",
         ]
     }
 
@@ -83,7 +148,63 @@ extension Preferences {
             preferences.keyboardArrangement = arrangement
         }
 
+        preferences.cursorIndicator = decodedCursorIndicator(from: values)
+
         return preferences
+    }
+
+    private static func decodedCursorIndicator(
+        from values: [String: Any]
+    ) -> CursorIndicatorPreferences {
+        var indicator = CursorIndicatorPreferences()
+
+        if let enabled = boolean(
+            from: values[PreferenceKey.cursorIndicatorEnabled.rawValue]
+        ) {
+            indicator.isEnabled = enabled
+        }
+        if let showsCapsLock = boolean(
+            from: values[PreferenceKey.cursorIndicatorShowsCapsLock.rawValue]
+        ) {
+            indicator.showsCapsLockIndicator = showsCapsLock
+        }
+        if let raw = values[PreferenceKey.cursorIndicatorPlacement.rawValue]
+            as? String,
+           let placement = CursorIndicatorPlacement(rawValue: raw) {
+            indicator.placement = placement
+        }
+        if let raw = values[PreferenceKey.cursorIndicatorTracking.rawValue]
+            as? String,
+           let tracking = CursorIndicatorTracking(rawValue: raw) {
+            indicator.tracking = tracking
+        }
+        if let raw = values[PreferenceKey.cursorIndicatorTextSize.rawValue]
+            as? String,
+           let size = CursorIndicatorTextSize(rawValue: raw) {
+            indicator.textSize = size
+        }
+        if let raw = values[PreferenceKey.cursorIndicatorCapsLockSize.rawValue]
+            as? String,
+           let size = CapsLockIndicatorSize(rawValue: raw) {
+            indicator.capsLockIndicatorSize = size
+        }
+
+        // Empty strings mean "no override" so a cleared field in the settings
+        // window restores the default rather than blanking the indicator.
+        indicator.appearance = CursorIndicatorAppearance(
+            chineseText: values[PreferenceKey.cursorIndicatorChineseText.rawValue]
+                as? String,
+            englishText: values[PreferenceKey.cursorIndicatorEnglishText.rawValue]
+                as? String,
+            chineseColorHex:
+                values[PreferenceKey.cursorIndicatorChineseColor.rawValue]
+                as? String,
+            englishColorHex:
+                values[PreferenceKey.cursorIndicatorEnglishColor.rawValue]
+                as? String
+        )
+
+        return indicator
     }
 
     /// `defaults write` can produce a boolean, an integer, or a string, and a

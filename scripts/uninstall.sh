@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-bundle_identifier="tw.idv.jiukong.zhuyin"
+bundle_identifier="tw.idv.jiukong.inputmethod.zhuyin"
 installation_directory="$HOME/Library/Input Methods"
 installed_application="$installation_directory/Jiukong Zhuyin.app"
 

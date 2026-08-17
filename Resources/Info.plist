@@ -25,7 +25,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>InputMethodConnectionName</key>
-	<string>tw_idv_jiukong_zhuyin_Connection</string>
+	<string>tw_idv_jiukong_inputmethod_zhuyin_Connection</string>
 	<key>InputMethodServerControllerClass</key>
 	<string>JiukongInputController</string>
 	<key>LSApplicationCategoryType</key>
@@ -41,7 +41,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>TISInputSourceID</key>
-	<string>tw.idv.jiukong.zhuyin</string>
+	<string>tw.idv.jiukong.inputmethod.zhuyin</string>
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hant</string>
 	<key>tsInputMethodCharacterRepertoireKey</key>

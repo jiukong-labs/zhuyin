@@ -58,6 +58,7 @@ targets:
       - path: Sources/Keyboard
       - path: Sources/Language
       - path: Sources/Learning
+      - path: Sources/Overlay
       - path: Sources/Preferences
       - path: Sources/Settings
       - path: Resources/Assets/JiukongZhuyin.icns
@@ -91,7 +92,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleSignature: JKZY
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        InputMethodConnectionName: tw_idv_jiukong_zhuyin_Connection
+        InputMethodConnectionName: tw_idv_jiukong_inputmethod_zhuyin_Connection
         InputMethodServerControllerClass: JiukongInputController
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
@@ -99,7 +100,7 @@ targets:
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: Copyright © 2026 oldming101.
         NSPrincipalClass: NSApplication
-        TISInputSourceID: tw.idv.jiukong.zhuyin
+        TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin
         TISIntendedLanguage: zh-Hant
         tsInputMethodCharacterRepertoireKey:
           - Hant
@@ -113,7 +114,7 @@ targets:
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: 0.1.0
-        PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.zhuyin
+        PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.inputmethod.zhuyin
         PRODUCT_MODULE_NAME: JiukongZhuyin
         PRODUCT_NAME: Jiukong Zhuyin
 
@@ -139,6 +140,8 @@ targets:
       - path: Sources/Language/LanguageMode.swift
       - path: Sources/Language/ShiftToggleController.swift
       - path: Sources/Learning
+      - path: Sources/Overlay/CursorIndicatorSettings.swift
+      - path: Sources/Overlay/CursorIndicatorAppearance.swift
       - path: Sources/Preferences
       - path: Tools/DictionaryBuilder/CNS11643Manifest.swift
       - path: Tools/DictionaryBuilder/CNS11643Parser.swift
@@ -153,7 +156,7 @@ targets:
         CODE_SIGN_STYLE: Manual
         ENABLE_APP_SANDBOX: NO
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.zhuyin.tests
+        PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.inputmethod.zhuyin.tests
         PRODUCT_MODULE_NAME: JiukongZhuyinTests
         PRODUCT_NAME: Jiukong Zhuyin Tests
 

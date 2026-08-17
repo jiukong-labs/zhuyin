@@ -54,3 +54,5 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - GitHub Actions workflow running tests, a universal Release build, and dictionary reproducibility.
 - Source-membership check that fails when a Swift file is missing from the checked-in Xcode project.
 - Repeatable installed-acceptance harness that drives the installed bundle and proves which input method composed the text.
+- Optional cursor-following mode indicator with placement, tracking, size, Caps Lock badge, and per-mode text and color, ported from the lang-cursor utility.
+- Milestone 11 cursor-indicator and verification documentation.

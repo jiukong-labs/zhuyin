@@ -17,7 +17,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         XCTAssertEqual(info["NSPrincipalClass"] as? String, "NSApplication")
         XCTAssertEqual(
             info["InputMethodConnectionName"] as? String,
-            "tw_idv_jiukong_zhuyin_Connection"
+            "tw_idv_jiukong_inputmethod_zhuyin_Connection"
         )
         XCTAssertEqual(
             info["InputMethodServerControllerClass"] as? String,
@@ -25,7 +25,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         )
         XCTAssertEqual(
             info["TISInputSourceID"] as? String,
-            "tw.idv.jiukong.zhuyin"
+            "tw.idv.jiukong.inputmethod.zhuyin"
         )
         XCTAssertEqual(info["TISIntendedLanguage"] as? String, "zh-Hant")
         XCTAssertEqual(

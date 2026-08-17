@@ -24,7 +24,7 @@ xcodebuild -project "Jiukong Zhuyin.xcodeproj" -scheme "Jiukong Zhuyin" -configu
 ./scripts/install.sh
 ```
 
-After installation, the registration helper must report the source ID `tw.idv.jiukong.zhuyin`, the expected type, and an accepted enable request. It does not select the source. The final UI check is **System Settings > Keyboard > Text Input > Edit… > 久空輸入法**; if approval is pending, use **+ > Traditional Chinese > 久空輸入法**. If a system-session cache prevents it from appearing, sign out and back in once.
+After installation, the registration helper must report the source ID `tw.idv.jiukong.inputmethod.zhuyin`, the expected type, and an accepted enable request. It does not select the source. The final UI check is **System Settings > Keyboard > Text Input > Edit… > 久空輸入法**; if approval is pending, use **+ > Traditional Chinese > 久空輸入法**. If a system-session cache prevents it from appearing, sign out and back in once.
 
 ## Validated environment
 

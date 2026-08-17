@@ -29,6 +29,11 @@ if [[ ! -x "${harness}" ]]; then
   exit 1
 fi
 
+# Building anything registers another copy of the bundle identifier under
+# .build, which can silently take the input source away from the installed
+# bundle. Re-assert it before driving the input method.
+"${script_directory}/register-input-source.sh" > /dev/null
+
 typeset -a requested
 if (( $# > 0 )); then
   requested=("$@")

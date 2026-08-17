@@ -19,7 +19,7 @@ import Carbon
 // Requires Accessibility and event-posting permission for the calling process,
 // so it cannot run in continuous integration.
 
-let inputMethodBundleID = "tw.idv.jiukong.zhuyin"
+let inputMethodBundleID = "tw.idv.jiukong.inputmethod.zhuyin"
 let clientApplicationURL = URL(fileURLWithPath: "/System/Applications/TextEdit.app")
 
 // MARK: - Input sources

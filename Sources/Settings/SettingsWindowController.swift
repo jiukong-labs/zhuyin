@@ -14,6 +14,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private let characterList: UserDataListController
     private let phraseList: UserDataListController
+    private let cursorIndicatorSettings: CursorIndicatorSettingsController
 
     private var window: NSWindow?
     private var shiftPopUpButton: NSPopUpButton?
@@ -40,6 +41,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             learning: learning
         )
         phraseList = UserDataListController(kind: .phrases, learning: learning)
+        cursorIndicatorSettings = CursorIndicatorSettingsController(
+            preferences: preferences
+        )
         super.init()
     }
 
@@ -82,6 +86,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
         for (label, view) in [
             ("一般", makeGeneralView()),
+            ("游標指示器", cursorIndicatorSettings.makeView()),
             ("使用者詞", phraseList.makeView()),
             ("選字紀錄", characterList.makeView()),
             ("資料", makeDataView()),
@@ -139,19 +144,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         arrangementButton.action = #selector(arrangementDidChange(_:))
         arrangementPopUpButton = arrangementButton
 
-        return makePane(
+        return SettingsPaneBuilder.pane(
             sections: [
-                makeSection(
+                SettingsPaneBuilder.section(
                     title: "注音鍵盤配置",
                     controls: [arrangementButton],
                     note: "與目前選用的英文字母鍵盤配置無關。切換時會先送出尚未完成的組字。"
                 ),
-                makeSection(
+                SettingsPaneBuilder.section(
                     title: "中英文切換",
                     controls: [popUpButton],
                     note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。"
                 ),
-                makeSection(
+                SettingsPaneBuilder.section(
                     title: "學習",
                     controls: [checkbox],
                     note: "關閉後不再累積新的使用次數，既有紀錄仍會影響排序，Shift 造詞也仍可使用。"
@@ -176,14 +181,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         clearRow.orientation = .horizontal
         clearRow.spacing = 10
 
-        return makePane(
+        return SettingsPaneBuilder.pane(
             sections: [
-                makeSection(
+                SettingsPaneBuilder.section(
                     title: "匯出與匯入",
                     controls: [transferRow],
                     note: "匯出為 JSON 檔。匯入會與現有資料合併：次數與時間取較大者，置頂取聯集，重複匯入同一個檔案不會重複累加。"
                 ),
-                makeSection(
+                SettingsPaneBuilder.section(
                     title: "清除",
                     controls: [clearRow],
                     note: "資料只存在這台 Mac，清除後無法復原。"
@@ -194,62 +199,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func makeButton(_ title: String, action: Selector) -> NSButton {
         NSButton(title: title, target: self, action: action)
-    }
-
-    private func makePane(sections: [NSView]) -> NSView {
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 18
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        for (index, section) in sections.enumerated() {
-            if index > 0 {
-                stack.addArrangedSubview(makeSeparator())
-            }
-            stack.addArrangedSubview(section)
-        }
-
-        let container = NSView()
-        container.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.bottomAnchor.constraint(
-                lessThanOrEqualTo: container.bottomAnchor
-            ),
-        ])
-        return container
-    }
-
-    private func makeSection(
-        title: String,
-        controls: [NSView],
-        note: String
-    ) -> NSView {
-        let titleLabel = NSTextField(labelWithString: title)
-        titleLabel.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
-
-        let noteLabel = NSTextField(wrappingLabelWithString: note)
-        noteLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        noteLabel.textColor = .secondaryLabelColor
-        noteLabel.preferredMaxLayoutWidth = 440
-
-        let stack = NSStackView(views: [titleLabel] + controls + [noteLabel])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 8
-        return stack
-    }
-
-    private func makeSeparator() -> NSView {
-        let separator = NSBox()
-        separator.boxType = .separator
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        separator.widthAnchor.constraint(equalToConstant: 440).isActive = true
-        return separator
     }
 
     private func reloadControls() {
@@ -266,6 +215,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         automaticLearningButton?.state =
             current.automaticLearningEnabled ? .on : .off
+        cursorIndicatorSettings.reload()
     }
 
     private func reloadLists() {

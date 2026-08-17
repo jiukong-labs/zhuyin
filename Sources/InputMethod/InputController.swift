@@ -23,6 +23,7 @@ final class InputController: IMKInputController {
     private let candidateProvider: CharacterCandidateProvider?
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
     private lazy var languageModeHUD = LanguageModeHUD.shared
+    private lazy var cursorIndicator = CursorIndicatorController.shared
     private let languageModeController = LanguageModeController.shared
     private let preferences = PreferencesController.shared
     private var keyboardArrangement = PreferencesController.shared.current
@@ -199,6 +200,7 @@ final class InputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         shiftToggleController.reset()
+        startCursorIndicator()
         super.activateServer(sender)
     }
 
@@ -276,6 +278,14 @@ final class InputController: IMKInputController {
 
         finishComposition(reason: .lifecycle, using: inputClient)
         let mode = languageModeController.toggle()
+        cursorIndicator.update(mode: mode)
+
+        // The persistent indicator already answers "which mode am I in", so the
+        // transient HUD would only duplicate it at a different position.
+        guard !cursorIndicator.isEnabled else {
+            return false
+        }
+
         languageModeHUDToken = languageModeHUD.show(
             mode: mode,
             anchor: candidateAnchor(on: inputClient),
@@ -299,8 +309,18 @@ final class InputController: IMKInputController {
         inputSession = BopomofoInputSession(keyboardLayout: arrangement.layout)
     }
 
+    /// The indicator reads its settings when a client starts using this input
+    /// method, so a change made in the settings window applies on the next
+    /// activation without any observer.
+    private func startCursorIndicator() {
+        cursorIndicator.apply(preferences.current.cursorIndicator)
+        cursorIndicator.update(mode: languageModeController.mode)
+        cursorIndicator.setActive(true)
+    }
+
     private func resetTransientInputState() {
         shiftToggleController.reset()
+        cursorIndicator.setActive(false)
         if let languageModeHUDToken {
             languageModeHUD.hide(token: languageModeHUDToken)
             self.languageModeHUDToken = nil

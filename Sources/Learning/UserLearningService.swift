@@ -5,7 +5,7 @@ final class UserLearningService: UserLearningProviding {
     static let shared = UserLearningService()
 
     private static let logger = Logger(
-        subsystem: "tw.idv.jiukong.zhuyin",
+        subsystem: "tw.idv.jiukong.inputmethod.zhuyin",
         category: "UserLearning"
     )
 

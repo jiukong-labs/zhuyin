@@ -53,6 +53,84 @@ final class PreferencesTests: XCTestCase {
         XCTAssertFalse(preferences.automaticLearningEnabled)
     }
 
+    func testCursorIndicatorIsOffByDefault() {
+        let indicator = Preferences.default.cursorIndicator
+
+        XCTAssertFalse(indicator.isEnabled)
+        XCTAssertEqual(indicator.placement, .lowerRight)
+        XCTAssertEqual(indicator.tracking, .fixedDistance)
+        XCTAssertEqual(indicator.textSize, .small)
+        XCTAssertTrue(indicator.showsCapsLockIndicator)
+        XCTAssertEqual(indicator.appearance, CursorIndicatorAppearance())
+    }
+
+    func testCursorIndicatorSettingsRoundTrip() {
+        let stored = Preferences(
+            cursorIndicator: CursorIndicatorPreferences(
+                isEnabled: true,
+                placement: .upperRight,
+                tracking: .followCursor,
+                textSize: .huge,
+                showsCapsLockIndicator: false,
+                capsLockIndicatorSize: .small,
+                appearance: CursorIndicatorAppearance(
+                    chineseText: "漢",
+                    englishText: "EN",
+                    chineseColorHex: "#112233",
+                    englishColorHex: "#445566"
+                )
+            )
+        ).encoded()
+
+        let decoded = Preferences.decoded(from: stored).cursorIndicator
+
+        XCTAssertTrue(decoded.isEnabled)
+        XCTAssertEqual(decoded.placement, .upperRight)
+        XCTAssertEqual(decoded.tracking, .followCursor)
+        XCTAssertEqual(decoded.textSize, .huge)
+        XCTAssertFalse(decoded.showsCapsLockIndicator)
+        XCTAssertEqual(decoded.capsLockIndicatorSize, .small)
+        XCTAssertEqual(decoded.appearance.chineseText, "漢")
+        XCTAssertEqual(decoded.appearance.englishText, "EN")
+        XCTAssertEqual(decoded.appearance.chineseColorHex, "#112233")
+        XCTAssertEqual(decoded.appearance.englishColorHex, "#445566")
+    }
+
+    func testClearedOverridesDecodeAsNoOverride() {
+        let stored = Preferences(
+            cursorIndicator: CursorIndicatorPreferences(
+                appearance: CursorIndicatorAppearance()
+            )
+        ).encoded()
+
+        let decoded = Preferences.decoded(from: stored).cursorIndicator
+
+        XCTAssertNil(decoded.appearance.chineseText)
+        XCTAssertNil(decoded.appearance.englishColorHex)
+        XCTAssertEqual(decoded.appearance.text(for: .chinese), "中")
+    }
+
+    func testUnknownCursorIndicatorValuesFallBackPerField() {
+        let preferences = Preferences.decoded(
+            from: [
+                PreferenceKey.version.rawValue: 1,
+                PreferenceKey.cursorIndicatorEnabled.rawValue: true,
+                PreferenceKey.cursorIndicatorPlacement.rawValue: "sideways",
+                PreferenceKey.cursorIndicatorTracking.rawValue: 7,
+                PreferenceKey.cursorIndicatorTextSize.rawValue: "gigantic",
+                PreferenceKey.cursorIndicatorCapsLockSize.rawValue: "tiny",
+                PreferenceKey.cursorIndicatorChineseColor.rawValue: "not-a-color",
+            ]
+        )
+
+        XCTAssertTrue(preferences.cursorIndicator.isEnabled)
+        XCTAssertEqual(preferences.cursorIndicator.placement, .lowerRight)
+        XCTAssertEqual(preferences.cursorIndicator.tracking, .fixedDistance)
+        XCTAssertEqual(preferences.cursorIndicator.textSize, .small)
+        XCTAssertEqual(preferences.cursorIndicator.capsLockIndicatorSize, .extraLarge)
+        XCTAssertNil(preferences.cursorIndicator.appearance.chineseColorHex)
+    }
+
     func testEncodingStampsTheCurrentVersion() {
         let stored = Preferences.default.encoded()
 
