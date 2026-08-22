@@ -11,7 +11,9 @@ enum InputSourceRegistrationError: LocalizedError {
     case registrationFailed(OSStatus)
     case enablingFailed(OSStatus)
     case disablingFailed(OSStatus)
+    case selectionFailed(OSStatus)
     case unavailableBundleIDProperty
+    case unavailableInputSourceIDProperty
     case inputSourceNotFound(String)
     case inputSourceMetadataMismatch(String)
 
@@ -23,10 +25,14 @@ enum InputSourceRegistrationError: LocalizedError {
             return "TISEnableInputSource failed with OSStatus \(status)."
         case let .disablingFailed(status):
             return "TISDisableInputSource failed with OSStatus \(status)."
+        case let .selectionFailed(status):
+            return "TISSelectInputSource failed with OSStatus \(status)."
         case .unavailableBundleIDProperty:
             return "The macOS SDK did not provide kTISPropertyBundleID."
-        case let .inputSourceNotFound(bundleIdentifier):
-            return "macOS did not return an installed input source for \(bundleIdentifier)."
+        case .unavailableInputSourceIDProperty:
+            return "The macOS SDK did not provide kTISPropertyInputSourceID."
+        case let .inputSourceNotFound(identifier):
+            return "macOS did not return an installed input source for \(identifier)."
         case let .inputSourceMetadataMismatch(reason):
             return "The registered input source metadata is invalid: \(reason)."
         }
@@ -43,7 +49,7 @@ enum InputSourceRegistrar {
             throw InputSourceRegistrationError.registrationFailed(status)
         }
 
-        guard let source = try inputSource(bundleIdentifier: bundleIdentifier) else {
+        guard let source = try inputSource(identifier: bundleIdentifier) else {
             throw InputSourceRegistrationError.inputSourceNotFound(bundleIdentifier)
         }
 
@@ -60,17 +66,37 @@ enum InputSourceRegistrar {
         }
 
         guard
-            let expectedType = kTISTypeKeyboardInputMethodWithoutModes,
+            let expectedType = kTISTypeKeyboardInputMethodModeEnabled,
             source.type == expectedType as String
         else {
             throw InputSourceRegistrationError.inputSourceMetadataMismatch(
-                "expected a keyboard input method without modes, got \(source.type)"
+                "expected a mode-enabled keyboard input method, got \(source.type)"
             )
         }
 
         let enablingStatus = TISEnableInputSource(source.reference)
         guard enablingStatus == noErr else {
             throw InputSourceRegistrationError.enablingFailed(enablingStatus)
+        }
+
+        for mode in LanguageMode.allCases {
+            let identifier = mode.inputSourceID(parentID: bundleIdentifier)
+            guard let modeSource = try inputSource(identifier: identifier) else {
+                throw InputSourceRegistrationError.inputSourceNotFound(identifier)
+            }
+            guard
+                let expectedType = kTISTypeKeyboardInputMode,
+                modeSource.type == expectedType as String
+            else {
+                throw InputSourceRegistrationError.inputSourceMetadataMismatch(
+                    "expected \(identifier) to be a keyboard input mode, got \(modeSource.type)"
+                )
+            }
+
+            let modeStatus = TISEnableInputSource(modeSource.reference)
+            guard modeStatus == noErr else {
+                throw InputSourceRegistrationError.enablingFailed(modeStatus)
+            }
         }
 
         return RegisteredInputSource(
@@ -81,8 +107,19 @@ enum InputSourceRegistrar {
     }
 
     static func disable(bundleIdentifier: String) throws -> RegisteredInputSource? {
-        guard let source = try inputSource(bundleIdentifier: bundleIdentifier) else {
+        guard let source = try inputSource(identifier: bundleIdentifier) else {
             return nil
+        }
+
+        for mode in LanguageMode.allCases {
+            let identifier = mode.inputSourceID(parentID: bundleIdentifier)
+            guard let modeSource = try inputSource(identifier: identifier) else {
+                continue
+            }
+            let modeStatus = TISDisableInputSource(modeSource.reference)
+            guard modeStatus == noErr else {
+                throw InputSourceRegistrationError.disablingFailed(modeStatus)
+            }
         }
 
         let status = TISDisableInputSource(source.reference)
@@ -97,6 +134,21 @@ enum InputSourceRegistrar {
         )
     }
 
+    static func select(
+        mode: LanguageMode,
+        bundleIdentifier: String
+    ) throws {
+        let identifier = mode.inputSourceID(parentID: bundleIdentifier)
+        guard let source = try inputSource(identifier: identifier) else {
+            throw InputSourceRegistrationError.inputSourceNotFound(identifier)
+        }
+
+        let status = TISSelectInputSource(source.reference)
+        guard status == noErr else {
+            throw InputSourceRegistrationError.selectionFailed(status)
+        }
+    }
+
     private struct InputSourceMetadata {
         let reference: TISInputSource
         let identifier: String
@@ -106,14 +158,14 @@ enum InputSourceRegistrar {
     }
 
     private static func inputSource(
-        bundleIdentifier: String
+        identifier: String
     ) throws -> InputSourceMetadata? {
-        guard let bundleIDProperty = kTISPropertyBundleID else {
-            throw InputSourceRegistrationError.unavailableBundleIDProperty
+        guard let inputSourceIDProperty = kTISPropertyInputSourceID else {
+            throw InputSourceRegistrationError.unavailableInputSourceIDProperty
         }
 
         let properties = [
-            bundleIDProperty: bundleIdentifier as CFString
+            inputSourceIDProperty: identifier as CFString
         ] as CFDictionary
         guard let unmanagedSources = TISCreateInputSourceList(properties, true) else {
             return nil
@@ -121,9 +173,7 @@ enum InputSourceRegistrar {
 
         return readInputSources(
             from: unmanagedSources.takeRetainedValue()
-        ).first(where: {
-            $0.bundleIdentifier == bundleIdentifier
-        })
+        ).first(where: { $0.identifier == identifier })
     }
 
     private static func readInputSources(

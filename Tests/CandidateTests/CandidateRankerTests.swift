@@ -18,32 +18,40 @@ final class CandidateRankerTests: XCTestCase {
         )
     }
 
-    func testRepeatedSelectionRaisesCandidateGradually() throws {
-        let expectedPositions = [23, 12, 7, 4, 1]
-
-        for (selectionCount, expectedPosition) in expectedPositions.enumerated() {
-            var candidates = (0 ..< 22).map { baseRank in
-                makeCandidate("字\(baseRank)", baseRank: baseRank)
-            }
-            candidates.append(
-                makeCandidate(
-                    "鍵",
-                    baseRank: 22,
-                    userFrequency: Int64(selectionCount),
-                    lastUsed: selectionCount == 0 ? nil : now
-                )
-            )
-
-            let ranked = ranker.ranked(candidates, at: now)
-            let actualIndex = try XCTUnwrap(
-                ranked.firstIndex(where: { $0.text == "鍵" })
-            )
-            XCTAssertEqual(
-                actualIndex + 1,
-                expectedPosition,
-                "Unexpected position after \(selectionCount) selections"
-            )
+    func testOneCommittedSelectionMovesCharacterImmediatelyToFirst() {
+        var candidates = (0 ..< 22).map { baseRank in
+            makeCandidate("字\(baseRank)", baseRank: baseRank)
         }
+        candidates.append(
+            makeCandidate(
+                "鍵",
+                baseRank: 22,
+                userFrequency: 1,
+                lastUsed: now
+            )
+        )
+
+        XCTAssertEqual(ranker.ranked(candidates, at: now).first?.text, "鍵")
+    }
+
+    func testMostRecentlySelectedCharacterLeadsLearnedCharacters() {
+        let older = makeCandidate(
+            "舊",
+            baseRank: 0,
+            userFrequency: 100,
+            lastUsed: now.addingTimeInterval(-60)
+        )
+        let latest = makeCandidate(
+            "新",
+            baseRank: 30,
+            userFrequency: 1,
+            lastUsed: now
+        )
+
+        XCTAssertEqual(
+            ranker.ranked([older, latest], at: now).map(\.text),
+            ["新", "舊"]
+        )
     }
 
     func testUserFrequencyUsesLogarithmicBonus() {

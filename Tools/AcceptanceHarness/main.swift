@@ -9,8 +9,8 @@ import Carbon
 //
 // 1. The system's own Zhuyin input method composes the same Bopomofo from the
 //    same keys. A run that never reached Jiukong therefore looks like a pass.
-//    Every run first proves the client is talking to Jiukong by requiring its
-//    own candidate panel to appear, identified by window owner.
+//    Every run first presses Down after a probe syllable and proves the client
+//    is talking to Jiukong by requiring its candidate panel to appear.
 // 2. A running application keeps the input source it already adopted, so the
 //    harness selects the source first and then launches a *new* client
 //    instance, which adopts it at launch. The user's own TextEdit windows and
@@ -19,7 +19,7 @@ import Carbon
 // Requires Accessibility and event-posting permission for the calling process,
 // so it cannot run in continuous integration.
 
-let inputMethodBundleID = "tw.idv.jiukong.inputmethod.zhuyin"
+let inputMethodBundleID = "tw.idv.jiukong.inputmethod.zhuyin.Chinese"
 let clientApplicationURL = URL(fileURLWithPath: "/System/Applications/TextEdit.app")
 
 // MARK: - Input sources
@@ -130,9 +130,83 @@ let scripts: [String: AcceptanceScript] = [
         probe: standardProbe,
         keystrokes: [
             Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
-            Keystroke(kVK_Return), Keystroke(kVK_Return),
+            Keystroke(kVK_Return),
         ],
         expectation: "我"
+    ),
+    // Top-row 1 is both candidate slot one and standard-layout ㄅ. It becomes
+    // an explicit candidate number only after Down opens the chooser.
+    "number-one": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_DownArrow),
+            Keystroke(kVK_ANSI_1), Keystroke(kVK_Return),
+        ],
+        expectation: "我"
+    ),
+    // The second syllable begins on top-row 1 (standard ㄅ). Inline preview
+    // must accept 我 implicitly and route 1 into ㄅ because Down was not used.
+    "continuous": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_1), Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "我不"
+    ),
+    // ㄘㄜˋ initially falls back to CNS source-order 冊. Completing ㄕˋ
+    // must offer the first-party exact phrase and replace that suffix with 測試.
+    "builtin-phrase": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測試"
+    ),
+    // Every intermediate syllable may start with a provisional CNS-order
+    // character. The final reading must prefer Jiukong's exact six-reading
+    // sentence and replace the complete marked suffix in one operation.
+    "sentence": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_5), Keystroke(kVK_ANSI_J),
+            Keystroke(kVK_ANSI_Slash), Keystroke(kVK_Space),
+            Keystroke(kVK_ANSI_F), Keystroke(kVK_ANSI_U),
+            Keystroke(kVK_ANSI_Slash), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_L),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_ANSI_C), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測試中請稍後"
+    ),
+    // Revision is intentionally two-stage. Left/Right first locate a reading,
+    // Down enters candidate choosing, arrows then move the candidate highlight,
+    // and Escape returns to locating while restoring the current character.
+    "revision-arrows": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_DownArrow), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_Escape), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_DownArrow), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_Escape), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測試"
     ),
     "escape": AcceptanceScript(
         probe: standardProbe,
@@ -148,7 +222,7 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
             Keystroke(kVK_ANSI_Comma, .maskShift),
             Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
-            Keystroke(kVK_Return), Keystroke(kVK_Return),
+            Keystroke(kVK_Return),
         ],
         expectation: "我，我"
     ),
@@ -184,7 +258,7 @@ let scripts: [String: AcceptanceScript] = [
         probe: [kVK_ANSI_X, kVK_ANSI_O, kVK_ANSI_3],
         keystrokes: [
             Keystroke(kVK_ANSI_X), Keystroke(kVK_ANSI_O), Keystroke(kVK_ANSI_3),
-            Keystroke(kVK_Return), Keystroke(kVK_Return),
+            Keystroke(kVK_Return),
         ],
         expectation: "我"
     ),
@@ -194,7 +268,7 @@ let scripts: [String: AcceptanceScript] = [
         keystrokes: [
             Keystroke(kVK_ANSI_S), Keystroke(kVK_ANSI_G),
             Keystroke(kVK_ANSI_Comma),
-            Keystroke(kVK_Return), Keystroke(kVK_Return),
+            Keystroke(kVK_Return),
         ],
         expectation: "我"
     ),
@@ -271,6 +345,7 @@ for _ in 0 ..< 3 {
         post(Keystroke(key), to: clientPID)
         usleep(120_000)
     }
+    post(Keystroke(kVK_DownArrow), to: clientPID)
     usleep(700_000)
     connected = inputMethodPanelIsVisible()
     post(Keystroke(kVK_Escape), to: clientPID)

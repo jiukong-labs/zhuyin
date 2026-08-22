@@ -188,6 +188,39 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertEqual(modeController.toggle(), .chinese)
     }
 
+    func testLanguageModesHaveStableInputSourceIdentifiers() {
+        let parentID = "tw.idv.example.inputmethod.demo"
+
+        XCTAssertEqual(
+            LanguageMode.chinese.inputSourceID(parentID: parentID),
+            "tw.idv.example.inputmethod.demo.Chinese"
+        )
+        XCTAssertEqual(
+            LanguageMode.english.inputSourceID(parentID: parentID),
+            "tw.idv.example.inputmethod.demo.English"
+        )
+        XCTAssertEqual(
+            LanguageMode.mode(
+                forInputSourceID: "tw.idv.example.inputmethod.demo.English",
+                parentID: parentID
+            ),
+            .english
+        )
+        XCTAssertNil(
+            LanguageMode.mode(
+                forInputSourceID: "com.apple.keylayout.US",
+                parentID: parentID
+            )
+        )
+    }
+
+    func testLanguageModeControllerCanSynchronizeWithSystemMode() {
+        let modeController = LanguageModeController(initialMode: .chinese)
+
+        XCTAssertEqual(modeController.setMode(.english), .english)
+        XCTAssertEqual(modeController.mode, .english)
+    }
+
     func testIndependentGestureTrackersCanDriveOneLanguageMode() {
         var firstClient = ShiftToggleController()
         var secondClient = ShiftToggleController()

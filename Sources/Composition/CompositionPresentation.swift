@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// A pure marked-text snapshot ready for `IMKTextInput.setMarkedText`.
 ///
@@ -10,7 +10,8 @@ struct CompositionPresentation: Equatable {
 
     static func make(
         buffer: CompositionBuffer,
-        activeSuffix: String?
+        activeSuffix: String?,
+        focusedUnitID: UUID? = nil
     ) -> CompositionPresentation? {
         let suffix = activeSuffix ?? ""
         let text = buffer.text + suffix
@@ -20,7 +21,9 @@ struct CompositionPresentation: Equatable {
 
         let selectionRange: NSRange
         if suffix.isEmpty {
-            selectionRange = buffer.markedSelectionRange
+            selectionRange = buffer.markedSelectionRange(
+                focusedUnitID: focusedUnitID
+            )
         } else {
             selectionRange = NSRange(
                 location: text.utf16.count,
@@ -32,5 +35,55 @@ struct CompositionPresentation: Equatable {
             text: text,
             selectionRange: selectionRange
         )
+    }
+
+    /// Renders the current first/highlighted candidate without mutating the
+    /// real composition buffer. This supports a quiet inline preview before
+    /// the user explicitly opens the candidate window with Down Arrow.
+    static func make(
+        buffer: CompositionBuffer,
+        previewing candidate: Candidate
+    ) -> CompositionPresentation? {
+        var previewBuffer = buffer
+        guard previewBuffer.acceptCandidate(
+            candidate,
+            reason: .implicitPassThrough
+        ) else {
+            return nil
+        }
+        return make(buffer: previewBuffer, activeSuffix: nil)
+    }
+}
+
+/// Builds marked text with an explicit visual cue for Left/Right revision.
+/// The selection range remains authoritative for the client, while the
+/// background and thick underline stay visible in clients that paint the
+/// entire active composition with one selection color.
+enum CompositionMarkedTextRenderer {
+    static func make(
+        presentation: CompositionPresentation,
+        focusedRange: NSRange?
+    ) -> NSAttributedString {
+        let markedText = NSMutableAttributedString(
+            string: presentation.text
+        )
+        guard let focusedRange,
+              focusedRange.location != NSNotFound,
+              focusedRange.length > 0,
+              focusedRange.location <= presentation.text.utf16.count,
+              focusedRange.length
+                <= presentation.text.utf16.count - focusedRange.location else {
+            return markedText
+        }
+
+        markedText.addAttributes(
+            [
+                .backgroundColor: NSColor.systemYellow.withAlphaComponent(0.32),
+                .underlineColor: NSColor.systemOrange,
+                .underlineStyle: NSUnderlineStyle.thick.rawValue,
+            ],
+            range: focusedRange
+        )
+        return markedText
     }
 }

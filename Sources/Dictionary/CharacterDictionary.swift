@@ -30,11 +30,89 @@ struct DictionaryCharacter: Equatable {
     }
 }
 
+struct DictionaryPhrase: Equatable {
+    let text: String
+    let pronunciationSequence: [String]
+    let sourceOrder: Int64
+}
+
+/// Versioned, UTF-8 length-prefixed key for exact built-in phrase lookup.
+///
+/// The encoding is deliberately owned by the runtime dictionary rather than
+/// shared with user-data persistence: either format may evolve independently.
+enum DictionaryPronunciationSequenceKey {
+    static let currentVersion = 1
+    static let allowedUnitCount = 2 ... 64
+
+    static func encode(_ pronunciationSequence: [String]) -> String? {
+        guard allowedUnitCount.contains(pronunciationSequence.count) else {
+            return nil
+        }
+
+        let normalizedReadings = pronunciationSequence.map {
+            $0.precomposedStringWithCanonicalMapping
+        }
+        guard normalizedReadings.allSatisfy({ !$0.isEmpty }) else {
+            return nil
+        }
+
+        return "v\(currentVersion)|" + normalizedReadings.map { reading in
+            "\(reading.utf8.count):\(reading)"
+        }.joined()
+    }
+}
+
+/// Canonical spelling accepted by both built-in and user-created phrases.
+/// This mirrors `BopomofoSyllable.text` without coupling persistence or the
+/// standalone dictionary builder to parser state.
+enum CanonicalBopomofoReading {
+    private static let initials = Set("ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙ")
+    private static let medials = Set("ㄧㄨㄩ")
+    private static let finals = Set("ㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ")
+    private static let suffixTones = Set("ˊˇˋ")
+    private static let neutralTone: Character = "˙"
+
+    static func isValid(_ reading: String) -> Bool {
+        var components = Array(reading)
+        guard !components.isEmpty else {
+            return false
+        }
+
+        if components.first == neutralTone {
+            components.removeFirst()
+        } else if let last = components.last, suffixTones.contains(last) {
+            components.removeLast()
+        }
+        guard !components.isEmpty else {
+            return false
+        }
+
+        var previousSlot = -1
+        for component in components {
+            let slot: Int
+            if initials.contains(component) {
+                slot = 0
+            } else if medials.contains(component) {
+                slot = 1
+            } else if finals.contains(component) {
+                slot = 2
+            } else {
+                return false
+            }
+            guard slot > previousSlot else {
+                return false
+            }
+            previousSlot = slot
+        }
+        return true
+    }
+}
+
 final class CharacterDictionary {
     static let resourceName = "JiukongZhuyin"
     static let resourceExtension = "sqlite3"
     static let applicationID: Int64 = 0x4A4B5A59
-    static let schemaVersion = 1
+    static let schemaVersion = 2
 
     private let database: SQLiteDatabase
 
@@ -77,6 +155,9 @@ final class CharacterDictionary {
             )
             _ = try database.prepare(
                 "SELECT pronunciation, source_order FROM dictionary_entries LIMIT 0"
+            )
+            _ = try database.prepare(
+                "SELECT pronunciation_key, phrase, source_order FROM phrase_entries LIMIT 0"
             )
             _ = try database.prepare("SELECT value FROM metadata LIMIT 0")
         } catch {
@@ -131,6 +212,41 @@ final class CharacterDictionary {
         var values: [String] = []
         while try statement.step() == .row {
             values.append(try statement.text(at: 0))
+        }
+        return values
+    }
+
+    func phraseEntries(
+        for pronunciationSequence: [String]
+    ) throws -> [DictionaryPhrase] {
+        guard let pronunciationKey = DictionaryPronunciationSequenceKey.encode(
+            pronunciationSequence
+        ) else {
+            return []
+        }
+
+        let normalizedReadings = pronunciationSequence.map {
+            $0.precomposedStringWithCanonicalMapping
+        }
+        let statement = try database.prepare(
+            """
+            SELECT phrase, source_order
+            FROM phrase_entries
+            WHERE pronunciation_key = ?
+            ORDER BY source_order, phrase
+            """
+        )
+        try statement.bind(pronunciationKey, at: 1)
+
+        var values: [DictionaryPhrase] = []
+        while try statement.step() == .row {
+            values.append(
+                DictionaryPhrase(
+                    text: try statement.text(at: 0),
+                    pronunciationSequence: normalizedReadings,
+                    sourceOrder: statement.integer(at: 1)
+                )
+            )
         }
         return values
     }

@@ -22,7 +22,10 @@ enum CandidateCommandRouter {
     static func command(
         keyCode: UInt16,
         modifierFlags: NSEvent.ModifierFlags,
-        isExpanded: Bool
+        isExpanded: Bool,
+        isExplicitSelectionContext: Bool = false,
+        mappedBopomofoComponent: BopomofoComponent? = nil,
+        highlightedSelectionKeyIndex: Int? = nil
     ) -> CandidateCommand? {
         guard hasNoShortcutModifiers(modifierFlags) else {
             return nil
@@ -46,23 +49,77 @@ enum CandidateCommandRouter {
         case kVK_PageDown:
             return .navigate(.nextPage)
         case kVK_ANSI_1:
-            return .select(0)
+            return numberCommand(
+                0,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_2:
-            return .select(1)
+            return numberCommand(
+                1,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_3:
-            return .select(2)
+            return numberCommand(
+                2,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_4:
-            return .select(3)
+            return numberCommand(
+                3,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_5:
-            return .select(4)
+            return numberCommand(
+                4,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_6:
-            return .select(5)
+            return numberCommand(
+                5,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_7:
-            return .select(6)
+            return numberCommand(
+                6,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_8:
-            return .select(7)
+            return numberCommand(
+                7,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_ANSI_9:
-            return .select(8)
+            return numberCommand(
+                8,
+                isExpanded: isExpanded,
+                isExplicitSelectionContext: isExplicitSelectionContext,
+                mappedBopomofoComponent: mappedBopomofoComponent,
+                highlightedSelectionKeyIndex: highlightedSelectionKeyIndex
+            )
         case kVK_Space:
             return .commitFirst
         case kVK_Return, kVK_ANSI_KeypadEnter:
@@ -74,6 +131,28 @@ enum CandidateCommandRouter {
         default:
             return nil
         }
+    }
+
+    /// Compact candidates remain composition-first for ambiguous number-row
+    /// Bopomofo keys, except that the number printed on the current highlight
+    /// always confirms that candidate. This makes the default `1` actionable
+    /// while a different ambiguous digit can still begin the next syllable.
+    /// Expanded presentation and text revision are explicit contexts: every
+    /// printed 1-9 key selects there, even when the key maps to Bopomofo.
+    private static func numberCommand(
+        _ selectionKeyIndex: Int,
+        isExpanded: Bool,
+        isExplicitSelectionContext: Bool,
+        mappedBopomofoComponent: BopomofoComponent?,
+        highlightedSelectionKeyIndex: Int?
+    ) -> CandidateCommand? {
+        if !isExpanded,
+           !isExplicitSelectionContext,
+           mappedBopomofoComponent?.canBeginSyllable == true,
+           selectionKeyIndex != highlightedSelectionKeyIndex {
+            return nil
+        }
+        return .select(selectionKeyIndex)
     }
 
     private static func hasNoShortcutModifiers(

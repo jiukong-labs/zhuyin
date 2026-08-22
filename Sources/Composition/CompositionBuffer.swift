@@ -69,6 +69,25 @@ struct CompositionPhraseSelection: Equatable {
     }
 }
 
+/// A stable, user-visible description of the reading unit currently targeted
+/// by plain Left/Right revision.
+struct CompositionRevisionFocus: Equatable {
+    let unitID: UUID
+    let text: String
+    let pronunciation: String
+    /// One-based position among reading units; punctuation is not counted.
+    let readingPosition: Int
+    let readingCount: Int
+
+    var locatingDisplayText: String {
+        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　↓ 進入選字"
+    }
+
+    var choosingDisplayText: String {
+        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　Esc 返回"
+    }
+}
+
 /// A detached, immutable value passed to the real client-commit path.
 struct CompositionCommitSnapshot: Equatable {
     let units: [CompositionUnit]
@@ -120,10 +139,30 @@ struct CompositionBuffer: Equatable {
         return (units.count - selectedSuffixUnitCount) ..< units.count
     }
 
+    var lastReadingUnitID: UUID? {
+        units.last(where: { $0.kind == .reading })?.id
+    }
+
     /// The AppKit marked-text selection, expressed in UTF-16 code units.
     /// When no phrase range is selected, this is a caret at the text end.
     var markedSelectionRange: NSRange {
+        markedSelectionRange(focusedUnitID: nil)
+    }
+
+    /// The AppKit range for phrase selection, a focused revision unit, or the
+    /// caret at the end. A phrase selection remains the highest-priority view.
+    func markedSelectionRange(focusedUnitID: UUID?) -> NSRange {
         guard let selectedUnitRange else {
+            if let focusedUnitID,
+               let focusedIndex = units.firstIndex(where: {
+                   $0.id == focusedUnitID
+               }) {
+                let prefix = units[..<focusedIndex].map(\.text).joined()
+                return NSRange(
+                    location: prefix.utf16.count,
+                    length: units[focusedIndex].text.utf16.count
+                )
+            }
             return NSRange(location: text.utf16.count, length: 0)
         }
 
@@ -137,6 +176,52 @@ struct CompositionBuffer: Equatable {
             location: prefix.utf16.count,
             length: selection.utf16.count
         )
+    }
+
+    func unit(withID unitID: UUID) -> CompositionUnit? {
+        units.first(where: { $0.id == unitID })
+    }
+
+    func revisionFocus(for unitID: UUID) -> CompositionRevisionFocus? {
+        let readingUnits = units.filter { $0.kind == .reading }
+        guard let index = readingUnits.firstIndex(where: {
+            $0.id == unitID
+        }) else {
+            return nil
+        }
+
+        let unit = readingUnits[index]
+        return CompositionRevisionFocus(
+            unitID: unit.id,
+            text: unit.text,
+            pronunciation: unit.pronunciation,
+            readingPosition: index + 1,
+            readingCount: readingUnits.count
+        )
+    }
+
+    /// Finds the previous reading unit. Passing `nil` starts at the text end.
+    func readingUnitID(before unitID: UUID?) -> UUID? {
+        let endIndex: Int
+        if let unitID,
+           let index = units.firstIndex(where: { $0.id == unitID }) {
+            endIndex = index
+        } else {
+            endIndex = units.endIndex
+        }
+
+        return units[..<endIndex].reversed()
+            .first(where: { $0.kind == .reading })?.id
+    }
+
+    func readingUnitID(after unitID: UUID) -> UUID? {
+        guard let index = units.firstIndex(where: { $0.id == unitID }),
+              index < units.index(before: units.endIndex) else {
+            return nil
+        }
+
+        return units[units.index(after: index)...]
+            .first(where: { $0.kind == .reading })?.id
     }
 
     /// Returns a phrase only when at least two composition units are selected
@@ -202,6 +287,65 @@ struct CompositionBuffer: Equatable {
         case .phrase:
             return replaceSuffix(with: candidate, reason: reason)
         }
+    }
+
+    /// Replaces one existing reading unit during left/right revision.
+    ///
+    /// The stable unit ID keeps the revision focus attached. Any older pending
+    /// selection that covered the unit is invalidated before the new event is
+    /// recorded, including a multi-unit phrase event.
+    @discardableResult
+    mutating func replaceUnit(
+        withID unitID: UUID,
+        candidate: Candidate,
+        reason: CandidateCommitReason
+    ) -> Bool {
+        guard let index = units.firstIndex(where: { $0.id == unitID }),
+              units[index].kind == .reading,
+              candidate.type == .character,
+              candidate.text.count == 1,
+              candidate.pronunciationSequence == [units[index].pronunciation]
+        else {
+            return false
+        }
+
+        // Opening a revision panel focuses the current character. Accepting
+        // that unchanged snapshot is a no-op and must not erase a pending
+        // phrase selection that still accurately describes the buffer.
+        guard candidate.text != units[index].text else {
+            clearSelection()
+            return true
+        }
+
+        pendingCandidateSelections.removeAll {
+            $0.coveredUnitIDs.contains(unitID)
+        }
+        units[index] = CompositionUnit(
+            id: unitID,
+            text: candidate.text,
+            pronunciation: units[index].pronunciation
+        )
+        pendingCandidateSelections.append(
+            PendingCandidateSelection(
+                candidate: candidate,
+                reason: reason,
+                coveredUnitIDs: [unitID]
+            )
+        )
+        clearSelection()
+        return true
+    }
+
+    @discardableResult
+    mutating func deleteUnit(withID unitID: UUID) -> CompositionUnit? {
+        guard let index = units.firstIndex(where: { $0.id == unitID }) else {
+            return nil
+        }
+
+        let deletedUnit = units.remove(at: index)
+        selectedSuffixUnitCount = 0
+        pruneInvalidPendingSelections()
+        return deletedUnit
     }
 
     /// Produces every exact suffix lookup ending in `pronunciation`, ordered

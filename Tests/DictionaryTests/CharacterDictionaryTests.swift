@@ -57,6 +57,42 @@ final class CharacterDictionaryTests: XCTestCase {
 
         XCTAssertEqual(try dictionary.candidates(for: "not-zhuyin"), [])
         XCTAssertEqual(try dictionary.pronunciations(for: "不存在的詞"), [])
+        XCTAssertEqual(
+            try dictionary.phraseEntries(
+                for: ["ㄅㄨˋ", "ㄘㄞˊ", "ㄗㄞˋ", "ㄉㄜ˙"]
+            ),
+            []
+        )
+        XCTAssertEqual(try dictionary.phraseEntries(for: ["ㄘㄜˋ"]), [])
+    }
+
+    func testFirstPartyPhraseLookupFindsTestByExactReadingSequence() throws {
+        let dictionary = try makeDictionary()
+
+        XCTAssertEqual(
+            try dictionary.phraseEntries(for: ["ㄘㄜˋ", "ㄕˋ"]),
+            [
+                DictionaryPhrase(
+                    text: "測試",
+                    pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+                    sourceOrder: 0
+                ),
+            ]
+        )
+        XCTAssertEqual(
+            try dictionary.phraseEntries(for: ["ㄘㄜˋ", "ㄕˇ"]),
+            []
+        )
+    }
+
+    func testFirstPartyPhraseLookupFindsTheRequestedSentence() throws {
+        let dictionary = try makeDictionary()
+        let readings = ["ㄘㄜˋ", "ㄕˋ", "ㄓㄨㄥ", "ㄑㄧㄥˇ", "ㄕㄠ", "ㄏㄡˋ"]
+
+        XCTAssertEqual(
+            try dictionary.phraseEntries(for: readings).map(\.text),
+            ["測試中請稍後"]
+        )
     }
 
     func testBundledArtifactHasPinnedMetadataAndPassesQuickCheck() throws {
@@ -65,6 +101,12 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(try dictionary.metadataValue(for: "source_version"), "20260805")
         XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94708")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_characters"), "76373")
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "83")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "82")
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "phrase_dataset_name"),
+            "Jiukong first-party phrase lexicon"
+        )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "sha256_Properties.zip"),
             "3d56ef14cc8099893245dac58fe4718d2fa64812b9159352a98a4588ad3efa5c"

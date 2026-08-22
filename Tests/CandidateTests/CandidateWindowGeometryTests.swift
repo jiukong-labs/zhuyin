@@ -135,6 +135,69 @@ final class CandidateWindowGeometryTests: XCTestCase {
         )
     }
 
+    func testLongPhraseGetsAWiderNonOverlappingCandidateCell() {
+        let metrics = CandidateWindowSizing.gridMetrics(
+            candidateTexts: ["測試中請稍後", "后"],
+            mode: .compact
+        )
+
+        XCTAssertEqual(metrics.cellFrames.count, 2)
+        XCTAssertGreaterThan(
+            metrics.cellFrames[0].width,
+            metrics.cellFrames[1].width
+        )
+        XCTAssertEqual(
+            metrics.cellFrames[1].minX,
+            metrics.cellFrames[0].maxX + CandidateWindowSizing.cellSpacing
+        )
+        XCTAssertGreaterThanOrEqual(
+            metrics.cellFrames[0].width,
+            CandidateWindowSizing.cellWidth(for: "測試中請稍後")
+        )
+    }
+
+    func testTextAwareViewportIncludesTheLongPhraseWidth() {
+        let short = CandidateWindowSizing.viewportSize(
+            candidateTexts: ["后", "厚"],
+            mode: .compact
+        )
+        let long = CandidateWindowSizing.viewportSize(
+            candidateTexts: ["測試中請稍後", "厚"],
+            mode: .compact
+        )
+
+        XCTAssertGreaterThan(long.width, short.width)
+        XCTAssertEqual(long.height, short.height)
+    }
+
+    func testRevisionHeaderExpandsPanelAndLeavesCandidateViewportSeparate() {
+        let candidateSize = CGSize(width: 300, height: 54)
+        let panelSize = CandidateWindowSizing.panelSize(
+            candidateViewportSize: candidateSize,
+            revisionHeaderContentWidth: 340
+        )
+
+        XCTAssertEqual(panelSize.width, 356)
+        XCTAssertEqual(
+            panelSize.height,
+            candidateSize.height + CandidateWindowSizing.revisionHeaderHeight
+        )
+        XCTAssertEqual(
+            CandidateWindowSizing.candidateViewportSize(
+                panelSize: panelSize,
+                showsRevisionHeader: true
+            ),
+            CGSize(width: 356, height: 54)
+        )
+        XCTAssertEqual(
+            CandidateWindowSizing.panelSize(
+                candidateViewportSize: candidateSize,
+                revisionHeaderContentWidth: nil
+            ),
+            candidateSize
+        )
+    }
+
     func testSmallScreenViewportEnablesEveryRequiredScrollAxis() {
         let document = CandidateWindowSizing.documentSize(
             candidateCount: 27,

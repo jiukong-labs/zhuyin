@@ -3,6 +3,55 @@ import Foundation
 import XCTest
 
 final class CNS11643ParserTests: XCTestCase {
+    func testPinnedFirstPartyPhraseLexiconStatistics() throws {
+        let sourceURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongPhrases", isDirectory: true)
+            .appendingPathComponent("phrases.tsv")
+
+        let dataset = try JiukongPhraseParser.parse(sourceURL: sourceURL)
+
+        XCTAssertEqual(
+            dataset.statistics,
+            JiukongPhraseStatistics(
+                entryCount: 83,
+                uniquePhraseCount: 82,
+                pronunciationSequenceCount: 82
+            )
+        )
+        XCTAssertEqual(dataset.entries.first?.phrase, "測試")
+        XCTAssertEqual(
+            dataset.entries.first?.pronunciationSequence,
+            ["ㄘㄜˋ", "ㄕˋ"]
+        )
+    }
+
+    func testFirstPartyPhraseParserRejectsMalformedAndDuplicateRows() throws {
+        let invalidSources = [
+            "測試 ㄘㄜˋ ㄕˋ\n",
+            "測試\tㄘㄜˋ\n",
+            "測試\tASCII ㄕˋ\n",
+            "測試\tㄘㄜˋ ㄕˋ\n測試\tㄘㄜˋ ㄕˋ\n",
+        ]
+
+        for source in invalidSources {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let sourceURL = directory.appendingPathComponent("phrases.tsv")
+            try Data(source.utf8).write(to: sourceURL)
+
+            XCTAssertThrowsError(
+                try JiukongPhraseParser.parse(sourceURL: sourceURL),
+                "Unexpectedly accepted: \(source)"
+            )
+        }
+    }
+
     func testPinnedOfficialSnapshotStatistics() throws {
         let sourceDirectory = repositoryRoot
             .appendingPathComponent("Data", isDirectory: true)

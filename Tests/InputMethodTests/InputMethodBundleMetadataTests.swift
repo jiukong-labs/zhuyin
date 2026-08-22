@@ -28,6 +28,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
             "tw.idv.jiukong.inputmethod.zhuyin"
         )
         XCTAssertEqual(info["TISIntendedLanguage"] as? String, "zh-Hant")
+        XCTAssertEqual(info["TISIconIsTemplate"] as? Bool, true)
         XCTAssertEqual(
             info["tsInputMethodCharacterRepertoireKey"] as? [String],
             ["Hant"]
@@ -36,6 +37,39 @@ final class InputMethodBundleMetadataTests: XCTestCase {
             info["tsInputMethodIconFileKey"] as? String,
             "JiukongZhuyin.tiff"
         )
+
+        let modeContainer = try XCTUnwrap(
+            info["ComponentInputModeDict"] as? [String: Any]
+        )
+        let modes = try XCTUnwrap(
+            modeContainer["tsInputModeListKey"] as? [String: Any]
+        )
+        let orderedModeIDs = try XCTUnwrap(
+            modeContainer["tsVisibleInputModeOrderedArrayKey"] as? [String]
+        )
+        let expectedModes = [
+            (
+                "tw.idv.jiukong.inputmethod.zhuyin.Chinese",
+                "中",
+                "JiukongChinese.tiff"
+            ),
+            (
+                "tw.idv.jiukong.inputmethod.zhuyin.English",
+                "英",
+                "JiukongEnglish.tiff"
+            )
+        ]
+
+        XCTAssertEqual(orderedModeIDs, expectedModes.map(\.0))
+        for (identifier, label, iconName) in expectedModes {
+            let mode = try XCTUnwrap(modes[identifier] as? [String: Any])
+            let labels = try XCTUnwrap(mode["TISIconLabels"] as? [String: String])
+            XCTAssertEqual(mode["TISInputSourceID"] as? String, identifier)
+            XCTAssertEqual(labels["Primary"], label)
+            XCTAssertEqual(mode["tsInputModeDefaultStateKey"] as? Bool, true)
+            XCTAssertEqual(mode["tsInputModeIsVisibleKey"] as? Bool, true)
+            XCTAssertEqual(mode["tsInputModeMenuIconFileKey"] as? String, iconName)
+        }
     }
 
     func testDeclaredIconExists() throws {
@@ -44,10 +78,20 @@ final class InputMethodBundleMetadataTests: XCTestCase {
             isDirectory: true
         )
         let info = try loadSourceInfoDictionary()
-        let assetNames = [
+        var assetNames = [
             try XCTUnwrap(info["CFBundleIconFile"] as? String),
             try XCTUnwrap(info["tsInputMethodIconFileKey"] as? String)
         ]
+        let modeContainer = try XCTUnwrap(
+            info["ComponentInputModeDict"] as? [String: Any]
+        )
+        let modes = try XCTUnwrap(
+            modeContainer["tsInputModeListKey"] as? [String: Any]
+        )
+        assetNames += try modes.values.map { rawMode in
+            let mode = try XCTUnwrap(rawMode as? [String: Any])
+            return try XCTUnwrap(mode["tsInputModeMenuIconFileKey"] as? String)
+        }
 
         for assetName in assetNames {
             let assetURL = resourcesDirectory

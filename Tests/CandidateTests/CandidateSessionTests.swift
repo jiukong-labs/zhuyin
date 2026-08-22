@@ -43,6 +43,8 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.preferredCandidate, first)
         XCTAssertEqual(session.highlightedIndex, 0)
         XCTAssertEqual(session.presentationMode, .compact)
+        XCTAssertTrue(session.isInlinePreview)
+        XCTAssertFalse(session.presentsCandidatePanel)
     }
 
     func testRetainsSameVisibleTextWhenTypedCandidateIDsDiffer() throws {
@@ -61,6 +63,135 @@ final class CandidateSessionTests: XCTestCase {
 
         XCTAssertNotEqual(character.id, phrase.id)
         XCTAssertEqual(session.candidates, [character, phrase])
+    }
+
+    func testRevisionSessionReportsLocatingAndChoosingModes() throws {
+        let unitID = UUID()
+        let focus = CompositionRevisionFocus(
+            unitID: unitID,
+            text: "測",
+            pronunciation: "ㄘㄜˋ",
+            readingPosition: 1,
+            readingCount: 3
+        )
+        var session = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "ㄘㄜˋ",
+                candidates: [makeCandidate("測", pronunciation: "ㄘㄜˋ")],
+                revisionFocus: focus
+            )
+        )
+
+        XCTAssertEqual(session.revisionFocus, focus)
+        XCTAssertEqual(session.revisionMode, .locating)
+        XCTAssertFalse(session.isInlinePreview)
+        XCTAssertTrue(session.presentsCandidatePanel)
+        XCTAssertEqual(
+            session.revisionDisplayText,
+            "定位 1／3：測　ㄘㄜˋ　↓ 進入選字"
+        )
+
+        XCTAssertTrue(session.expand())
+        XCTAssertEqual(session.revisionMode, .choosing)
+        XCTAssertEqual(
+            session.revisionDisplayText,
+            "選字 1／3：測　←／→ 選候選　Esc 返回"
+        )
+
+        XCTAssertTrue(session.collapse())
+        XCTAssertEqual(session.revisionMode, .locating)
+        XCTAssertFalse(session.collapse())
+    }
+
+    func testRevisionInteractionRoutesArrowsByCurrentMode() throws {
+        let focus = CompositionRevisionFocus(
+            unitID: UUID(),
+            text: "測",
+            pronunciation: "ㄘㄜˋ",
+            readingPosition: 1,
+            readingCount: 2
+        )
+        var session = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "ㄘㄜˋ",
+                candidates: [
+                    makeCandidate("冊", pronunciation: "ㄘㄜˋ"),
+                    makeCandidate("測", pronunciation: "ㄘㄜˋ")
+                ],
+                revisionFocus: focus
+            )
+        )
+
+        XCTAssertTrue(
+            CandidateRevisionInteractionPolicy.routesCompositionCursor(
+                candidateSession: session
+            )
+        )
+        XCTAssertFalse(
+            CandidateRevisionInteractionPolicy.allowsCandidateCommand(
+                .navigate(.next),
+                session: session
+            )
+        )
+        XCTAssertTrue(
+            CandidateRevisionInteractionPolicy.allowsCandidateCommand(
+                .expand,
+                session: session
+            )
+        )
+
+        XCTAssertTrue(session.expand())
+        XCTAssertFalse(
+            CandidateRevisionInteractionPolicy.routesCompositionCursor(
+                candidateSession: session
+            )
+        )
+        XCTAssertTrue(
+            CandidateRevisionInteractionPolicy.allowsCandidateCommand(
+                .navigate(.next),
+                session: session
+            )
+        )
+    }
+
+    func testInlinePreviewOnlyRoutesExplicitOpenAndEditingCommands() throws {
+        var session = try makeSession(count: 3)
+
+        for command: CandidateCommand in [
+            .navigate(.next),
+            .select(1),
+            .commitHighlighted,
+        ] {
+            XCTAssertTrue(
+                CandidateRevisionInteractionPolicy.bypassesCandidateCommand(
+                    command,
+                    session: session
+                )
+            )
+        }
+        for command: CandidateCommand in [
+            .expand,
+            .commitFirst,
+            .cancel,
+            .deleteBackward,
+        ] {
+            XCTAssertFalse(
+                CandidateRevisionInteractionPolicy.bypassesCandidateCommand(
+                    command,
+                    session: session
+                )
+            )
+        }
+
+        XCTAssertTrue(session.expand())
+        XCTAssertTrue(session.presentsCandidatePanel)
+        XCTAssertFalse(session.isInlinePreview)
+        XCTAssertFalse(
+            CandidateRevisionInteractionPolicy.bypassesCandidateCommand(
+                .select(1),
+                session: session
+            )
+        )
     }
 
     func testOnlyKnownCandidateIDCanChangePreferredCandidate() throws {
@@ -186,14 +317,17 @@ final class CandidateSessionTests: XCTestCase {
     func testNumberSelectionUsesTheHighlightedNineCandidatePage() throws {
         var session = try makeSession(count: 20)
 
+        XCTAssertEqual(session.highlightedSelectionKeyIndex, 0)
         XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0)?.text, "0")
         XCTAssertEqual(session.candidate(atSelectionKeyIndex: 8)?.text, "8")
 
         session.updateHighlightedCandidate(session.candidates[10].id)
+        XCTAssertEqual(session.highlightedSelectionKeyIndex, 1)
         XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0)?.text, "9")
         XCTAssertEqual(session.candidate(atSelectionKeyIndex: 8)?.text, "17")
 
         session.updateHighlightedCandidate(session.candidates[19].id)
+        XCTAssertEqual(session.highlightedSelectionKeyIndex, 1)
         XCTAssertEqual(session.candidate(atSelectionKeyIndex: 0)?.text, "18")
         XCTAssertEqual(session.candidate(atSelectionKeyIndex: 1)?.text, "19")
         XCTAssertNil(session.candidate(atSelectionKeyIndex: 2))

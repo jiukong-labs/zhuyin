@@ -6,6 +6,7 @@ script_directory="${0:A:h}"
 repository_root="${script_directory:h}"
 derived_data_path="${JIUKONG_DICTIONARY_DERIVED_DATA_PATH:-${repository_root}/.build/DictionaryBuilder}"
 source_directory="${repository_root}/Data/CNS11643/20260805"
+phrase_source="${repository_root}/Data/JiukongPhrases/phrases.tsv"
 output_path="${repository_root}/Resources/Dictionary/JiukongZhuyin.sqlite3"
 
 xcodebuild \
@@ -24,4 +25,5 @@ fi
 
 "${builder_path}" \
   --source "${source_directory}" \
+  --phrases "${phrase_source}" \
   --output "${output_path}"

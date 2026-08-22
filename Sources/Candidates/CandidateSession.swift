@@ -16,6 +16,11 @@ enum CandidatePresentationMode: Equatable {
     case expanded
 }
 
+enum CandidateRevisionMode: Equatable {
+    case locating
+    case choosing
+}
+
 struct CandidateSession: Equatable {
     static let selectionPageSize = 9
     static let expandedColumnCount = 9
@@ -23,6 +28,7 @@ struct CandidateSession: Equatable {
 
     let id: UUID
     let pronunciation: String
+    let revisionFocus: CompositionRevisionFocus?
     /// The candidates shown for this selection session.
     ///
     /// This ordered value snapshot deliberately does not consult the learning
@@ -35,7 +41,8 @@ struct CandidateSession: Equatable {
     init?(
         id: UUID = UUID(),
         pronunciation: String,
-        candidates: [Candidate]
+        candidates: [Candidate],
+        revisionFocus: CompositionRevisionFocus? = nil
     ) {
         var seen: Set<CandidateID> = []
         let uniqueCandidates = candidates.filter {
@@ -48,6 +55,7 @@ struct CandidateSession: Equatable {
         self.id = id
         self.pronunciation = pronunciation
         self.candidates = uniqueCandidates
+        self.revisionFocus = revisionFocus
     }
 
     var preferredCandidate: Candidate {
@@ -60,6 +68,37 @@ struct CandidateSession: Equatable {
 
     var isExpanded: Bool {
         presentationMode == .expanded
+    }
+
+    /// Ordinary conversion starts as an inline preview without a window.
+    /// Revision locating remains visible even though it uses compact layout.
+    var presentsCandidatePanel: Bool {
+        revisionFocus != nil || isExpanded
+    }
+
+    var isInlinePreview: Bool {
+        revisionFocus == nil && !isExpanded
+    }
+
+    var revisionMode: CandidateRevisionMode? {
+        guard revisionFocus != nil else {
+            return nil
+        }
+        return isExpanded ? .choosing : .locating
+    }
+
+    var revisionDisplayText: String? {
+        guard let revisionFocus else {
+            return nil
+        }
+        switch revisionMode {
+        case .locating:
+            return revisionFocus.locatingDisplayText
+        case .choosing:
+            return revisionFocus.choosingDisplayText
+        case nil:
+            return nil
+        }
     }
 
     var selectionPageRange: Range<Int> {
@@ -75,6 +114,11 @@ struct CandidateSession: Equatable {
         selectionPageRange
     }
 
+    /// The displayed 1-9 slot containing the current highlight.
+    var highlightedSelectionKeyIndex: Int {
+        highlightedIndex - selectionPageRange.lowerBound
+    }
+
     @discardableResult
     mutating func expand() -> Bool {
         guard presentationMode == .compact else {
@@ -82,6 +126,16 @@ struct CandidateSession: Equatable {
         }
 
         presentationMode = .expanded
+        return true
+    }
+
+    @discardableResult
+    mutating func collapse() -> Bool {
+        guard presentationMode == .expanded else {
+            return false
+        }
+
+        presentationMode = .compact
         return true
     }
 
@@ -154,5 +208,47 @@ struct CandidateSession: Equatable {
 
     func validatedSelection(_ candidateID: CandidateID) -> Candidate? {
         candidates.first(where: { $0.id == candidateID })
+    }
+}
+
+enum CandidateRevisionInteractionPolicy {
+    static func routesCompositionCursor(
+        candidateSession: CandidateSession?
+    ) -> Bool {
+        candidateSession?.revisionMode != .choosing
+    }
+
+    /// Candidate navigation is deliberately dormant during text positioning.
+    /// Down's `.expand` command is still accepted and enters choosing mode.
+    static func allowsCandidateCommand(
+        _ command: CandidateCommand,
+        session: CandidateSession
+    ) -> Bool {
+        guard session.revisionMode == .locating else {
+            return true
+        }
+        if case .navigate = command {
+            return false
+        }
+        return true
+    }
+
+    /// While an ordinary candidate is only previewed inline, Down opens the
+    /// explicit chooser. Space, Escape, and Backspace retain their editing
+    /// meanings; selection numbers, Return, and navigation bypass candidate
+    /// routing so they can continue or finalize the composition normally.
+    static func bypassesCandidateCommand(
+        _ command: CandidateCommand,
+        session: CandidateSession
+    ) -> Bool {
+        guard session.isInlinePreview else {
+            return false
+        }
+        switch command {
+        case .expand, .commitFirst, .cancel, .deleteBackward:
+            return false
+        case .navigate, .select, .commitHighlighted:
+            return true
+        }
     }
 }

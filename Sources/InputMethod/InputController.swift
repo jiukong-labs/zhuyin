@@ -35,6 +35,7 @@ final class InputController: IMKInputController {
     private var shiftToggleController = ShiftToggleController()
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
+    private var revisingUnitID: UUID?
     private var lastCandidateAnchor: NSRect?
     private var languageModeHUDToken: UUID?
 
@@ -122,15 +123,43 @@ final class InputController: IMKInputController {
             )
         }
 
+        if !compositionBuffer.isEmpty,
+           CandidateRevisionInteractionPolicy.routesCompositionCursor(
+               candidateSession: candidateSession
+           ),
+           let command = CompositionCursorCommandRouter.command(
+               keyCode: event.keyCode,
+               modifierFlags: event.modifierFlags
+           ) {
+            handleCompositionCursorCommand(
+                command,
+                inputClient: inputClient
+            )
+            return true
+        }
+
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let resolvedKey = MacVirtualKeyResolver.key(for: event.keyCode)
         if let candidateSession,
            let command = CandidateCommandRouter.command(
                keyCode: event.keyCode,
                modifierFlags: event.modifierFlags,
-               isExpanded: candidateSession.isExpanded
+               isExpanded: candidateSession.isExpanded,
+               isExplicitSelectionContext:
+                   candidateSession.revisionFocus != nil,
+               mappedBopomofoComponent: resolvedKey.flatMap {
+                   keyboardArrangement.layout.component(for: $0)
+               },
+               highlightedSelectionKeyIndex: candidateSession
+                   .highlightedSelectionKeyIndex
            ) {
-            perform(command, inputClient: inputClient)
-            return true
+            if !CandidateRevisionInteractionPolicy.bypassesCandidateCommand(
+                command,
+                session: candidateSession
+            ) {
+                perform(command, inputClient: inputClient)
+                return true
+            }
         }
 
         // Caps Lock does not change Bopomofo input, so it must not change
@@ -153,7 +182,7 @@ final class InputController: IMKInputController {
             return false
         }
 
-        guard let key = MacVirtualKeyResolver.key(for: event.keyCode) else {
+        guard let key = resolvedKey else {
             finishComposition(
                 reason: .implicitPassThrough,
                 using: inputClient
@@ -169,6 +198,7 @@ final class InputController: IMKInputController {
             return true
         }
 
+        revisingUnitID = nil
         let result = inputSession.handle(key)
         return apply(result, to: inputClient)
     }
@@ -200,6 +230,7 @@ final class InputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         shiftToggleController.reset()
+        synchronizeLanguageModeWithCurrentInputSource()
         startCursorIndicator()
         super.activateServer(sender)
     }
@@ -223,11 +254,35 @@ final class InputController: IMKInputController {
     }
 
     @objc private func selectedInputSourceDidChange(_ notification: Notification) {
+        let currentInputSourceID = Self.currentInputSourceID()
+        let ownInputSourceID = Bundle.main.object(
+            forInfoDictionaryKey: "TISInputSourceID"
+        ) as? String
+
+        if let mode = LanguageMode.mode(
+            forInputSourceID: currentInputSourceID,
+            parentID: ownInputSourceID
+        ) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    return
+                }
+
+                if self.languageModeController.mode != mode {
+                    self.finishComposition(
+                        reason: .lifecycle,
+                        using: self.client()
+                    )
+                }
+                self.languageModeController.setMode(mode)
+                self.cursorIndicator.update(mode: mode)
+            }
+            return
+        }
+
         guard CandidateInputSourcePolicy.shouldFinishPresentation(
-            currentInputSourceID: Self.currentInputSourceID(),
-            ownInputSourceID: Bundle.main.object(
-                forInfoDictionaryKey: "TISInputSourceID"
-            ) as? String
+            currentInputSourceID: currentInputSourceID,
+            ownInputSourceID: ownInputSourceID
         ) else {
             return
         }
@@ -277,7 +332,29 @@ final class InputController: IMKInputController {
         }
 
         finishComposition(reason: .lifecycle, using: inputClient)
-        let mode = languageModeController.toggle()
+        let mode: LanguageMode = languageModeController.mode == .chinese
+            ? .english
+            : .chinese
+
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
+            return false
+        }
+
+        do {
+            try InputSourceRegistrar.select(
+                mode: mode,
+                bundleIdentifier: bundleIdentifier
+            )
+        } catch {
+            NSLog(
+                "Jiukong Zhuyin could not select the %@ mode: %@",
+                mode.rawValue,
+                error.localizedDescription
+            )
+            return false
+        }
+
+        languageModeController.setMode(mode)
         cursorIndicator.update(mode: mode)
 
         // The persistent indicator already answers "which mode am I in", so the
@@ -316,6 +393,19 @@ final class InputController: IMKInputController {
         cursorIndicator.apply(preferences.current.cursorIndicator)
         cursorIndicator.update(mode: languageModeController.mode)
         cursorIndicator.setActive(true)
+    }
+
+    private func synchronizeLanguageModeWithCurrentInputSource() {
+        let parentID = Bundle.main.object(
+            forInfoDictionaryKey: "TISInputSourceID"
+        ) as? String
+        guard let mode = LanguageMode.mode(
+            forInputSourceID: Self.currentInputSourceID(),
+            parentID: parentID
+        ) else {
+            return
+        }
+        languageModeController.setMode(mode)
     }
 
     private func resetTransientInputState() {
@@ -394,6 +484,7 @@ final class InputController: IMKInputController {
         inputClient: any IMKTextInput
     ) {
         let pronunciation = syllable.text
+        revisingUnitID = nil
         guard let candidateProvider else {
             NSLog("Jiukong Zhuyin character conversion is unavailable.")
             appendLiteralReading(pronunciation, to: inputClient)
@@ -420,13 +511,109 @@ final class InputController: IMKInputController {
             candidateSession = session
             candidateSyllable = syllable
             updateMarkedComposition(on: inputClient)
-            presentCandidates(session, inputClient: inputClient)
         } catch {
             NSLog(
                 "Jiukong Zhuyin dictionary lookup failed: %@",
                 error.localizedDescription
             )
             appendLiteralReading(pronunciation, to: inputClient)
+        }
+    }
+
+    private func handleCompositionCursorCommand(
+        _ command: CompositionCursorCommand,
+        inputClient: any IMKTextInput
+    ) {
+        let targetUnitID: UUID?
+
+        if candidateSession != nil, revisingUnitID == nil {
+            // Finish the active final reading before moving inside the buffer.
+            _ = acceptPreferredCandidate(reason: .implicitPassThrough)
+            switch command {
+            case .previousReading:
+                targetUnitID = compositionBuffer.lastReadingUnitID
+            case .nextReading:
+                targetUnitID = nil
+            }
+        } else {
+            if candidateSession != nil {
+                clearCandidatePresentation()
+            }
+            switch command {
+            case .previousReading:
+                targetUnitID = compositionBuffer.readingUnitID(
+                    before: revisingUnitID
+                ) ?? revisingUnitID
+            case .nextReading:
+                if let revisingUnitID {
+                    targetUnitID = compositionBuffer.readingUnitID(
+                        after: revisingUnitID
+                    )
+                } else {
+                    targetUnitID = nil
+                }
+            }
+        }
+
+        guard let targetUnitID else {
+            revisingUnitID = nil
+            updateMarkedComposition(on: inputClient)
+            return
+        }
+        beginRevisionCandidateSelection(
+            for: targetUnitID,
+            inputClient: inputClient
+        )
+    }
+
+    private func beginRevisionCandidateSelection(
+        for unitID: UUID,
+        inputClient: any IMKTextInput
+    ) {
+        guard let focus = compositionBuffer.revisionFocus(for: unitID),
+              let unit = compositionBuffer.unit(withID: unitID),
+              unit.kind == .reading else {
+            revisingUnitID = nil
+            updateMarkedComposition(on: inputClient)
+            return
+        }
+
+        compositionBuffer.clearSelection()
+        revisingUnitID = unitID
+        candidateSyllable = nil
+        guard let candidateProvider else {
+            updateMarkedComposition(on: inputClient)
+            return
+        }
+
+        do {
+            let candidates = try candidateProvider.candidates(
+                for: unit.pronunciation
+            )
+            guard var session = CandidateSession(
+                pronunciation: unit.pronunciation,
+                candidates: candidates,
+                revisionFocus: focus
+            ) else {
+                updateMarkedComposition(on: inputClient)
+                return
+            }
+            if let currentCandidate = session.candidates.first(where: {
+                $0.type == .character && $0.text == unit.text
+            }) {
+                session.updateHighlightedCandidate(currentCandidate.id)
+            }
+
+            lastCandidateAnchor = nil
+            candidateSession = session
+            updateMarkedComposition(on: inputClient)
+            presentCandidates(session, inputClient: inputClient)
+        } catch {
+            NSLog(
+                "Jiukong Zhuyin revision lookup failed: %@",
+                error.localizedDescription
+            )
+            updateMarkedComposition(on: inputClient)
         }
     }
 
@@ -443,6 +630,7 @@ final class InputController: IMKInputController {
             return false
         }
 
+        revisingUnitID = nil
         switch command {
         case .expandBackward:
             compositionBuffer.expandSelectionBackward()
@@ -474,13 +662,26 @@ final class InputController: IMKInputController {
             flushComposition(reason: .returnKey, to: inputClient)
             return true
         case .escape:
+            if revisingUnitID != nil {
+                revisingUnitID = nil
+                updateMarkedComposition(on: inputClient)
+                return true
+            }
             if !compositionBuffer.clearSelection() {
                 compositionBuffer.discard()
             }
             updateMarkedComposition(on: inputClient)
             return true
         case .deleteBackward:
-            compositionBuffer.deleteBackward()
+            if let revisingUnitID {
+                let previousUnitID = compositionBuffer.readingUnitID(
+                    before: revisingUnitID
+                )
+                _ = compositionBuffer.deleteUnit(withID: revisingUnitID)
+                self.revisingUnitID = previousUnitID
+            } else {
+                compositionBuffer.deleteBackward()
+            }
             updateMarkedComposition(on: inputClient)
             return true
         default:
@@ -505,21 +706,74 @@ final class InputController: IMKInputController {
         guard let session = candidateSession else {
             return
         }
+        guard CandidateRevisionInteractionPolicy.allowsCandidateCommand(
+            command,
+            session: session
+        ) else {
+            return
+        }
 
         switch CandidateCommandReducer.reduce(command, session: session) {
         case let .update(updatedSession):
             candidateSession = updatedSession
-            presentCandidates(updatedSession, inputClient: inputClient)
+            updateMarkedComposition(on: inputClient)
+            if updatedSession.presentsCandidatePanel {
+                presentCandidates(updatedSession, inputClient: inputClient)
+            }
         case let .commit(candidate, reason):
             _ = acceptCandidate(candidate, reason: reason)
             updateMarkedComposition(on: inputClient)
         case .cancel:
-            cancelActiveCandidate(to: inputClient)
+            if session.revisionMode == .choosing {
+                returnToRevisionPositioning(
+                    session,
+                    inputClient: inputClient
+                )
+            } else if session.isExpanded {
+                returnToInlineCandidatePreview(
+                    session,
+                    inputClient: inputClient
+                )
+            } else {
+                cancelActiveCandidate(to: inputClient)
+            }
         case .deleteBackward:
             resumeEditingAfterCandidateBackspace(to: inputClient)
         case .handledWithoutChange:
             break
         }
+    }
+
+    private func returnToRevisionPositioning(
+        _ session: CandidateSession,
+        inputClient: any IMKTextInput
+    ) {
+        guard let focus = session.revisionFocus else {
+            cancelActiveCandidate(to: inputClient)
+            return
+        }
+
+        var updatedSession = session
+        _ = updatedSession.collapse()
+        if let currentCandidate = updatedSession.candidates.first(where: {
+            $0.type == .character && $0.text == focus.text
+        }) {
+            updatedSession.updateHighlightedCandidate(currentCandidate.id)
+        }
+        candidateSession = updatedSession
+        updateMarkedComposition(on: inputClient)
+        presentCandidates(updatedSession, inputClient: inputClient)
+    }
+
+    private func returnToInlineCandidatePreview(
+        _ session: CandidateSession,
+        inputClient: any IMKTextInput
+    ) {
+        var updatedSession = session
+        _ = updatedSession.collapse()
+        candidateSession = updatedSession
+        candidatePresenter.hide(sessionID: session.id)
+        updateMarkedComposition(on: inputClient)
     }
 
     /// Punctuation ends the active reading without ending the composition: the
@@ -530,6 +784,7 @@ final class InputController: IMKInputController {
         inputClient: any IMKTextInput
     ) -> Bool {
         _ = acceptPreferredCandidate(reason: .punctuation)
+        revisingUnitID = nil
 
         if let rawText = inputSession.takeRawComposition() {
             _ = compositionBuffer.append(
@@ -564,7 +819,20 @@ final class InputController: IMKInputController {
         reason: CandidateCommitReason
     ) -> Bool {
         let fallbackReading = candidateSession?.pronunciation
-        discardCandidateState()
+        let revisionUnitID = revisingUnitID
+        clearCandidatePresentation()
+
+        if let revisionUnitID {
+            guard compositionBuffer.replaceUnit(
+                withID: revisionUnitID,
+                candidate: candidate,
+                reason: reason
+            ) else {
+                NSLog("Jiukong Zhuyin rejected an inconsistent revision candidate.")
+                return false
+            }
+            return true
+        }
 
         guard compositionBuffer.acceptCandidate(
             candidate,
@@ -583,13 +851,22 @@ final class InputController: IMKInputController {
     }
 
     private func cancelActiveCandidate(to inputClient: any IMKTextInput) {
-        discardCandidateState()
+        if revisingUnitID != nil {
+            clearCandidatePresentation()
+        } else {
+            discardCandidateState()
+        }
         updateMarkedComposition(on: inputClient)
     }
 
     private func resumeEditingAfterCandidateBackspace(
         to inputClient: any IMKTextInput
     ) {
+        if revisingUnitID != nil {
+            clearCandidatePresentation()
+            updateMarkedComposition(on: inputClient)
+            return
+        }
         guard let completedSyllable = candidateSyllable else {
             cancelActiveCandidate(to: inputClient)
             return
@@ -603,6 +880,11 @@ final class InputController: IMKInputController {
     }
 
     private func discardCandidateState() {
+        clearCandidatePresentation()
+        revisingUnitID = nil
+    }
+
+    private func clearCandidatePresentation() {
         let sessionID = candidateSession?.id
         candidateSession = nil
         candidateSyllable = nil
@@ -630,6 +912,7 @@ final class InputController: IMKInputController {
         to inputClient: any IMKTextInput
     ) {
         _ = acceptPreferredCandidate(reason: reason)
+        revisingUnitID = nil
 
         if let rawText = inputSession.takeRawComposition() {
             _ = compositionBuffer.append(
@@ -674,8 +957,17 @@ final class InputController: IMKInputController {
         if markedRange.location != NSNotFound,
            markedRange.length != NSNotFound,
            markedRange.location <= Int.max - markedRange.length {
+            let localOffset: Int
+            if let revisingUnitID {
+                let localRange = compositionBuffer.markedSelectionRange(
+                    focusedUnitID: revisingUnitID
+                )
+                localOffset = localRange.location + localRange.length
+            } else {
+                localOffset = markedRange.length
+            }
             let caretRange = NSRange(
-                location: markedRange.location + markedRange.length,
+                location: markedRange.location + localOffset,
                 length: 0
             )
             if let caretRect = firstValidRect(
@@ -749,17 +1041,41 @@ final class InputController: IMKInputController {
     private func updateMarkedComposition(
         on inputClient: any IMKTextInput
     ) {
-        let activeSuffix = candidateSession?.pronunciation
-            ?? inputSession.markedText
-        guard let presentation = CompositionPresentation.make(
-            buffer: compositionBuffer,
-            activeSuffix: activeSuffix
-        ) else {
+        let presentation: CompositionPresentation?
+        if revisingUnitID == nil,
+           let candidateSession,
+           candidateSession.revisionFocus == nil {
+            presentation = CompositionPresentation.make(
+                buffer: compositionBuffer,
+                previewing: candidateSession.highlightedCandidate
+            ) ?? CompositionPresentation.make(
+                buffer: compositionBuffer,
+                activeSuffix: candidateSession.pronunciation
+            )
+        } else {
+            presentation = CompositionPresentation.make(
+                buffer: compositionBuffer,
+                activeSuffix: inputSession.markedText,
+                focusedUnitID: revisingUnitID
+            )
+        }
+        guard let presentation else {
             clearMarkedText(on: inputClient)
             return
         }
 
-        let markedText = presentation.text as NSString
+        let focusedRange = revisingUnitID.map {
+            compositionBuffer.markedSelectionRange(focusedUnitID: $0)
+        }
+        let markedText: Any
+        if let focusedRange {
+            markedText = CompositionMarkedTextRenderer.make(
+                presentation: presentation,
+                focusedRange: focusedRange
+            )
+        } else {
+            markedText = presentation.text as NSString
+        }
         inputClient.setMarkedText(
             markedText,
             selectionRange: presentation.selectionRange,

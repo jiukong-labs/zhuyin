@@ -49,6 +49,22 @@ struct CandidateRanker {
                 return lhs.pinned
             }
 
+            // A deliberate character choice should be useful on the very next
+            // lookup, even when that character was far down the CNS source
+            // order. Phrases keep their independent tier, and an explicit pin
+            // remains stronger than automatic learning.
+            if lhs.type == .character, rhs.type == .character {
+                let lhsWasSelected = hasCommittedSelection(lhs)
+                let rhsWasSelected = hasCommittedSelection(rhs)
+                if lhsWasSelected != rhsWasSelected {
+                    return lhsWasSelected
+                }
+                if lhsWasSelected,
+                   lhs.lastUsed != rhs.lastUsed {
+                    return isMoreRecent(lhs.lastUsed, than: rhs.lastUsed)
+                }
+            }
+
             let lhsScore = score(for: lhs, at: now)
             let rhsScore = score(for: rhs, at: now)
             if lhsScore != rhsScore {
@@ -95,5 +111,22 @@ struct CandidateRanker {
 
         let typeBonus = candidate.type == .phrase ? phraseBonus : 0
         return baseScore + userBonus + recencyBonus + typeBonus
+    }
+
+    private func hasCommittedSelection(_ candidate: Candidate) -> Bool {
+        candidate.userFrequency > 0 || candidate.lastUsed != nil
+    }
+
+    private func isMoreRecent(_ lhs: Date?, than rhs: Date?) -> Bool {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs > rhs
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        case (nil, nil):
+            return false
+        }
     }
 }

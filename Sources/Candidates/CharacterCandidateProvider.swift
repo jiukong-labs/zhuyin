@@ -41,7 +41,7 @@ final class CharacterCandidateProvider {
                 )
             }
 
-        let phraseCandidates = exactPhraseCandidates(
+        let phraseCandidates = try exactPhraseCandidates(
             for: pronunciation,
             queries: phraseQueries
         )
@@ -102,10 +102,16 @@ final class CharacterCandidateProvider {
                     == candidate.pronunciationSequence else {
                 return
             }
+            let selectedAt = now()
+            _ = learning?.addPhrase(
+                phrase: candidate.text,
+                pronunciationSequence: candidate.pronunciationSequence,
+                createdAt: selectedAt
+            )
             learning?.recordPhraseSelection(
                 phrase: candidate.text,
                 pronunciationSequence: candidate.pronunciationSequence,
-                at: now()
+                at: selectedAt
             )
         }
     }
@@ -113,11 +119,7 @@ final class CharacterCandidateProvider {
     private func exactPhraseCandidates(
         for pronunciation: String,
         queries: [CompositionPhraseQuery]
-    ) -> [Candidate] {
-        guard let learning else {
-            return []
-        }
-
+    ) throws -> [Candidate] {
         var seenQueries: Set<[String]> = []
         var seenCandidates: Set<CandidateID> = []
         var result: [Candidate] = []
@@ -129,7 +131,7 @@ final class CharacterCandidateProvider {
                 continue
             }
 
-            for record in learning.phraseRecords(for: readings) {
+            for record in learning?.phraseRecords(for: readings) ?? [] {
                 guard record.pronunciationSequence == readings,
                       let identity = try? UserPhraseValidator.validate(
                           phrase: record.phrase,
@@ -148,6 +150,25 @@ final class CharacterCandidateProvider {
                     userFrequency: record.selectionCount,
                     lastUsed: record.lastUsedAt,
                     pinned: record.pinned
+                )
+                guard seenCandidates.insert(candidate.id).inserted else {
+                    continue
+                }
+                result.append(candidate)
+            }
+
+            for entry in try dictionary.phraseEntries(for: readings) {
+                guard entry.pronunciationSequence == readings,
+                      entry.text.count == readings.count else {
+                    continue
+                }
+                let candidate = Candidate(
+                    text: entry.text,
+                    pronunciationSequence: readings,
+                    type: .phrase,
+                    baseRank: result.count,
+                    sourceOrder: entry.sourceOrder,
+                    baseFrequency: 0
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue

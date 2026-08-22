@@ -289,6 +289,162 @@ final class CompositionBufferTests: XCTestCase {
         )
     }
 
+    func testRevisionFocusUsesUTF16AndPhraseSelectionStillTakesPriority() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "A", pronunciation: "a"))
+        XCTAssertNotNil(buffer.append(text: "𐍈", pronunciation: "ji"))
+        XCTAssertNotNil(buffer.append(text: "測", pronunciation: "ce"))
+        let middleID = try XCTUnwrap(buffer.units.dropFirst().first?.id)
+
+        XCTAssertEqual(
+            buffer.markedSelectionRange(focusedUnitID: middleID),
+            NSRange(location: 1, length: 2)
+        )
+
+        XCTAssertTrue(buffer.expandSelectionBackward())
+        XCTAssertTrue(buffer.expandSelectionBackward())
+        XCTAssertEqual(
+            buffer.markedSelectionRange(focusedUnitID: middleID),
+            NSRange(location: 1, length: 3)
+        )
+    }
+
+    func testReadingCursorNavigationSkipsPunctuationAndStopsAtBothEnds() throws {
+        var buffer = CompositionBuffer()
+        let first = try XCTUnwrap(
+            buffer.append(text: "測", pronunciation: "ㄘㄜˋ")
+        )
+        XCTAssertNotNil(buffer.appendPunctuation("，"))
+        let second = try XCTUnwrap(
+            buffer.append(text: "試", pronunciation: "ㄕˋ")
+        )
+
+        XCTAssertEqual(buffer.lastReadingUnitID, second.id)
+        XCTAssertEqual(buffer.readingUnitID(before: nil), second.id)
+        XCTAssertEqual(buffer.readingUnitID(before: second.id), first.id)
+        XCTAssertNil(buffer.readingUnitID(before: first.id))
+        XCTAssertEqual(buffer.readingUnitID(after: first.id), second.id)
+        XCTAssertNil(buffer.readingUnitID(after: second.id))
+    }
+
+    func testRevisionFocusReportsTheVisibleReadingPosition() throws {
+        var buffer = CompositionBuffer()
+        let first = try XCTUnwrap(
+            buffer.append(text: "測", pronunciation: "ㄘㄜˋ")
+        )
+        XCTAssertNotNil(buffer.appendPunctuation("，"))
+        let second = try XCTUnwrap(
+            buffer.append(text: "試", pronunciation: "ㄕˋ")
+        )
+
+        XCTAssertEqual(
+            buffer.revisionFocus(for: first.id),
+            CompositionRevisionFocus(
+                unitID: first.id,
+                text: "測",
+                pronunciation: "ㄘㄜˋ",
+                readingPosition: 1,
+                readingCount: 2
+            )
+        )
+        XCTAssertEqual(
+            buffer.revisionFocus(for: second.id)?.locatingDisplayText,
+            "定位 2／2：試　ㄕˋ　↓ 進入選字"
+        )
+        XCTAssertEqual(
+            buffer.revisionFocus(for: second.id)?.choosingDisplayText,
+            "選字 2／2：試　←／→ 選候選　Esc 返回"
+        )
+        XCTAssertNil(buffer.revisionFocus(for: UUID()))
+    }
+
+    func testReplacingARevisionUnitKeepsItsIDAndInvalidatesCoveredPhrase() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "冊", pronunciation: "ㄘㄜˋ"))
+        let phrase = phraseCandidate("測試", readings: ["ㄘㄜˋ", "ㄕˋ"])
+        XCTAssertTrue(buffer.acceptCandidate(phrase, reason: .space))
+        let revisedID = try XCTUnwrap(buffer.units.last?.id)
+
+        let replacement = characterCandidate("市", reading: "ㄕˋ")
+        XCTAssertTrue(
+            buffer.replaceUnit(
+                withID: revisedID,
+                candidate: replacement,
+                reason: .number(4)
+            )
+        )
+
+        XCTAssertEqual(buffer.text, "測市")
+        XCTAssertEqual(buffer.units.last?.id, revisedID)
+        XCTAssertEqual(
+            buffer.pendingCandidateSelections,
+            [
+                PendingCandidateSelection(
+                    candidate: replacement,
+                    reason: .number(4),
+                    coveredUnitIDs: [revisedID]
+                ),
+            ]
+        )
+    }
+
+    func testAcceptingTheCurrentRevisionCharacterPreservesPhraseLearning() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "冊", pronunciation: "ㄘㄜˋ"))
+        let phrase = phraseCandidate("測試", readings: ["ㄘㄜˋ", "ㄕˋ"])
+        XCTAssertTrue(buffer.acceptCandidate(phrase, reason: .space))
+        let pendingBefore = buffer.pendingCandidateSelections
+        let revisedID = try XCTUnwrap(buffer.units.last?.id)
+
+        XCTAssertTrue(
+            buffer.replaceUnit(
+                withID: revisedID,
+                candidate: characterCandidate("試", reading: "ㄕˋ"),
+                reason: .returnKey
+            )
+        )
+
+        XCTAssertEqual(buffer.text, "測試")
+        XCTAssertEqual(buffer.pendingCandidateSelections, pendingBefore)
+    }
+
+    func testRevisionRejectsWrongReadingAndPhraseCandidates() throws {
+        var buffer = CompositionBuffer()
+        let unit = try XCTUnwrap(
+            buffer.append(text: "試", pronunciation: "ㄕˋ")
+        )
+        let before = buffer
+
+        XCTAssertFalse(
+            buffer.replaceUnit(
+                withID: unit.id,
+                candidate: characterCandidate("市", reading: "ㄕˊ"),
+                reason: .space
+            )
+        )
+        XCTAssertFalse(
+            buffer.replaceUnit(
+                withID: unit.id,
+                candidate: phraseCandidate("測試", readings: ["ㄘㄜˋ", "ㄕˋ"]),
+                reason: .space
+            )
+        )
+        XCTAssertEqual(buffer, before)
+    }
+
+    func testDeleteFocusedUnitPrunesOnlySelectionsCoveringThatUnit() throws {
+        var buffer = CompositionBuffer()
+        let first = characterCandidate("測", reading: "ㄘㄜˋ")
+        let second = characterCandidate("試", reading: "ㄕˋ")
+        XCTAssertTrue(buffer.acceptCandidate(first, reason: .space))
+        XCTAssertTrue(buffer.acceptCandidate(second, reason: .space))
+        let secondID = try XCTUnwrap(buffer.units.last?.id)
+
+        XCTAssertEqual(buffer.deleteUnit(withID: secondID)?.text, "試")
+        XCTAssertEqual(buffer.text, "測")
+        XCTAssertEqual(buffer.pendingCandidateSelections.map(\.candidate), [first])
+    }
+
     func testDeleteBackwardRemovesOneUnitAndOnlyItsPendingLearning() {
         var buffer = CompositionBuffer()
         let first = characterCandidate("輸", reading: "ㄕㄨ")

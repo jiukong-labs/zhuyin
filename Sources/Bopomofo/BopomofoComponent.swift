@@ -70,4 +70,16 @@ enum BopomofoComponent: Equatable {
             return tone.rawValue
         }
     }
+
+    /// A body component can begin the next syllable after a compact candidate
+    /// has been accepted implicitly. A tone cannot: the parser deliberately
+    /// rejects tones until a syllable body exists.
+    var canBeginSyllable: Bool {
+        switch self {
+        case .initial, .medial, .final:
+            return true
+        case .tone:
+            return false
+        }
+    }
 }

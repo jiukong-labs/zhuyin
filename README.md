@@ -8,6 +8,12 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 
 > 開發狀態：Milestone 11 已加入跟隨游標的輸入模式指示器。字與詞的學習資料只保存在目前 Mac。
 
+## 原創開發原則
+
+久空輸入法採完全自主設計：輸入法核心、組字流程、候選排序、學習機制、資料庫格式、介面，以及內建詞表，均針對本專案自行設計與實作，不複製、移植或改寫其他輸入法的程式碼、演算法實作或詞庫資料。這是本專案後續開發的永久原則。
+
+為了正確支援 macOS 與正式中文字碼，本專案只保留清楚揭露的基礎例外：Apple 平台 SDK／系統程式庫、僅供開發使用的工具，以及數位發展部公布的 CNS11643 官方字碼與注音標準資料。這些例外只提供平台介面與單字標準，不提供久空的輸入引擎、排序演算法或自製詞表；完整範圍列於 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
+
 ## Current features
 
 - Traditional Chinese Zhuyin composition
@@ -17,6 +23,7 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Standalone left/right Shift Chinese/English switching
 - Persistent, local character-selection learning and deterministic ranking
 - Multi-character marked composition and exact user-phrase learning
+- Original built-in phrase lexicon maintained by this project
 - Persistent settings for Shift switching and automatic learning
 - Searchable user-dictionary management with pinning, deletion, and clearing
 - Local JSON export and merging import of personal learning data
@@ -61,18 +68,24 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 三種配置都是一鍵一符號，Space 都是一聲。切換配置會先送出尚未完成的組字，下一次按鍵立即生效，不需重新啟動。倚天26鍵與許氏這類一鍵多符號的配置不在目前範圍內。標點不受配置影響。
 
-例如 `j i 3` 會完成 `ㄨㄛˇ` 並顯示候選，第一個候選是「我」；`r u 0 4` 會顯示 `ㄐㄧㄢˋ` 的同音候選。輸入中的注音會先顯示為 marked text；聲調鍵會完成音節並查詢字典。候選窗起初顯示目前一列、最多 9 個候選；第一次按 ↓ 只展開視窗，不移動反白，展開後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看。
+例如 `j i 3` 會完成 `ㄨㄛˇ`，並直接在 marked composition 中預覽第一候選「我」；`r u 0 4` 會預覽 `ㄐㄧㄢˋ` 的第一候選。完成音節時不主動顯示候選窗，按 ↓ 才開啟完整選字模式；開啟後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看，原本第一候選仍保持反白。
 
-精簡模式可用 ←／→（以及 ↑）逐字移動，第一次按 ↓ 只展開；展開後 ←／→ 移動一字、↑／↓ 移動九字列，Home／End 與 Page Up／Page Down 可快速跳轉。按主鍵區 `1`–`9` 選擇反白所在 9 字列的候選，Return／Keypad Enter 選定反白候選，Space 永遠選第一候選，也可直接用滑鼠點選。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
+一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中選擇要修改的字，候選窗標題會顯示例如「定位 1／3：測　ㄘㄜˋ　↓ 進入選字」，目前字也會加上黃色底色與橘色粗底線；按 ↓ 進入選字層後，標題改為「選字」，←／→ 才會移動候選反白，↑／↓ 可跨列移動，Esc 返回定位層。Return、數字鍵或滑鼠可確認候選；逐字修改期間畫面列出的 `1`–`9` 永遠代表候選編號，不會被當成下一個注音鍵。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末繼續輸入。
 
-- Backspace：組字時刪除最後輸入的注音 component；候選顯示時關閉候選窗、刪除聲調，回到注音編輯。
-- Escape：丟棄目前音節或取消目前候選組字。
+完成一個音節後可直接輸入下一個音節，久空會先把目前預覽的第一候選收進 marked composition；這也適用於標準、倚天與 IBM 配置中位於數字列的聲母、介音或韻母。候選窗未開啟時，主鍵區 `1`–`9` 不選候選，而是照鍵盤配置繼續輸入；要改選時先按 ↓，開窗後 `1`–`9` 才全部明確代表候選編號。Return／Keypad Enter 會接受預覽並直接提交整段組字，Space 接受第一候選並留在組字中，也可開窗後用方向鍵、數字或滑鼠選定。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
+
+- Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或候選窗開啟時，回到注音並刪除聲調。
+- Escape：候選窗開啟時先回到隱藏的第一候選預覽；再按一次才丟棄目前音節。
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
-候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；在沒有活動音節或候選窗時按 Return／Keypad Enter，才一次提交整段組字。Escape 依序取消目前候選、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 依序回到注音編輯、刪除注音 component，或刪除 buffer 的選取範圍／最後一個讀音單位。
+候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選或預覽回到注音編輯，再刪除當前修改字、注音 component，或 buffer 的選取範圍／最後一個讀音單位。
 
-未學習過的單字候選忠實保留 CNS11643 注音資料的來源順序；該順序不是字頻。使用者實際提交選字後，久空會以固定、可測的使用次數與七天最近使用半衰期逐步調整下一次查詢的排序。已開啟的候選快照不會在操作途中跳動。
+未學習過的單字候選忠實保留 CNS11643 注音資料的來源順序；該順序不是字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
+
+完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），即使第一音暫時顯示 CNS 順序的「冊」，第二音完成後第一候選會成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，由本專案逐筆編寫，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+
+同一機制可處理「測試中請稍後」：前五音可不停頓直接繼續，完成 `ㄏㄡˋ` 後會把六音完整句列為第一候選，而不是只顯示「後」的單字候選。候選格會依詞的長度自動加寬，不會把整句裁成一個字。
 
 `1`、`q`、`a`、`z` 都是聲母鍵；要連續驗證 `ㄅㄆㄇㄈ`，請在每個鍵後按 Enter 或一聲 Space 完成音節。直接連按四鍵會合理地以後一個聲母取代前一個。
 
@@ -186,13 +199,13 @@ A file that exists on disk but is missing from the checked-in project is silentl
 
 GitHub Actions runs the same checks on every push and pull request: the source-membership check, the Debug test suite, a universal Release build, and a rebuild of the dictionary from its pinned snapshot that must reproduce the checked-in artifact byte for byte. A separate advisory job reports when the checked-in project no longer matches `project.yml`.
 
-The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot without network access:
+The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot and Jiukong's first-party phrase TSV without network access:
 
 ```sh
 ./scripts/build-dictionary.sh
 ```
 
-Normal app builds never download or parse the raw CNS11643 files.
+Normal app builds never download or parse the raw CNS11643 or phrase-source files.
 
 ## Install for local development
 
@@ -209,6 +222,12 @@ SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./scripts/install.sh
 ```
 
 The bundle identifier is `tw.idv.jiukong.inputmethod.zhuyin`. Two constraints were established by experiment on macOS 26 and both make registration fail silently:
+
+The bundle is the parent of two selectable modes:
+`tw.idv.jiukong.inputmethod.zhuyin.Chinese` and
+`tw.idv.jiukong.inputmethod.zhuyin.English`. Their first-party template icons
+show `中` and `英`; Shift selects the other mode so macOS updates the existing
+input-menu icon.
 
 - **The identifier must contain an `inputmethod` component that is not the last one.** `tw.idv.jiukong.inputmethod.zhuyin` and `tw.idv.inputmethod.zhuyin` register; `tw.idv.jiukong.zhuyin`, `tw.idv.jiukong.zhuyinim`, and `tw.idv.jiukong.zhuyin.inputmethod` do not. `TISRegisterInputSource` still returns `noErr` for the rejected ones, so the only symptom is that the source never appears.
 - **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
@@ -237,13 +256,13 @@ Unit tests cannot reach the InputMethodKit event path, so the behavior that only
 
 ```sh
 ./scripts/install.sh
-./scripts/run-acceptance.sh              # single, escape, punctuation, brackets, phrase
+./scripts/run-acceptance.sh              # single, continuous, escape, punctuation, brackets, phrase
 ./scripts/run-acceptance.sh eten         # after setting the arrangement preference
 ```
 
 Each run launches its own TextEdit instance, types with real `CGEvent` delivery, compares the resulting text with the expectation, then restores the previous input source and closes the instance it launched. Existing TextEdit windows are untouched.
 
-Every run first requires Jiukong's own candidate panel to appear before it types anything. Without that check a run can silently be composed by the system's built-in Zhuyin input method, which produces the same Bopomofo from the same keys and would look like a pass. A run that cannot prove the connection aborts instead of reporting a result.
+Every run first completes a probe syllable, presses Down, and requires Jiukong's own candidate panel to appear before it types anything. Without that check a run can silently be composed by the system's built-in Zhuyin input method, which produces the same Bopomofo from the same keys and would look like a pass. A run that cannot prove the connection aborts instead of reporting a result.
 
 The `phrase` script creates the user phrase 九空 in the local learning database, and every run that commits text advances that character's count. Clear them from the settings window if the data is unwanted. The harness needs Accessibility and event-posting permission for the terminal running it, which is why it is not part of continuous integration.
 
@@ -271,4 +290,4 @@ Jiukong Zhuyin works completely offline and does not collect or transmit typing 
 - Website: https://jiukong.cloudgate.org.tw
 - License: [MIT](LICENSE)
 
-The source code is MIT-licensed. The CNS11643 source snapshot and generated dictionary are distributed under Taiwan's Open Government Data License 1.0; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+The product implementation and built-in phrase lexicon are original to this project and MIT-licensed. The CNS11643 source snapshot and the character portion of the generated dictionary are distributed under Taiwan's Open Government Data License 1.0; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).

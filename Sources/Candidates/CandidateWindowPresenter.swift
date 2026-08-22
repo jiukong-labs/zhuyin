@@ -94,47 +94,24 @@ private final class CandidateGridView: NSView {
         representedSessionID = session.id
         representedMode = session.presentationMode
 
-        let columnCount: Int
-        switch session.presentationMode {
-        case .compact:
-            columnCount = max(1, indices.count)
-        case .expanded:
-            columnCount = min(
-                max(1, indices.count),
-                CandidateSession.expandedColumnCount
-            )
+        let candidateTexts = indices.compactMap {
+            session.candidate(at: $0)?.text
         }
-
-        let documentSize = CandidateWindowSizing.documentSize(
-            candidateCount: indices.count,
+        let metrics = CandidateWindowSizing.gridMetrics(
+            candidateTexts: candidateTexts,
             mode: session.presentationMode
         )
-        setFrameSize(documentSize)
+        setFrameSize(metrics.documentSize)
 
         for (position, candidateIndex) in indices.enumerated() {
-            let row = position / columnCount
-            let column = position % columnCount
-            let origin = NSPoint(
-                x: CandidateWindowSizing.contentInset
-                    + CGFloat(column)
-                    * (CandidateWindowSizing.cellWidth
-                        + CandidateWindowSizing.cellSpacing),
-                y: CandidateWindowSizing.contentInset
-                    + CGFloat(row)
-                    * (CandidateWindowSizing.cellHeight
-                        + CandidateWindowSizing.cellSpacing)
-            )
+            guard metrics.cellFrames.indices.contains(position) else {
+                continue
+            }
             let button = CandidateButton(
                 candidateIndex: candidateIndex,
                 sessionID: session.id
             )
-            button.frame = NSRect(
-                origin: origin,
-                size: NSSize(
-                    width: CandidateWindowSizing.cellWidth,
-                    height: CandidateWindowSizing.cellHeight
-                )
-            )
+            button.frame = metrics.cellFrames[position]
             button.target = self
             button.action = #selector(candidateClicked(_:))
             button.isBordered = false
@@ -203,6 +180,7 @@ final class CandidateWindowPresenter {
     private let backgroundView: NSVisualEffectView
     private let scrollView: NSScrollView
     private let gridView: CandidateGridView
+    private let revisionLabel: NSTextField
     private(set) var presentedSessionID: UUID?
 
     private init() {
@@ -216,6 +194,7 @@ final class CandidateWindowPresenter {
         backgroundView = NSVisualEffectView(frame: .zero)
         scrollView = NSScrollView(frame: .zero)
         gridView = CandidateGridView(frame: .zero)
+        revisionLabel = NSTextField(labelWithString: "")
 
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -245,8 +224,19 @@ final class CandidateWindowPresenter {
         scrollView.borderType = .noBorder
         scrollView.autohidesScrollers = true
         scrollView.documentView = gridView
-        scrollView.autoresizingMask = [.width, .height]
+        scrollView.autoresizingMask = []
         backgroundView.addSubview(scrollView)
+
+        revisionLabel.alignment = .center
+        revisionLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        revisionLabel.textColor = .labelColor
+        revisionLabel.lineBreakMode = .byTruncatingTail
+        revisionLabel.wantsLayer = true
+        revisionLabel.layer?.cornerRadius = 6
+        revisionLabel.layer?.backgroundColor = NSColor.controlAccentColor
+            .withAlphaComponent(0.18).cgColor
+        revisionLabel.isHidden = true
+        backgroundView.addSubview(revisionLabel)
         panel.contentView = backgroundView
 
         gridView.onChoose = { [weak self] sessionID, candidateIndex in
@@ -286,12 +276,34 @@ final class CandidateWindowPresenter {
             for: .regular,
             scrollerStyle: scrollView.scrollerStyle
         )
-        let desiredSize = CandidateWindowSizing.viewportSize(
-            candidateCount: session.presentationMode == .compact
-                ? session.compactCandidateRange.count
-                : session.candidates.count,
+        let visibleIndices: [Int]
+        switch session.presentationMode {
+        case .compact:
+            visibleIndices = Array(session.compactCandidateRange)
+        case .expanded:
+            visibleIndices = Array(session.candidates.indices)
+        }
+        let visibleCandidateTexts = visibleIndices.compactMap {
+            session.candidate(at: $0)?.text
+        }
+        let candidateViewportSize = CandidateWindowSizing.viewportSize(
+            candidateTexts: visibleCandidateTexts,
             mode: session.presentationMode,
             scrollerThickness: scrollerThickness
+        )
+        let revisionFocus = session.revisionFocus
+        let revisionDisplayText = session.revisionDisplayText
+        revisionLabel.stringValue = revisionDisplayText ?? ""
+        revisionLabel.toolTip = revisionDisplayText
+        revisionLabel.isHidden = revisionFocus == nil
+        revisionLabel.layer?.backgroundColor = revisionHeaderColor(
+            for: session.revisionMode
+        ).cgColor
+        let desiredSize = CandidateWindowSizing.panelSize(
+            candidateViewportSize: candidateViewportSize,
+            revisionHeaderContentWidth: revisionFocus == nil
+                ? nil
+                : revisionLabel.intrinsicContentSize.width
         )
         let visibleFrames = NSScreen.screens.map(\.visibleFrame)
         let frame = CandidateWindowPlacement.frame(
@@ -300,15 +312,18 @@ final class CandidateWindowPresenter {
             visibleFrames: visibleFrames
         )
         let documentSize = CandidateWindowSizing.documentSize(
-            candidateCount: session.presentationMode == .compact
-                ? session.compactCandidateRange.count
-                : session.candidates.count,
+            candidateTexts: visibleCandidateTexts,
             mode: session.presentationMode
         )
 
+        let actualCandidateViewportSize = CandidateWindowSizing
+            .candidateViewportSize(
+                panelSize: frame.size,
+                showsRevisionHeader: revisionFocus != nil
+            )
         let scrollAxes = CandidateWindowSizing.scrollAxes(
             documentSize: documentSize,
-            viewportSize: frame.size,
+            viewportSize: actualCandidateViewportSize,
             scrollerThickness: scrollerThickness
         )
         scrollView.hasVerticalScroller = scrollAxes.vertical
@@ -317,13 +332,46 @@ final class CandidateWindowPresenter {
             rawValue: Int(clientWindowLevel) + 1
         )
         panel.setFrame(frame, display: true)
-        scrollView.frame = backgroundView.bounds
+        scrollView.frame = NSRect(
+            origin: .zero,
+            size: actualCandidateViewportSize
+        )
+        if revisionFocus != nil {
+            revisionLabel.frame = NSRect(
+                x: CandidateWindowSizing.contentInset,
+                y: actualCandidateViewportSize.height + 5,
+                width: max(
+                    1,
+                    frame.width - (2 * CandidateWindowSizing.contentInset)
+                ),
+                height: CandidateWindowSizing.revisionHeaderHeight - 10
+            )
+            backgroundView.setAccessibilityLabel(
+                "候選字，\(revisionLabel.stringValue)"
+            )
+        } else {
+            revisionLabel.frame = .zero
+            backgroundView.setAccessibilityLabel("候選字")
+        }
         gridView.update(with: session)
         panel.contentView?.layoutSubtreeIfNeeded()
         scrollView.contentView.scroll(to: .zero)
         gridView.revealHighlightedCandidate(in: session)
         scrollView.reflectScrolledClipView(scrollView.contentView)
         panel.orderFrontRegardless()
+    }
+
+    private func revisionHeaderColor(
+        for mode: CandidateRevisionMode?
+    ) -> NSColor {
+        switch mode {
+        case .locating:
+            return NSColor.controlAccentColor.withAlphaComponent(0.18)
+        case .choosing:
+            return NSColor.systemOrange.withAlphaComponent(0.22)
+        case nil:
+            return .clear
+        }
     }
 
     func hide(sessionID: UUID) {

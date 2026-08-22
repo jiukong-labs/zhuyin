@@ -19,14 +19,14 @@ final class CharacterCandidateProviderTests: XCTestCase {
         })
     }
 
-    func testLearningMetadataRaisesFrequentlySelectedCharacter() throws {
+    func testOneCommittedSelectionMovesCharacterToFirst() throws {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let learning = LearningSpy()
         learning.recordsByPronunciation["ㄐㄧㄢˋ"] = [
             "鍵": CharacterLearningRecord(
                 character: "鍵",
                 pronunciation: "ㄐㄧㄢˋ",
-                selectionCount: 4,
+                selectionCount: 1,
                 lastSelectedAt: now,
                 pinned: false
             ),
@@ -42,7 +42,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(candidates.first?.text, "鍵")
         XCTAssertEqual(candidates.first?.baseRank, 22)
         XCTAssertEqual(candidates.first?.sourceOrder, 6_101)
-        XCTAssertEqual(candidates.first?.userFrequency, 4)
+        XCTAssertEqual(candidates.first?.userFrequency, 1)
         XCTAssertEqual(candidates.first?.lastUsed, now)
     }
 
@@ -176,6 +176,80 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertTrue(candidates.dropFirst(2).contains { $0.type == .character })
     }
 
+    func testFirstPartyPhraseReplacesWrongAutomaticCharacterForTest() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+        var buffer = CompositionBuffer()
+        XCTAssertTrue(
+            buffer.acceptCandidate(
+                Candidate(text: "冊", pronunciation: "ㄘㄜˋ"),
+                reason: .implicitPassThrough
+            )
+        )
+
+        let candidates = try provider.candidates(
+            for: "ㄕˋ",
+            phraseQueries: buffer.phraseLookupQueries(appending: "ㄕˋ")
+        )
+
+        let preferred = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(preferred.text, "測試")
+        XCTAssertEqual(preferred.type, .phrase)
+        XCTAssertEqual(preferred.pronunciationSequence, ["ㄘㄜˋ", "ㄕˋ"])
+        XCTAssertTrue(
+            buffer.acceptCandidate(preferred, reason: .returnKey)
+        )
+        XCTAssertEqual(buffer.text, "測試")
+    }
+
+    func testFirstPartySentenceReplacesEveryProvisionalCharacter() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+        var buffer = CompositionBuffer()
+        for (text, reading) in [
+            ("冊", "ㄘㄜˋ"),
+            ("士", "ㄕˋ"),
+            ("中", "ㄓㄨㄥ"),
+            ("頃", "ㄑㄧㄥˇ"),
+            ("梢", "ㄕㄠ"),
+        ] {
+            XCTAssertTrue(
+                buffer.acceptCandidate(
+                    Candidate(text: text, pronunciation: reading),
+                    reason: .implicitPassThrough
+                )
+            )
+        }
+
+        let candidates = try provider.candidates(
+            for: "ㄏㄡˋ",
+            phraseQueries: buffer.phraseLookupQueries(appending: "ㄏㄡˋ")
+        )
+
+        let preferred = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(preferred.text, "測試中請稍後")
+        XCTAssertEqual(preferred.type, .phrase)
+        XCTAssertTrue(buffer.acceptCandidate(preferred, reason: .returnKey))
+        XCTAssertEqual(buffer.text, "測試中請稍後")
+    }
+
+    func testFirstPartyPhrasesRemainLongestSuffixFirst() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+        let longReadings = ["ㄈㄢˊ", "ㄊㄧˇ", "ㄓㄨㄥ", "ㄨㄣˊ"]
+        let shortReadings = ["ㄓㄨㄥ", "ㄨㄣˊ"]
+
+        let candidates = try provider.candidates(
+            for: "ㄨㄣˊ",
+            phraseQueries: [
+                makePhraseQuery(longReadings),
+                makePhraseQuery(shortReadings),
+            ]
+        )
+
+        XCTAssertEqual(
+            Array(candidates.filter { $0.type == .phrase }.prefix(2).map(\.text)),
+            ["繁體中文", "中文"]
+        )
+    }
+
     func testProviderRejectsWrongFinalReadingAndDeduplicatesQueries() throws {
         let learning = LearningSpy()
         let exactReadings = ["ㄕㄨ", "ㄖㄨˋ"]
@@ -252,6 +326,13 @@ final class CharacterCandidateProviderTests: XCTestCase {
         )
 
         XCTAssertEqual(learning.recordedSelections, [])
+        XCTAssertEqual(learning.addedPhrases.count, 1)
+        XCTAssertEqual(learning.addedPhrases.first?.phrase, "久空")
+        XCTAssertEqual(
+            learning.addedPhrases.first?.readings,
+            ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        )
+        XCTAssertEqual(learning.addedPhrases.first?.date, date)
         XCTAssertEqual(learning.recordedPhraseSelections.count, 1)
         XCTAssertEqual(learning.recordedPhraseSelections.first?.phrase, "久空")
         XCTAssertEqual(

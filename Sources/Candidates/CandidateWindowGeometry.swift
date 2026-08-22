@@ -5,38 +5,121 @@ struct CandidateScrollAxes: Equatable {
     let vertical: Bool
 }
 
+struct CandidateGridMetrics: Equatable {
+    let cellFrames: [CGRect]
+    let documentSize: CGSize
+}
+
 enum CandidateWindowSizing {
     static let contentInset: CGFloat = 8
     static let cellWidth: CGFloat = 64
     static let cellHeight: CGFloat = 38
     static let cellSpacing: CGFloat = 4
     static let defaultScrollerThickness: CGFloat = 17
+    static let revisionHeaderHeight: CGFloat = 38
+
+    static func cellWidth(for candidateText: String) -> CGFloat {
+        min(
+            320,
+            max(cellWidth, 24 + CGFloat(candidateText.count + 2) * 20)
+        )
+    }
+
+    static func gridMetrics(
+        candidateTexts: [String],
+        mode: CandidatePresentationMode
+    ) -> CandidateGridMetrics {
+        let itemCount = max(1, candidateTexts.count)
+        let columnCount: Int
+        switch mode {
+        case .compact:
+            columnCount = itemCount
+        case .expanded:
+            columnCount = min(itemCount, CandidateSession.expandedColumnCount)
+        }
+        let rows = rowCount(itemCount: itemCount, columns: columnCount)
+
+        var columnWidths = Array(repeating: cellWidth, count: columnCount)
+        for (index, text) in candidateTexts.enumerated() {
+            let column = index % columnCount
+            columnWidths[column] = max(
+                columnWidths[column],
+                cellWidth(for: text)
+            )
+        }
+
+        var columnOrigins: [CGFloat] = []
+        var nextX = contentInset
+        for width in columnWidths {
+            columnOrigins.append(nextX)
+            nextX += width + cellSpacing
+        }
+        let frames = candidateTexts.indices.map { index in
+            let row = index / columnCount
+            let column = index % columnCount
+            return CGRect(
+                x: columnOrigins[column],
+                y: contentInset + CGFloat(row) * (cellHeight + cellSpacing),
+                width: columnWidths[column],
+                height: cellHeight
+            )
+        }
+        let horizontalSpacing = CGFloat(max(0, columnCount - 1)) * cellSpacing
+        let verticalSpacing = CGFloat(max(0, rows - 1)) * cellSpacing
+        return CandidateGridMetrics(
+            cellFrames: frames,
+            documentSize: CGSize(
+                width: (2 * contentInset)
+                    + columnWidths.reduce(0, +)
+                    + horizontalSpacing,
+                height: (2 * contentInset)
+                    + CGFloat(rows) * cellHeight
+                    + verticalSpacing
+            )
+        )
+    }
 
     static func viewportSize(
         candidateCount: Int,
         mode: CandidatePresentationMode,
         scrollerThickness: CGFloat = defaultScrollerThickness
     ) -> CGSize {
-        let count = max(1, candidateCount)
+        viewportSize(
+            candidateTexts: Array(repeating: "", count: max(1, candidateCount)),
+            mode: mode,
+            scrollerThickness: scrollerThickness
+        )
+    }
+
+    static func viewportSize(
+        candidateTexts: [String],
+        mode: CandidatePresentationMode,
+        scrollerThickness: CGFloat = defaultScrollerThickness
+    ) -> CGSize {
+        let count = max(1, candidateTexts.count)
+        let metrics = gridMetrics(candidateTexts: candidateTexts, mode: mode)
 
         switch mode {
         case .compact:
-            let columns = min(count, CandidateSession.selectionPageSize)
-            return size(columns: columns, rows: 1, scrollerThickness: 0)
+            return metrics.documentSize
         case .expanded:
-            let columns = min(count, CandidateSession.expandedColumnCount)
             let visibleCount = min(
                 count,
                 CandidateSession.expandedVisibleCandidateCount
             )
-            let rows = rowCount(itemCount: visibleCount, columns: columns)
-            return size(
-                columns: columns,
-                rows: rows,
-                scrollerThickness: count
-                    > CandidateSession.expandedVisibleCandidateCount
-                    ? scrollerThickness
-                    : 0
+            let columns = min(count, CandidateSession.expandedColumnCount)
+            let visibleRows = rowCount(
+                itemCount: visibleCount,
+                columns: columns
+            )
+            return CGSize(
+                width: metrics.documentSize.width
+                    + (count > CandidateSession.expandedVisibleCandidateCount
+                        ? scrollerThickness
+                        : 0),
+                height: (2 * contentInset)
+                    + CGFloat(visibleRows) * cellHeight
+                    + CGFloat(max(0, visibleRows - 1)) * cellSpacing
             )
         }
     }
@@ -45,17 +128,51 @@ enum CandidateWindowSizing {
         candidateCount: Int,
         mode: CandidatePresentationMode
     ) -> CGSize {
-        let count = max(1, candidateCount)
+        documentSize(
+            candidateTexts: Array(repeating: "", count: max(1, candidateCount)),
+            mode: mode
+        )
+    }
 
-        switch mode {
-        case .compact:
-            let columns = min(count, CandidateSession.selectionPageSize)
-            return size(columns: columns, rows: 1, scrollerThickness: 0)
-        case .expanded:
-            let columns = min(count, CandidateSession.expandedColumnCount)
-            let rows = rowCount(itemCount: count, columns: columns)
-            return size(columns: columns, rows: rows, scrollerThickness: 0)
+    static func documentSize(
+        candidateTexts: [String],
+        mode: CandidatePresentationMode
+    ) -> CGSize {
+        gridMetrics(
+            candidateTexts: candidateTexts,
+            mode: mode
+        ).documentSize
+    }
+
+    static func panelSize(
+        candidateViewportSize: CGSize,
+        revisionHeaderContentWidth: CGFloat?
+    ) -> CGSize {
+        guard let revisionHeaderContentWidth else {
+            return candidateViewportSize
         }
+
+        return CGSize(
+            width: max(
+                candidateViewportSize.width,
+                revisionHeaderContentWidth + (2 * contentInset)
+            ),
+            height: candidateViewportSize.height + revisionHeaderHeight
+        )
+    }
+
+    static func candidateViewportSize(
+        panelSize: CGSize,
+        showsRevisionHeader: Bool
+    ) -> CGSize {
+        CGSize(
+            width: panelSize.width,
+            height: max(
+                1,
+                panelSize.height
+                    - (showsRevisionHeader ? revisionHeaderHeight : 0)
+            )
+        )
     }
 
     static func scrollAxes(
@@ -103,23 +220,6 @@ enum CandidateWindowSizing {
         return (itemCount + columns - 1) / columns
     }
 
-    private static func size(
-        columns: Int,
-        rows: Int,
-        scrollerThickness: CGFloat
-    ) -> CGSize {
-        let horizontalSpacing = CGFloat(max(0, columns - 1)) * cellSpacing
-        let verticalSpacing = CGFloat(max(0, rows - 1)) * cellSpacing
-        return CGSize(
-            width: (2 * contentInset)
-                + (CGFloat(columns) * cellWidth)
-                + horizontalSpacing
-                + scrollerThickness,
-            height: (2 * contentInset)
-                + (CGFloat(rows) * cellHeight)
-                + verticalSpacing
-        )
-    }
 }
 
 enum CandidateWindowPlacement {
