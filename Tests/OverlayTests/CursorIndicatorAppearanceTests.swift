@@ -6,7 +6,7 @@ final class CursorIndicatorAppearanceTests: XCTestCase {
         let appearance = CursorIndicatorAppearance()
 
         XCTAssertEqual(appearance.text(for: .chinese), "中")
-        XCTAssertEqual(appearance.text(for: .english), "英")
+        XCTAssertEqual(appearance.text(for: .english), "A")
         XCTAssertEqual(appearance.color(for: .chinese), .systemRed)
         XCTAssertEqual(appearance.color(for: .english), .systemBlue)
     }
@@ -31,7 +31,7 @@ final class CursorIndicatorAppearanceTests: XCTestCase {
         XCTAssertNil(appearance.chineseText)
         XCTAssertNil(appearance.englishText)
         XCTAssertEqual(appearance.text(for: .chinese), "中")
-        XCTAssertEqual(appearance.text(for: .english), "英")
+        XCTAssertEqual(appearance.text(for: .english), "A")
     }
 
     func testHexIsNormalizedAndAppliedPerMode() {
@@ -77,7 +77,7 @@ final class CursorIndicatorAppearanceTests: XCTestCase {
         )
 
         XCTAssertEqual(appearance.text(for: .chinese), "漢")
-        XCTAssertEqual(appearance.text(for: .english), "英")
+        XCTAssertEqual(appearance.text(for: .english), "A")
         XCTAssertEqual(appearance.color(for: .english), .systemBlue)
     }
 }

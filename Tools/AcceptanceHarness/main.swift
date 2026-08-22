@@ -208,6 +208,34 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試"
     ),
+    // Backspace deletes the reading currently selected by revision focus,
+    // instead of merely dismissing the candidate panel.
+    "revision-backspace": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_Delete),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測"
+    ),
+    // Forward Delete owns the same focused character. Locating the first
+    // reading and deleting it leaves only the second reading in the buffer.
+    "revision-forward-delete": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_ForwardDelete), Keystroke(kVK_Return),
+        ],
+        expectation: "試"
+    ),
     "escape": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -233,11 +261,13 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
             Keystroke(kVK_ANSI_RightBracket),
             Keystroke(kVK_ANSI_Backslash),
+            Keystroke(kVK_ANSI_Backslash, .maskShift),
             Keystroke(kVK_Return),
         ],
-        expectation: "「我」、"
+        expectation: "「我」、／"
     ),
-    // Creates a user phrase, so it writes to the local learning database.
+    // Locates the final reading, then extends left from that focus. Creating a
+    // user phrase writes to the local learning database.
     "phrase": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -247,8 +277,25 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_D), Keystroke(kVK_ANSI_J),
             Keystroke(kVK_ANSI_Slash), Keystroke(kVK_Space),
             Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow),
             Keystroke(kVK_LeftArrow, .maskShift),
-            Keystroke(kVK_LeftArrow, .maskShift),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "九空"
+    ),
+    // Locates the first reading, then extends right from that focus. This is
+    // the mirror path of the Shift-Left phrase acceptance above.
+    "phrase-right": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_R), Keystroke(kVK_ANSI_U),
+            Keystroke(kVK_ANSI_Period), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_ANSI_D), Keystroke(kVK_ANSI_J),
+            Keystroke(kVK_ANSI_Slash), Keystroke(kVK_Space),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_RightArrow, .maskShift),
             Keystroke(kVK_Return),
         ],
         expectation: "九空"

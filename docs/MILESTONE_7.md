@@ -10,12 +10,12 @@ This milestone does not add a settings window, pin management, import/export, pu
 
 `CompositionBuffer` owns every converted unit that has not yet been inserted into the client. One `CompositionUnit` carries a `UUID`, its text, and the exact reading that produced it, so a unit is always paired with the pronunciation it will be learned under.
 
-Selection is deliberately a suffix anchored at the end of the buffer:
+Selection is a contiguous range of the buffer. It originally started as an
+end-anchored suffix and now also supports a revision focus as its origin:
 
 ```text
-units                ㄨㄛˇ 我   ㄇㄣ˙ 們   ㄉㄜ˙ 的
-selectedSuffixCount  0 … units.count
-selectedUnitRange    (count - selectedSuffixCount) ..< count
+units              ㄨㄛˇ 我   ㄇㄣ˙ 們   ㄉㄜ˙ 的
+selectedUnitRange  nil, or one contiguous Range<Int>
 ```
 
 `markedSelectionRange` converts that unit range into UTF-16 code units for AppKit, so multi-scalar text cannot desynchronize the highlight. `selectedPhrase` returns a phrase only at two or more units.
@@ -28,13 +28,15 @@ Accepting a candidate does not commit it. A character candidate appends one unit
 
 `CompositionPresentation.make(buffer:activeSuffix:)` is the single pure source of `setMarkedText` content. An active raw syllable or candidate reading always owns the caret at the end; the buffer's phrase highlight is exposed only when no active suffix exists.
 
-`CompositionSelectionCommandRouter` recognizes exactly two gestures — Shift+← extends the suffix backward, Shift+→ shrinks it forward. Carbon's inherent `.function` and `.numericPad` arrow flags are tolerated, while Command, Control, and Option are rejected so real client shortcuts still work. While a candidate window or raw syllable is active, Shift-arrow is consumed without changing state rather than leaking a selection to the client.
+`CompositionSelectionCommandRouter` recognizes exactly two gestures — Shift+← extends the left range edge and Shift+→ extends the right edge. Carbon's inherent `.function` and `.numericPad` arrow flags are tolerated, while Command, Control, and Option are rejected so real client shortcuts still work. A raw syllable or expanded chooser still owns its arrows. In compact revision locating mode, a Shift arrow closes the candidate panel and starts phrase selection from the focused unit in the requested direction.
 
 With a buffer and no active syllable or candidate:
 
 - Return/Keypad Enter adds the selected phrase to the user dictionary when at least two units are selected, then commits the whole composition once;
 - Escape clears the selection, or discards the buffer when nothing is selected;
-- Backspace deletes the selected suffix, or the last unit when nothing is selected.
+- Backspace or forward Delete removes the selected range or explicitly focused
+  revision unit. With neither target, Backspace deletes the last unit while
+  forward Delete remains available to the client application.
 
 ## Phrase lookup and ranking
 
@@ -92,7 +94,7 @@ Migration from version 1 creates the phrase tables and index inside one immediat
 The suite covers all earlier milestones plus:
 
 - buffer append, candidate acceptance, phrase-suffix replacement, pending-selection pruning, and snapshot detachment;
-- UTF-16 marked-selection ranges, selection expansion and shrinking at both limits, and presentation precedence for an active suffix;
+- UTF-16 marked-selection ranges, directional range expansion at both limits, and presentation precedence for an active range;
 - Shift-arrow recognition, rejection of Command/Control/Option chords, and inherent arrow flags;
 - longest-first phrase query generation, exact-suffix matching, and query bounds;
 - phrase candidate merging, deduplication, record revalidation, and the phrase and pin ranking tiers;
@@ -122,11 +124,11 @@ Each run first proved that the client was actually talking to Jiukong: a probe s
 j i 3, Return, Return                  → 我 committed exactly once, no stray newline
 j i 3, Escape, Escape                  → empty document; nothing committed
 r u . 3, Space, d j / Space, Space,
-  Shift+Left ×2, Return                → 九空 committed, and stored as one user phrase
+  Left, Shift+Left, Return             → 九空 committed, and stored as one user phrase
 ```
 
 The created phrase appeared in `user.sqlite` as `九空` with ordered readings `ㄐㄧㄡˇ ㄎㄨㄥ` at schema version 2, and the character counts for 九 and 空 advanced to 1 each, confirming that learning happens only on the real client commit.
 
 ## Intentional limitations
 
-Phrase lookup is exact and longest-suffix only. Phrase pinning exists in the schema, service, and ranker but has no UI. Selection is limited to a suffix of the input method's own buffer, so text already committed to the client cannot be turned into a phrase. Milestone 8 adds the settings window, Shift-side persistence, pin and dictionary management, import/export, and data clearing.
+Phrase lookup is exact and longest-suffix only. Phrase pinning exists in the schema, service, and ranker but has no UI. Selection is limited to a contiguous range of the input method's own buffer, so text already committed to the client cannot be turned into a phrase. Milestone 8 adds the settings window, Shift-side persistence, pin and dictionary management, import/export, and data clearing.

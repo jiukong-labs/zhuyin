@@ -26,7 +26,8 @@ final class PreferencesStoreTests: XCTestCase {
     func testSavedPreferencesSurviveANewStore() {
         let saved = Preferences(
             shiftKeyPreference: .right,
-            automaticLearningEnabled: false
+            automaticLearningEnabled: false,
+            showsRareCandidates: true
         )
         UserDefaultsPreferencesStore(defaults: defaults).save(saved)
 
@@ -37,6 +38,9 @@ final class PreferencesStoreTests: XCTestCase {
         XCTAssertEqual(
             defaults.integer(forKey: PreferenceKey.version.rawValue),
             Preferences.currentVersion
+        )
+        XCTAssertTrue(
+            defaults.bool(forKey: PreferenceKey.showsRareCandidates.rawValue)
         )
     }
 

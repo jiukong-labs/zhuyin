@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 
@@ -28,7 +29,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
             "tw.idv.jiukong.inputmethod.zhuyin"
         )
         XCTAssertEqual(info["TISIntendedLanguage"] as? String, "zh-Hant")
-        XCTAssertEqual(info["TISIconIsTemplate"] as? Bool, true)
+        XCTAssertEqual(info["TISIconIsTemplate"] as? Bool, false)
         XCTAssertEqual(
             info["tsInputMethodCharacterRepertoireKey"] as? [String],
             ["Hant"]
@@ -41,6 +42,13 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let modeContainer = try XCTUnwrap(
             info["ComponentInputModeDict"] as? [String: Any]
         )
+        let serverModeContainer = try XCTUnwrap(
+            info["InputMethodServerModeDictionary"] as? [String: Any]
+        )
+        XCTAssertEqual(
+            serverModeContainer as NSDictionary,
+            modeContainer as NSDictionary
+        )
         let modes = try XCTUnwrap(
             modeContainer["tsInputModeListKey"] as? [String: Any]
         )
@@ -51,12 +59,12 @@ final class InputMethodBundleMetadataTests: XCTestCase {
             (
                 "tw.idv.jiukong.inputmethod.zhuyin.Chinese",
                 "中",
-                "JiukongChinese.tiff"
+                "JiukongChineseColor.tiff"
             ),
             (
                 "tw.idv.jiukong.inputmethod.zhuyin.English",
-                "英",
-                "JiukongEnglish.tiff"
+                "A",
+                "JiukongEnglishAColor.tiff"
             )
         ]
 
@@ -102,6 +110,104 @@ final class InputMethodBundleMetadataTests: XCTestCase {
                 "Missing declared icon asset: \(assetName)"
             )
         }
+    }
+
+    func testModeIconsContainMenuBarScaleRepresentations() throws {
+        for assetName in [
+            "JiukongChineseColor.tiff",
+            "JiukongEnglishAColor.tiff",
+        ] {
+            let assetURL = repositoryRoot
+                .appendingPathComponent("Resources", isDirectory: true)
+                .appendingPathComponent("Assets", isDirectory: true)
+                .appendingPathComponent(assetName)
+            let data = try Data(contentsOf: assetURL)
+            let representations = NSBitmapImageRep.imageReps(with: data)
+            let pixelSizes = representations.map {
+                NSSize(width: $0.pixelsWide, height: $0.pixelsHigh)
+            }.sorted {
+                $0.width < $1.width
+            }
+
+            XCTAssertEqual(
+                pixelSizes,
+                [
+                    NSSize(width: 16, height: 16),
+                    NSSize(width: 32, height: 32),
+                ],
+                assetName
+            )
+            XCTAssertEqual(
+                representations.map(\.size),
+                [
+                    NSSize(width: 16, height: 16),
+                    NSSize(width: 16, height: 16),
+                ],
+                assetName
+            )
+        }
+    }
+
+    func testModeIconColorsMatchCursorIndicatorDefaults() throws {
+        let cases: [(String, LanguageMode)] = [
+            ("JiukongChineseColor.tiff", .chinese),
+            ("JiukongEnglishAColor.tiff", .english),
+        ]
+
+        for (assetName, mode) in cases {
+            let assetURL = repositoryRoot
+                .appendingPathComponent("Resources", isDirectory: true)
+                .appendingPathComponent("Assets", isDirectory: true)
+                .appendingPathComponent(assetName)
+            let data = try Data(contentsOf: assetURL)
+            let representation = try XCTUnwrap(
+                NSBitmapImageRep.imageReps(with: data).first
+                    as? NSBitmapImageRep
+            )
+            let actual = try XCTUnwrap(mostOpaqueColor(in: representation))
+                .usingColorSpace(.sRGB)
+            let expected = try XCTUnwrap(
+                CursorIndicatorAppearance.defaultColor(for: mode)
+                    .usingColorSpace(.sRGB)
+            )
+
+            XCTAssertEqual(
+                try XCTUnwrap(actual).redComponent,
+                expected.redComponent,
+                accuracy: 0.02,
+                assetName
+            )
+            XCTAssertEqual(
+                try XCTUnwrap(actual).greenComponent,
+                expected.greenComponent,
+                accuracy: 0.02,
+                assetName
+            )
+            XCTAssertEqual(
+                try XCTUnwrap(actual).blueComponent,
+                expected.blueComponent,
+                accuracy: 0.02,
+                assetName
+            )
+        }
+    }
+
+    private func mostOpaqueColor(
+        in representation: NSBitmapImageRep
+    ) -> NSColor? {
+        var result: NSColor?
+        var highestAlpha: CGFloat = 0
+        for y in 0 ..< representation.pixelsHigh {
+            for x in 0 ..< representation.pixelsWide {
+                guard let color = representation.colorAt(x: x, y: y),
+                      color.alphaComponent > highestAlpha else {
+                    continue
+                }
+                result = color
+                highestAlpha = color.alphaComponent
+            }
+        }
+        return result
     }
 
     private var repositoryRoot: URL {

@@ -20,6 +20,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var shiftPopUpButton: NSPopUpButton?
     private var arrangementPopUpButton: NSPopUpButton?
     private var automaticLearningButton: NSButton?
+    private var showsRareCandidatesButton: NSButton?
 
     private static let arrangements = ZhuyinKeyboardArrangement.allCases
 
@@ -66,7 +67,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 500),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -136,6 +137,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         )
         automaticLearningButton = checkbox
 
+        let rareCandidatesCheckbox = NSButton(
+            checkboxWithTitle: "顯示罕用字、異體字與其他 CNS 字面",
+            target: self,
+            action: #selector(showsRareCandidatesDidChange(_:))
+        )
+        showsRareCandidatesButton = rareCandidatesCheckbox
+
         let arrangementButton = NSPopUpButton(frame: .zero, pullsDown: false)
         for arrangement in Self.arrangements {
             arrangementButton.addItem(withTitle: arrangement.localizedName)
@@ -160,6 +168,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     title: "學習",
                     controls: [checkbox],
                     note: "關閉後不再累積新的使用次數，既有紀錄仍會影響排序，Shift 造詞也仍可使用。"
+                ),
+                SettingsPaneBuilder.section(
+                    title: "候選字範圍",
+                    controls: [rareCandidatesCheckbox],
+                    note: "預設只顯示 CNS 第 1、2 字面的常用與次常用字。開啟後才加入第 3 字面以後的罕用字、異體字與其他專門用字；字型缺字仍會略過。"
                 ),
             ]
         )
@@ -215,6 +228,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         automaticLearningButton?.state =
             current.automaticLearningEnabled ? .on : .off
+        showsRareCandidatesButton?.state =
+            current.showsRareCandidates ? .on : .off
         cursorIndicatorSettings.reload()
     }
 
@@ -246,6 +261,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     @objc private func automaticLearningDidChange(_ sender: NSButton) {
         preferences.update {
             $0.automaticLearningEnabled = sender.state == .on
+        }
+    }
+
+    @objc private func showsRareCandidatesDidChange(_ sender: NSButton) {
+        preferences.update {
+            $0.showsRareCandidates = sender.state == .on
         }
     }
 

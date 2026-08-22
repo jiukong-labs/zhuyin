@@ -18,11 +18,14 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(
             entries.prefix(3),
             [
-                DictionaryCharacter(text: "我", sourceOrder: 827),
-                DictionaryCharacter(text: "倭", sourceOrder: 2_092),
-                DictionaryCharacter(text: "婑", sourceOrder: 9_357),
+                DictionaryCharacter(text: "我", sourceOrder: 827, cnsPlane: 1),
+                DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1),
+                DictionaryCharacter(text: "婑", sourceOrder: 9_357, cnsPlane: 2),
             ]
         )
+        XCTAssertTrue(entries[0].isInGeneralCandidateRepertoire)
+        XCTAssertTrue(entries[2].isInGeneralCandidateRepertoire)
+        XCTAssertFalse(entries[4].isInGeneralCandidateRepertoire)
         XCTAssertEqual(
             entries.map(\.text),
             try dictionary.candidates(for: "ㄨㄛˇ")
@@ -101,8 +104,8 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(try dictionary.metadataValue(for: "source_version"), "20260805")
         XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94708")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_characters"), "76373")
-        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "83")
-        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "82")
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "815")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "814")
         XCTAssertEqual(
             try dictionary.metadataValue(for: "phrase_dataset_name"),
             "Jiukong first-party phrase lexicon"
@@ -119,6 +122,28 @@ final class CharacterDictionaryTests: XCTestCase {
         let statement = try database.prepare("PRAGMA quick_check")
         XCTAssertEqual(try statement.step(), .row)
         XCTAssertEqual(try statement.text(at: 0), "ok")
+    }
+
+    func testBundledLexiconCoversReviewedEverydayCategories() throws {
+        let dictionary = try makeDictionary()
+        let cases: [([String], String)] = [
+            (["ㄗㄠˇ", "ㄢ"], "早安"),
+            (["ㄒㄧㄥ", "ㄑㄧˊ", "ㄧ"], "星期一"),
+            (["ㄐㄧㄚ", "ㄖㄣˊ"], "家人"),
+            (["ㄔ", "ㄈㄢˋ"], "吃飯"),
+            (["ㄊㄨˊ", "ㄕㄨ", "ㄍㄨㄢˇ"], "圖書館"),
+            (["ㄏㄨㄟˋ", "ㄧˋ"], "會議"),
+            (["ㄗ", "ㄌㄧㄠˋ", "ㄐㄧㄚˊ"], "資料夾"),
+            (["ㄅㄨˋ", "ㄕㄨ", "ㄈㄨˊ"], "不舒服"),
+        ]
+
+        for (readings, expected) in cases {
+            XCTAssertTrue(
+                try dictionary.phraseEntries(for: readings)
+                    .contains(where: { $0.text == expected }),
+                expected
+            )
+        }
     }
 
     func testRejectsSQLiteFileWithWrongApplicationID() throws {

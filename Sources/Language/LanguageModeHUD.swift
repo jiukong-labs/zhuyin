@@ -9,7 +9,6 @@ private final class LanguageModeHUDPanel: NSPanel {
 final class LanguageModeHUD {
     static let shared = LanguageModeHUD()
 
-    private static let panelSize = NSSize(width: 58, height: 48)
     private static let displayDuration: TimeInterval = 0.75
 
     private let panel: LanguageModeHUDPanel
@@ -19,8 +18,9 @@ final class LanguageModeHUD {
 
     private init() {
         precondition(Thread.isMainThread)
+        let initialSize = CursorIndicatorTextSize.small.style.panelSize
         panel = LanguageModeHUDPanel(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
+            contentRect: NSRect(origin: .zero, size: initialSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -28,7 +28,7 @@ final class LanguageModeHUD {
         label = NSTextField(labelWithString: "")
 
         let background = NSVisualEffectView(
-            frame: NSRect(origin: .zero, size: Self.panelSize)
+            frame: NSRect(origin: .zero, size: initialSize)
         )
         background.material = .hudWindow
         background.blendingMode = .behindWindow
@@ -39,7 +39,7 @@ final class LanguageModeHUD {
 
         label.frame = background.bounds
         label.alignment = .center
-        label.font = .systemFont(ofSize: 25, weight: .semibold)
+        label.font = .monospacedSystemFont(ofSize: 8, weight: .semibold)
         label.textColor = .labelColor
         label.autoresizingMask = [.width, .height]
         background.addSubview(label)
@@ -64,7 +64,7 @@ final class LanguageModeHUD {
     @discardableResult
     func show(
         mode: LanguageMode,
-        anchor: NSRect,
+        indicator: CursorIndicatorPreferences,
         clientWindowLevel: CGWindowLevel
     ) -> UUID {
         precondition(Thread.isMainThread)
@@ -72,15 +72,23 @@ final class LanguageModeHUD {
         let token = UUID()
         presentedToken = token
 
-        label.stringValue = mode.indicator
+        let style = indicator.textSize.style
+        label.stringValue = indicator.appearance.text(for: mode)
+        label.textColor = indicator.appearance.color(for: mode)
+        label.font = .monospacedSystemFont(
+            ofSize: style.fontSize,
+            weight: .semibold
+        )
         label.setAccessibilityLabel(
             mode == .chinese ? "中文輸入模式" : "英文輸入模式"
         )
         panel.level = NSWindow.Level(rawValue: Int(clientWindowLevel) + 2)
+        panel.setContentSize(style.panelSize)
         panel.setFrame(
-            CandidateWindowPlacement.frame(
-                anchor: anchor.standardized,
-                desiredSize: Self.panelSize,
+            CursorIndicatorGeometry.frame(
+                placement: indicator.placement,
+                mouseLocation: NSEvent.mouseLocation,
+                panelSize: style.panelSize,
                 visibleFrames: NSScreen.screens.map(\.visibleFrame)
             ),
             display: true

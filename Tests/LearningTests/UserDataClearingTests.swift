@@ -111,7 +111,9 @@ final class UserDataClearingTests: XCTestCase {
 
         XCTAssertEqual(
             try provider.candidates(for: "ㄐㄧㄢˋ").map(\.text),
-            try dictionary.candidates(for: "ㄐㄧㄢˋ")
+            try dictionary.candidateEntries(for: "ㄐㄧㄢˋ")
+                .filter(\.isInGeneralCandidateRepertoire)
+                .map(\.text)
         )
     }
 

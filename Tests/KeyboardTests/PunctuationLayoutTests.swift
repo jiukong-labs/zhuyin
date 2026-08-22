@@ -4,7 +4,7 @@ import XCTest
 final class PunctuationLayoutTests: XCTestCase {
     private let layout = PunctuationLayout.standard
 
-    func testShiftedZhuyinKeysProduceFullWidthPunctuation() {
+    func testShiftedKeysProduceFullWidthPunctuation() {
         let expected: [(KeyboardKey, String)] = [
             (.comma, "，"),
             (.period, "。"),
@@ -15,6 +15,7 @@ final class PunctuationLayoutTests: XCTestCase {
             (.digit9, "（"),
             (.digit0, "）"),
             (.minus, "—"),
+            (.backslash, "／"),
         ]
 
         for (key, punctuation) in expected {
@@ -63,8 +64,9 @@ final class PunctuationLayoutTests: XCTestCase {
         }
     }
 
-    func testBackslashHasNoShiftedMark() {
-        XCTAssertNil(layout.punctuation(for: .backslash, shifted: true))
+    func testBackslashProducesIdeographicCommaOrFullWidthSlash() {
+        XCTAssertEqual(layout.punctuation(for: .backslash, shifted: false), "、")
+        XCTAssertEqual(layout.punctuation(for: .backslash, shifted: true), "／")
     }
 
     func testEveryPunctuationKeyResolvesFromItsVirtualKeyCode() {

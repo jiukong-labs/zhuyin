@@ -10,6 +10,18 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(preferences, .default)
         XCTAssertEqual(preferences.shiftKeyPreference, .both)
         XCTAssertTrue(preferences.automaticLearningEnabled)
+        XCTAssertFalse(preferences.showsRareCandidates)
+    }
+
+    func testRareCandidatePreferenceRoundTripsAndDefaultsOff() {
+        let stored = Preferences(showsRareCandidates: true).encoded()
+
+        XCTAssertTrue(Preferences.decoded(from: stored).showsRareCandidates)
+        XCTAssertFalse(
+            Preferences.decoded(
+                from: [PreferenceKey.showsRareCandidates.rawValue: "invalid"]
+            ).showsRareCandidates
+        )
     }
 
     func testEveryShiftPreferenceRoundTrips() {

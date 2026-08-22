@@ -2,9 +2,9 @@
 
 > 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
 
-久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速選字、完整候選字顯示、單按 Shift 切換中英文，以及完全離線的個人選字與詞組學習。
+久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速而實用的候選字、單按 Shift 切換中英文，以及完全離線的個人選字與詞組學習。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and complete candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
+Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
 
 > 開發狀態：Milestone 11 已加入跟隨游標的輸入模式指示器。字與詞的學習資料只保存在目前 Mac。
 
@@ -68,22 +68,23 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 三種配置都是一鍵一符號，Space 都是一聲。切換配置會先送出尚未完成的組字，下一次按鍵立即生效，不需重新啟動。倚天26鍵與許氏這類一鍵多符號的配置不在目前範圍內。標點不受配置影響。
 
-例如 `j i 3` 會完成 `ㄨㄛˇ`，並直接在 marked composition 中預覽第一候選「我」；`r u 0 4` 會預覽 `ㄐㄧㄢˋ` 的第一候選。完成音節時不主動顯示候選窗，按 ↓ 才開啟完整選字模式；開啟後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看，原本第一候選仍保持反白。
+例如 `j i 3` 會完成 `ㄨㄛˇ`，並直接在 marked composition 中預覽第一候選「我」；`r u 0 4` 會預覽 `ㄐㄧㄢˋ` 的第一候選。完成音節時不主動顯示候選窗，按 ↓ 才開啟完整選字模式；開啟後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看，原本第一候選仍保持反白。一般模式只採 CNS 第 1、2 字面的常用與次常用字；第 3 字面以後的罕用、異體、戶政與其他專門用字須在設定中開啟「顯示罕用字」才會加入。若 macOS 對某字只能提供 LastResort 缺字符號，則無論設定為何都會略過，避免候選窗出現方框問號。
 
-一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中選擇要修改的字，候選窗標題會顯示例如「定位 1／3：測　ㄘㄜˋ　↓ 進入選字」，目前字也會加上黃色底色與橘色粗底線；按 ↓ 進入選字層後，標題改為「選字」，←／→ 才會移動候選反白，↑／↓ 可跨列移動，Esc 返回定位層。Return、數字鍵或滑鼠可確認候選；逐字修改期間畫面列出的 `1`–`9` 永遠代表候選編號，不會被當成下一個注音鍵。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末繼續輸入。
+一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中選擇要修改的字，候選窗標題會顯示例如「定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字」，目前字也會加上黃色底色與橘色粗底線；此時可用 Shift+←／→ 從目前字向相應方向開始造詞範圍，也可用退格鍵（⌫／Backspace）或前向 Del 直接刪除目前字；按 ↓ 則進入選字層。進入選字層後標題改為「選字」，←／→ 才會移動候選反白，↑／↓ 可跨列移動，Esc 返回定位層。Return、數字鍵或滑鼠可確認候選；逐字修改期間畫面列出的 `1`–`9` 永遠代表候選編號，不會被當成下一個注音鍵。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末繼續輸入。
 
 完成一個音節後可直接輸入下一個音節，久空會先把目前預覽的第一候選收進 marked composition；這也適用於標準、倚天與 IBM 配置中位於數字列的聲母、介音或韻母。候選窗未開啟時，主鍵區 `1`–`9` 不選候選，而是照鍵盤配置繼續輸入；要改選時先按 ↓，開窗後 `1`–`9` 才全部明確代表候選編號。Return／Keypad Enter 會接受預覽並直接提交整段組字，Space 接受第一候選並留在組字中，也可開窗後用方向鍵、數字或滑鼠選定。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
 
-- Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或候選窗開啟時，回到注音並刪除聲調。
+- Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或一般候選窗開啟時，回到注音並刪除聲調；逐字定位或選字時刪除目前字；造詞範圍存在時刪除整個範圍。
+- Forward Delete（Del）：逐字定位或選字時刪除目前字；造詞範圍存在時刪除整個範圍。沒有明確的輸入法範圍或定位字時交回 App。
 - Escape：候選窗開啟時先回到隱藏的第一候選預覽；再按一次才丟棄目前音節。
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
 候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選或預覽回到注音編輯，再刪除當前修改字、注音 component，或 buffer 的選取範圍／最後一個讀音單位。
 
-未學習過的單字候選忠實保留 CNS11643 注音資料的來源順序；該順序不是字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
+未學習過且在目前候選範圍內、系統也能顯示的單字候選，忠實保留 CNS11643 注音資料的相對來源順序；該順序不是字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
 
-完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），即使第一音暫時顯示 CNS 順序的「冊」，第二音完成後第一候選會成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，由本專案逐筆編寫，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），即使第一音暫時顯示 CNS 順序的「冊」，第二音完成後第一候選會成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 815 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
 
 同一機制可處理「測試中請稍後」：前五音可不停頓直接繼續，完成 `ㄏㄡˋ` 後會把六音完整句列為第一候選，而不是只顯示「後」的單字候選。候選格會依詞的長度自動加寬，不會把整句裁成一個字。
 
@@ -98,16 +99,16 @@ Shift+,  ，      Shift+.  。      Shift+/  ？      Shift+;  ：
 Shift+1  ！      Shift+6  …       Shift+9  （      Shift+0  ）
 Shift+-  —
 [  「            ]  」            \  、
-Shift+[  『      Shift+]  』
+Shift+[  『      Shift+]  』      Shift+\  ／
 ```
 
-`…` 與 `—` 每次插入一個，慣用的 `……`、`——` 請按兩下。`[`、`]`、`\` 不在注音鍵盤配置內，所以不必按 Shift。表格以外的鍵仍交回目前 App 與 macOS 鍵盤配置，英文模式完全不受影響；也就是說中文模式下 `[` 不會再打出半形 `[`，需要半形時請切到英文模式。
+`…` 與 `—` 每次插入一個，慣用的 `……`、`——` 請按兩下。`[`、`]`、`\` 不在注音鍵盤配置內，所以不必按 Shift；`\` 輸入 `、`，`Shift+\` 輸入 `／`。表格以外的鍵仍交回目前 App 與 macOS 鍵盤配置，英文模式完全不受影響；也就是說中文模式下 `[` 不會再打出半形 `[`，需要半形時請切到英文模式。
 
 標點會結束目前的讀音但不結束整段組字：按下標點時會先把反白候選或未完成注音收進 buffer，再把標點接在後面，仍是 marked text，Return 時才一起送出，Backspace 也能直接刪掉標點。標點本身沒有讀音，因此不會參與造詞或詞查詢；`「久空` 這種情況前面的 `久空` 仍然可以造詞。
 
 ### 中英文切換
 
-中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換後會在游標附近短暫顯示「中」或「A」，不會搶走目前 App 的鍵盤焦點；若已開啟游標指示器，就改由它常駐顯示，不再另外閃現提示。
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換留在久空輸入法內，不會觸發 macOS 固定的 `ABC` 輸入來源提示；久空會在游標附近短暫顯示與游標指示器相同文字、顏色的紅色「中」或藍色 `A`，也不會搶走目前 App 的鍵盤焦點。
 
 英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
@@ -121,7 +122,7 @@ Shift+[  『      Shift+]  』
 - 追蹤：固定距離（貼齊游標）或跟隨游標（帶尾隨感的緩動）；
 - 文字大小五段；
 - Caps Lock 開啟時可一併顯示 `⇪`，並有五段大小；
-- 中文與英文各自的自訂文字（最多 4 字元）與顏色，留空即用預設的「中」「A」與紅／藍。
+- 中文與英文各自的自訂文字（最多 4 字元）與顏色，留空即用預設的「中」與 `A`，顏色為紅／藍。
 
 指示器**預設關閉**。它只在久空是目前輸入來源時顯示，切換到其他輸入法會自動消失 —— 想在所有輸入法下都看得到，仍需使用獨立的 `lang-cursor`。Caps Lock 狀態以每 0.2 秒輪詢取得，不需要輸入監控權限。
 
@@ -135,7 +136,7 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 ### 使用者造詞
 
-每個已選候選都保留其精確注音。按 Shift+← 從 buffer 尾端逐字向左擴張範圍，Shift+→ 向右縮小；選取至少兩個讀音單位後按 Return，即把該範圍的文字與逐音注音加入使用者詞庫，再一次提交整段 composition。這個功能只處理輸入法尚未提交的 buffer，不會讀取其他 App 已有的文字。
+每個已選候選都保留其精確注音。先用 ←／→ 定位到要造詞的起點，再按 Shift+←，會從定位字向左選取；按 Shift+→，則會從定位字向右選取。進入範圍選取後，Shift+← 與 Shift+→ 可繼續擴張範圍的左、右邊界，久空自己的綠色浮動提示會明確框出目前範圍，例如「造詞範圍 2 字：【載入】」，不依賴目前 App 是否正確顯示 marked-text 反白。若沒有先定位，Shift+← 由 buffer 尾端開始，Shift+→ 由 buffer 開頭開始。範圍不會跨越標點；選取至少兩個讀音單位後按 Return，即把範圍文字與逐音注音加入使用者詞庫，再一次提交整段 composition。儲存成功後，游標旁會顯示例如「已儲存：【載入】」並保留約十秒；若選錯，可按右側 `×` 精確刪除剛儲存的使用者詞與該組逐音注音，不會刪除文件中已送出的文字。這個功能只處理輸入法尚未提交的 buffer，不會讀取其他 App 已有的文字。
 
 之後重打相同的完整逐音序列時，使用者詞會出現在最後一個音節的候選中。查詢是完整相等、最長後綴優先；目前不做詞首聯想，也不會未經確認自動補完整詞。置頂仍是最高排序層，未置頂的精確使用者詞則優先於一般未置頂單字。
 
@@ -143,9 +144,9 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 ### 設定視窗
 
-在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗，共四個分頁：
+在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗，共五個分頁：
 
-- **一般**：注音鍵盤配置（標準／倚天傳統／IBM）、中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關；
+- **一般**：注音鍵盤配置（標準／倚天傳統／IBM）、中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關，以及是否顯示 CNS 第 3 字面以後的罕用與專門用字；
 - **游標指示器**：在游標旁顯示目前輸入模式，可設定位置、追蹤方式、文字大小、Caps Lock 指示，以及中／英文各自的文字與顏色；
 - **使用者詞**：列出所有自己造的詞與逐音注音，可搜尋、置頂或刪除單筆；
 - **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
@@ -223,11 +224,14 @@ SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./scripts/install.sh
 
 The bundle identifier is `tw.idv.jiukong.inputmethod.zhuyin`. Two constraints were established by experiment on macOS 26 and both make registration fail silently:
 
-The bundle is the parent of two selectable modes:
+The bundle is the parent of two modes that remain directly selectable from the
+macOS input menu:
 `tw.idv.jiukong.inputmethod.zhuyin.Chinese` and
-`tw.idv.jiukong.inputmethod.zhuyin.English`. Their first-party template icons
-show `中` and `英`; Shift selects the other mode so macOS updates the existing
-input-menu icon.
+`tw.idv.jiukong.inputmethod.zhuyin.English`. Their first-party color icons
+show red `中` and blue `A`. A standalone Shift changes Jiukong's shared runtime
+mode without asking Text Input Sources to select another mode, preventing the
+separate fixed `ABC` overlay; Jiukong's own HUD and cursor indicator report the
+change instead.
 
 - **The identifier must contain an `inputmethod` component that is not the last one.** `tw.idv.jiukong.inputmethod.zhuyin` and `tw.idv.inputmethod.zhuyin` register; `tw.idv.jiukong.zhuyin`, `tw.idv.jiukong.zhuyinim`, and `tw.idv.jiukong.zhuyin.inputmethod` do not. `TISRegisterInputSource` still returns `noErr` for the rejected ones, so the only symptom is that the source never appears.
 - **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
@@ -256,7 +260,7 @@ Unit tests cannot reach the InputMethodKit event path, so the behavior that only
 
 ```sh
 ./scripts/install.sh
-./scripts/run-acceptance.sh              # single, continuous, escape, punctuation, brackets, phrase
+./scripts/run-acceptance.sh              # conversion, revision, punctuation, and both phrase-selection directions
 ./scripts/run-acceptance.sh eten         # after setting the arrangement preference
 ```
 

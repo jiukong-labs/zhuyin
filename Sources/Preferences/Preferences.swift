@@ -10,17 +10,20 @@ struct Preferences: Equatable {
 
     var shiftKeyPreference: ShiftKeyPreference
     var automaticLearningEnabled: Bool
+    var showsRareCandidates: Bool
     var keyboardArrangement: ZhuyinKeyboardArrangement
     var cursorIndicator: CursorIndicatorPreferences
 
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
         automaticLearningEnabled: Bool = true,
+        showsRareCandidates: Bool = false,
         keyboardArrangement: ZhuyinKeyboardArrangement = .standard,
         cursorIndicator: CursorIndicatorPreferences = CursorIndicatorPreferences()
     ) {
         self.shiftKeyPreference = shiftKeyPreference
         self.automaticLearningEnabled = automaticLearningEnabled
+        self.showsRareCandidates = showsRareCandidates
         self.keyboardArrangement = keyboardArrangement
         self.cursorIndicator = cursorIndicator
     }
@@ -64,6 +67,7 @@ enum PreferenceKey: String, CaseIterable {
     case version = "JiukongPreferencesVersion"
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
+    case showsRareCandidates = "JiukongShowsRareCandidates"
     case keyboardArrangement = "JiukongKeyboardArrangement"
     case cursorIndicatorEnabled = "JiukongCursorIndicatorEnabled"
     case cursorIndicatorPlacement = "JiukongCursorIndicatorPlacement"
@@ -102,6 +106,8 @@ extension Preferences {
                 shiftKeyPreference.rawValue,
             PreferenceKey.automaticLearningEnabled.rawValue:
                 automaticLearningEnabled,
+            PreferenceKey.showsRareCandidates.rawValue:
+                showsRareCandidates,
             PreferenceKey.keyboardArrangement.rawValue:
                 keyboardArrangement.rawValue,
             PreferenceKey.cursorIndicatorEnabled.rawValue:
@@ -140,6 +146,12 @@ extension Preferences {
             from: values[PreferenceKey.automaticLearningEnabled.rawValue]
         ) {
             preferences.automaticLearningEnabled = enabled
+        }
+
+        if let enabled = boolean(
+            from: values[PreferenceKey.showsRareCandidates.rawValue]
+        ) {
+            preferences.showsRareCandidates = enabled
         }
 
         if let rawValue = values[PreferenceKey.keyboardArrangement.rawValue]

@@ -65,9 +65,9 @@ targets:
         buildPhase: resources
       - path: Resources/Assets/JiukongZhuyin.tiff
         buildPhase: resources
-      - path: Resources/Assets/JiukongChinese.tiff
+      - path: Resources/Assets/JiukongChineseColor.tiff
         buildPhase: resources
-      - path: Resources/Assets/JiukongEnglish.tiff
+      - path: Resources/Assets/JiukongEnglishAColor.tiff
         buildPhase: resources
       - path: Resources/Dictionary/CNS11643_NOTICE.txt
         buildPhase: resources
@@ -96,7 +96,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleSignature: JKZY
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        ComponentInputModeDict:
+        ComponentInputModeDict: &inputModeDictionary
           tsInputModeListKey:
             tw.idv.jiukong.inputmethod.zhuyin.Chinese:
               TISIconLabels:
@@ -105,24 +105,25 @@ targets:
               TISIntendedLanguage: zh-Hant
               tsInputModeDefaultStateKey: true
               tsInputModeIsVisibleKey: true
-              tsInputModeMenuIconFileKey: JiukongChinese.tiff
-              tsInputModePaletteIconFileKey: JiukongChinese.tiff
+              tsInputModeMenuIconFileKey: JiukongChineseColor.tiff
+              tsInputModePaletteIconFileKey: JiukongChineseColor.tiff
               tsInputModePrimaryInScriptKey: true
               tsInputModeScriptKey: smUnicodeScript
             tw.idv.jiukong.inputmethod.zhuyin.English:
               TISIconLabels:
-                Primary: 英
+                Primary: A
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.English
               TISIntendedLanguage: en
               tsInputModeDefaultStateKey: true
               tsInputModeIsVisibleKey: true
-              tsInputModeMenuIconFileKey: JiukongEnglish.tiff
-              tsInputModePaletteIconFileKey: JiukongEnglish.tiff
+              tsInputModeMenuIconFileKey: JiukongEnglishAColor.tiff
+              tsInputModePaletteIconFileKey: JiukongEnglishAColor.tiff
               tsInputModePrimaryInScriptKey: false
               tsInputModeScriptKey: smRoman
           tsVisibleInputModeOrderedArrayKey:
             - tw.idv.jiukong.inputmethod.zhuyin.Chinese
             - tw.idv.jiukong.inputmethod.zhuyin.English
+        InputMethodServerModeDictionary: *inputModeDictionary
         InputMethodConnectionName: tw_idv_jiukong_inputmethod_zhuyin_Connection
         InputMethodServerControllerClass: JiukongInputController
         LSApplicationCategoryType: public.app-category.utilities
@@ -133,7 +134,7 @@ targets:
         NSPrincipalClass: NSApplication
         TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin
         TISIntendedLanguage: zh-Hant
-        TISIconIsTemplate: true
+        TISIconIsTemplate: false
         tsInputMethodCharacterRepertoireKey:
           - Hant
         tsInputMethodIconFileKey: JiukongZhuyin.tiff
@@ -141,7 +142,7 @@ targets:
       base:
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
-        CURRENT_PROJECT_VERSION: 1
+        CURRENT_PROJECT_VERSION: 8
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO

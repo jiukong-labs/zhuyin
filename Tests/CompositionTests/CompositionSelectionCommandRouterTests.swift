@@ -3,14 +3,14 @@ import Carbon
 import XCTest
 
 final class CompositionSelectionCommandRouterTests: XCTestCase {
-    func testShiftLeftExpandsAndShiftRightShrinks() {
+    func testShiftArrowsExtendTheirMatchingSelectionEdge() {
         XCTAssertEqual(
             command(kVK_LeftArrow, modifiers: [.shift, .function]),
-            .expandBackward
+            .extendLeft
         )
         XCTAssertEqual(
             command(kVK_RightArrow, modifiers: [.shift, .function]),
-            .shrinkForward
+            .extendRight
         )
     }
 
@@ -20,7 +20,7 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
                 kVK_LeftArrow,
                 modifiers: [.shift, .function, .numericPad, .capsLock]
             ),
-            .expandBackward
+            .extendLeft
         )
     }
 
@@ -92,6 +92,34 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         XCTAssertNil(cursorCommand(kVK_ANSI_A, modifiers: []))
     }
 
+    func testBothPhysicalDeleteKeysAreRecognized() {
+        XCTAssertEqual(
+            deletionCommand(kVK_Delete, modifiers: []),
+            .deleteBackward
+        )
+        XCTAssertEqual(
+            deletionCommand(kVK_ForwardDelete, modifiers: [.function]),
+            .deleteForward
+        )
+    }
+
+    func testDeletionRejectsShortcutsAndUnrelatedKeys() {
+        for modifier in [
+            NSEvent.ModifierFlags.shift,
+            .command,
+            .control,
+            .option,
+        ] {
+            XCTAssertNil(
+                deletionCommand(kVK_Delete, modifiers: modifier)
+            )
+            XCTAssertNil(
+                deletionCommand(kVK_ForwardDelete, modifiers: modifier)
+            )
+        }
+        XCTAssertNil(deletionCommand(kVK_ANSI_A, modifiers: []))
+    }
+
     private func command(
         _ keyCode: Int,
         modifiers: NSEvent.ModifierFlags
@@ -108,6 +136,16 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         modifiers: NSEvent.ModifierFlags
     ) -> CompositionCursorCommand? {
         CompositionCursorCommandRouter.command(
+            keyCode: UInt16(keyCode),
+            modifierFlags: modifiers
+        )
+    }
+
+    private func deletionCommand(
+        _ keyCode: Int,
+        modifiers: NSEvent.ModifierFlags
+    ) -> CompositionDeletionCommand? {
+        CompositionDeletionCommandRouter.command(
             keyCode: UInt16(keyCode),
             modifierFlags: modifiers
         )

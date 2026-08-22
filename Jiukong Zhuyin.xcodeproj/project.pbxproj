@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A94BC65A64E43169E6F3A01 /* JiukongChinese.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 0C2DFB6B56F3484EAC582A01 /* JiukongChinese.tiff */; };
-		0B76EAE473934181B1824C02 /* JiukongEnglish.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 0D6EDC31A610474AB9062B02 /* JiukongEnglish.tiff */; };
+		0A94BC65A64E43169E6F3A01 /* JiukongChineseColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 0C2DFB6B56F3484EAC582A01 /* JiukongChineseColor.tiff */; };
+		0B76EAE473934181B1824C02 /* JiukongEnglishAColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 0D6EDC31A610474AB9062B02 /* JiukongEnglishAColor.tiff */; };
 		02E7FB9F1FFB463D76068A0A /* CandidateWindowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */; };
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		062DE77B1B3A7186707494E8 /* CharacterCandidateProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A684017D608CC4FA5BF19D4 /* CharacterCandidateProviderTests.swift */; };
@@ -158,8 +158,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0C2DFB6B56F3484EAC582A01 /* JiukongChinese.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongChinese.tiff; sourceTree = "<group>"; };
-		0D6EDC31A610474AB9062B02 /* JiukongEnglish.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongEnglish.tiff; sourceTree = "<group>"; };
+		0C2DFB6B56F3484EAC582A01 /* JiukongChineseColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongChineseColor.tiff; sourceTree = "<group>"; };
+		0D6EDC31A610474AB9062B02 /* JiukongEnglishAColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongEnglishAColor.tiff; sourceTree = "<group>"; };
 		03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Acceptance Harness"; sourceTree = BUILT_PRODUCTS_DIR; };
 		03517B2F1F6C10948547B0A2 /* PreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesStoreTests.swift; sourceTree = "<group>"; };
 		0748FDE71A052EB86AE9FC0B /* InputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputController.swift; sourceTree = "<group>"; };
@@ -363,8 +363,8 @@
 		32605061876F4DEB36D9D8D0 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
-				0C2DFB6B56F3484EAC582A01 /* JiukongChinese.tiff */,
-				0D6EDC31A610474AB9062B02 /* JiukongEnglish.tiff */,
+				0C2DFB6B56F3484EAC582A01 /* JiukongChineseColor.tiff */,
+				0D6EDC31A610474AB9062B02 /* JiukongEnglishAColor.tiff */,
 				6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */,
 				4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */,
 			);
@@ -807,8 +807,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A94BC65A64E43169E6F3A01 /* JiukongChinese.tiff in Resources */,
-				0B76EAE473934181B1824C02 /* JiukongEnglish.tiff in Resources */,
+				0A94BC65A64E43169E6F3A01 /* JiukongChineseColor.tiff in Resources */,
+				0B76EAE473934181B1824C02 /* JiukongEnglishAColor.tiff in Resources */,
 				174786A95696AC964BBB4E9C /* CNS11643_NOTICE.txt in Resources */,
 				B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */,
 				7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */,
@@ -1006,7 +1006,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1153,7 +1153,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;

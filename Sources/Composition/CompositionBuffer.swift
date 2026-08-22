@@ -55,8 +55,8 @@ struct CompositionPhraseQuery: Equatable {
     }
 }
 
-/// The currently selected suffix of the marked composition, suitable for
-/// adding to the user dictionary.
+/// The currently selected reading span of the marked composition, suitable
+/// for adding to the user dictionary.
 struct CompositionPhraseSelection: Equatable {
     let units: [CompositionUnit]
 
@@ -66,6 +66,21 @@ struct CompositionPhraseSelection: Equatable {
 
     var pronunciationSequence: [String] {
         units.map(\.pronunciation)
+    }
+}
+
+/// A display-only snapshot of the current phrase range. Keeping this separate
+/// from `selectedPhrase` lets the UI report a one-character starting range
+/// before it is long enough to save.
+struct CompositionPhraseSelectionStatus: Equatable {
+    let text: String
+    let unitCount: Int
+
+    var displayText: String {
+        let action = unitCount >= CompositionBuffer.minimumPhraseUnitCount
+            ? "Return 記錄"
+            : "至少選 2 字"
+        return "造詞範圍 \(unitCount) 字：【\(text)】　⇧←／→ 擴張　\(action)　Esc 取消"
     }
 }
 
@@ -80,12 +95,17 @@ struct CompositionRevisionFocus: Equatable {
     let readingCount: Int
 
     var locatingDisplayText: String {
-        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　↓ 進入選字"
+        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字"
     }
 
     var choosingDisplayText: String {
-        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　Esc 返回"
+        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　⌫／Del 刪字　Esc 返回"
     }
+}
+
+enum CompositionRevisionDeletionDirection: Equatable {
+    case backward
+    case forward
 }
 
 /// A detached, immutable value passed to the real client-commit path.
@@ -104,23 +124,23 @@ struct CompositionCommitSnapshot: Equatable {
 
 /// Owns all converted text that has not yet been inserted into the client.
 ///
-/// Selection is intentionally a suffix anchored at the end of the buffer.
-/// This mirrors the familiar Shift-Left / Shift-Right phrase-selection model
-/// without reading or modifying text that is already outside the input method.
+/// Phrase selection is always a contiguous range inside this input method's
+/// own marked text. It never reads or modifies text that has already been
+/// committed to the client application.
 struct CompositionBuffer: Equatable {
     static let minimumPhraseUnitCount = 2
     static let maximumPhraseUnitCount = 64
 
     private(set) var units: [CompositionUnit] = []
     private(set) var pendingCandidateSelections: [PendingCandidateSelection] = []
-    private(set) var selectedSuffixUnitCount = 0
+    private(set) var selectedUnitRange: Range<Int>?
 
     var isEmpty: Bool {
         units.isEmpty
     }
 
     var hasSelection: Bool {
-        selectedSuffixUnitCount > 0
+        selectedUnitRange != nil
     }
 
     var text: String {
@@ -129,14 +149,6 @@ struct CompositionBuffer: Equatable {
 
     var pronunciationSequence: [String] {
         units.map(\.pronunciation)
-    }
-
-    var selectedUnitRange: Range<Int>? {
-        guard hasSelection else {
-            return nil
-        }
-
-        return (units.count - selectedSuffixUnitCount) ..< units.count
     }
 
     var lastReadingUnitID: UUID? {
@@ -235,6 +247,16 @@ struct CompositionBuffer: Equatable {
 
         return CompositionPhraseSelection(
             units: Array(units[selectedUnitRange])
+        )
+    }
+
+    var phraseSelectionStatus: CompositionPhraseSelectionStatus? {
+        guard let selectedUnitRange else {
+            return nil
+        }
+        return CompositionPhraseSelectionStatus(
+            text: units[selectedUnitRange].map(\.text).joined(),
+            unitCount: selectedUnitRange.count
         )
     }
 
@@ -343,9 +365,31 @@ struct CompositionBuffer: Equatable {
         }
 
         let deletedUnit = units.remove(at: index)
-        selectedSuffixUnitCount = 0
+        selectedUnitRange = nil
         pruneInvalidPendingSelections()
         return deletedUnit
+    }
+
+    /// Deletes the explicitly focused reading unit and returns the closest
+    /// surviving reading that should receive focus. Backspace prefers the
+    /// preceding reading; forward Delete prefers the following reading.
+    @discardableResult
+    mutating func deleteRevisionUnit(
+        withID unitID: UUID,
+        direction: CompositionRevisionDeletionDirection
+    ) -> UUID? {
+        let previousUnitID = readingUnitID(before: unitID)
+        let nextUnitID = readingUnitID(after: unitID)
+        guard deleteUnit(withID: unitID) != nil else {
+            return nil
+        }
+
+        switch direction {
+        case .backward:
+            return previousUnitID ?? nextUnitID
+        case .forward:
+            return nextUnitID ?? previousUnitID
+        }
     }
 
     /// Produces every exact suffix lookup ending in `pronunciation`, ordered
@@ -400,39 +444,123 @@ struct CompositionBuffer: Equatable {
         units.reversed().prefix { $0.kind == .reading }.count
     }
 
-    /// Extends the selected suffix by one unit toward the beginning.
+    /// Extends the selection's left edge. With no existing selection, this
+    /// preserves the original end-anchored Shift-Left behavior.
     @discardableResult
     mutating func expandSelectionBackward() -> Bool {
-        guard selectedSuffixUnitCount < units.count else {
+        guard !units.isEmpty else {
             return false
         }
 
-        selectedSuffixUnitCount += 1
+        if let selectedUnitRange {
+            guard selectedUnitRange.lowerBound > units.startIndex else {
+                return false
+            }
+            self.selectedUnitRange =
+                (selectedUnitRange.lowerBound - 1) ..< selectedUnitRange.upperBound
+        } else {
+            selectedUnitRange = units.index(before: units.endIndex) ..< units.endIndex
+        }
         return true
     }
 
-    /// Shrinks the selected suffix by one unit toward the end.
+    /// Shrinks the selection by moving its left edge toward the end.
+    /// Retained for model-level compatibility; interactive Shift-Right now
+    /// extends the right edge instead.
     @discardableResult
     mutating func shrinkSelectionForward() -> Bool {
-        guard selectedSuffixUnitCount > 0 else {
+        guard let selectedUnitRange else {
             return false
         }
 
-        selectedSuffixUnitCount -= 1
+        let newLowerBound = selectedUnitRange.lowerBound + 1
+        self.selectedUnitRange = newLowerBound < selectedUnitRange.upperBound
+            ? newLowerBound ..< selectedUnitRange.upperBound
+            : nil
         return true
+    }
+
+    /// Extends a phrase selection toward the preceding reading unit.
+    ///
+    /// A revision focus is already a visible one-character selection, so the
+    /// first Shift-Left includes both that unit and its left neighbor. Without
+    /// a focus, selection starts at the final reading and subsequent presses
+    /// continue toward the beginning.
+    @discardableResult
+    mutating func extendSelectionLeft(startingAt unitID: UUID?) -> Bool {
+        if let selectedUnitRange {
+            guard selectedUnitRange.count < Self.maximumPhraseUnitCount,
+                  selectedUnitRange.lowerBound > units.startIndex else {
+                return false
+            }
+
+            let adjacentIndex = selectedUnitRange.lowerBound - 1
+            guard units[adjacentIndex].kind == .reading else {
+                return false
+            }
+            self.selectedUnitRange = adjacentIndex ..< selectedUnitRange.upperBound
+            return true
+        }
+
+        guard let start = selectionStart(
+            for: unitID,
+            fallback: .last
+        ) else {
+            return false
+        }
+        return beginDirectionalSelection(
+            at: start.index,
+            offset: -1,
+            includeAdjacent: start.isRevisionFocus
+        )
+    }
+
+    /// Extends a phrase selection toward the following reading unit.
+    ///
+    /// With a revision focus, the first Shift-Right includes the focused unit
+    /// and its right neighbor. Without a focus, selection starts at the first
+    /// reading so a prefix can be learned using Shift-Right alone.
+    @discardableResult
+    mutating func extendSelectionRight(startingAt unitID: UUID?) -> Bool {
+        if let selectedUnitRange {
+            guard selectedUnitRange.count < Self.maximumPhraseUnitCount,
+                  selectedUnitRange.upperBound < units.endIndex else {
+                return false
+            }
+
+            let adjacentIndex = selectedUnitRange.upperBound
+            guard units[adjacentIndex].kind == .reading else {
+                return false
+            }
+            self.selectedUnitRange = selectedUnitRange.lowerBound
+                ..< (adjacentIndex + 1)
+            return true
+        }
+
+        guard let start = selectionStart(
+            for: unitID,
+            fallback: .first
+        ) else {
+            return false
+        }
+        return beginDirectionalSelection(
+            at: start.index,
+            offset: 1,
+            includeAdjacent: start.isRevisionFocus
+        )
     }
 
     @discardableResult
     mutating func clearSelection() -> Bool {
-        guard selectedSuffixUnitCount > 0 else {
+        guard selectedUnitRange != nil else {
             return false
         }
 
-        selectedSuffixUnitCount = 0
+        selectedUnitRange = nil
         return true
     }
 
-    /// Deletes the selected suffix, or one trailing unit when there is no
+    /// Deletes the selected range, or one trailing unit when there is no
     /// selection. Returned units preserve their original display order.
     @discardableResult
     mutating func deleteBackward() -> [CompositionUnit] {
@@ -440,11 +568,11 @@ struct CompositionBuffer: Equatable {
             return []
         }
 
-        let deletionCount = hasSelection ? selectedSuffixUnitCount : 1
-        let deletionStart = units.count - deletionCount
-        let deletedUnits = Array(units[deletionStart...])
-        units.removeSubrange(deletionStart...)
-        selectedSuffixUnitCount = 0
+        let deletionRange = selectedUnitRange
+            ?? units.index(before: units.endIndex) ..< units.endIndex
+        let deletedUnits = Array(units[deletionRange])
+        units.removeSubrange(deletionRange)
+        selectedUnitRange = nil
         pruneInvalidPendingSelections()
         return deletedUnits
     }
@@ -469,7 +597,7 @@ struct CompositionBuffer: Equatable {
     mutating func discard() {
         units.removeAll(keepingCapacity: false)
         pendingCandidateSelections.removeAll(keepingCapacity: false)
-        selectedSuffixUnitCount = 0
+        selectedUnitRange = nil
     }
 
     @discardableResult
@@ -543,6 +671,60 @@ struct CompositionBuffer: Equatable {
 
     private func isValid(_ unit: CompositionUnit) -> Bool {
         !unit.text.isEmpty && !unit.pronunciation.isEmpty
+    }
+
+    private enum SelectionFallback {
+        case first
+        case last
+    }
+
+    private struct SelectionStart {
+        let index: Int
+        let isRevisionFocus: Bool
+    }
+
+    private func selectionStart(
+        for unitID: UUID?,
+        fallback: SelectionFallback
+    ) -> SelectionStart? {
+        if let unitID,
+           let index = units.firstIndex(where: { $0.id == unitID }),
+           units[index].kind == .reading {
+            return SelectionStart(index: index, isRevisionFocus: true)
+        }
+
+        let fallbackIndex: Int?
+        switch fallback {
+        case .first:
+            fallbackIndex = units.firstIndex(where: { $0.kind == .reading })
+        case .last:
+            fallbackIndex = units.lastIndex(where: { $0.kind == .reading })
+        }
+        return fallbackIndex.map {
+            SelectionStart(index: $0, isRevisionFocus: false)
+        }
+    }
+
+    private mutating func beginDirectionalSelection(
+        at startIndex: Int,
+        offset: Int,
+        includeAdjacent: Bool
+    ) -> Bool {
+        guard units.indices.contains(startIndex),
+              units[startIndex].kind == .reading else {
+            return false
+        }
+
+        let adjacentIndex = startIndex + offset
+        if includeAdjacent,
+           units.indices.contains(adjacentIndex),
+           units[adjacentIndex].kind == .reading {
+            selectedUnitRange = min(startIndex, adjacentIndex)
+                ..< (max(startIndex, adjacentIndex) + 1)
+        } else {
+            selectedUnitRange = startIndex ..< (startIndex + 1)
+        }
+        return true
     }
 
     private mutating func pruneInvalidPendingSelections() {

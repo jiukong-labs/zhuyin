@@ -8,13 +8,16 @@ project_path="$repository_root/Jiukong Zhuyin.xcodeproj"
 scheme_name="Jiukong Zhuyin"
 build_configuration="${CONFIGURATION:-Release}"
 build_architecture="$(uname -m)"
-derived_data_path="${DERIVED_DATA_PATH:-$repository_root/.build/DerivedData}"
 signing_identity="${SIGNING_IDENTITY:--}"
 bundle_identifier="tw.idv.jiukong.inputmethod.zhuyin"
+temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/jiukong-zhuyin-install.XXXXXX")"
+# A cloud-synced repository can attach Finder metadata to products under its
+# .build directory before Xcode signs them. Keep installation products in the
+# local temporary volume so the app reaches codesign without those attributes.
+derived_data_path="${DERIVED_DATA_PATH:-$temporary_root/DerivedData}"
 built_application="$derived_data_path/Build/Products/$build_configuration/Jiukong Zhuyin.app"
 installation_directory="$HOME/Library/Input Methods"
 installed_application="$installation_directory/Jiukong Zhuyin.app"
-temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/jiukong-zhuyin-install.XXXXXX")"
 staged_application="$temporary_root/Jiukong Zhuyin.app"
 
 cleanup() {
@@ -67,7 +70,7 @@ print "  $installed_application"
 # this session has never seen stays invisible to Text Input Sources until the
 # next login, no matter how often it is registered, so the bundle is left in
 # place and the user is told what the remaining step is.
-if ! "$installed_application/Contents/MacOS/Jiukong Zhuyin" --register; then
+if ! "$script_directory/register-input-source.sh"; then
     print ""
     print "The bundle is installed, but macOS did not register the input source."
     print "Identifier: $bundle_identifier"

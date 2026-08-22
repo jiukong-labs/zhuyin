@@ -8,6 +8,16 @@ struct CompositionPresentation: Equatable {
     let text: String
     let selectionRange: NSRange
 
+    /// Web-backed clients may relocate the insertion point when they receive
+    /// a non-empty marked-text selection. Phrase selection stays authoritative
+    /// in the buffer, while the client receives a caret after that range.
+    var caretAfterSelectionRange: NSRange {
+        NSRange(
+            location: selectionRange.location + selectionRange.length,
+            length: 0
+        )
+    }
+
     static func make(
         buffer: CompositionBuffer,
         activeSuffix: String?,
@@ -56,33 +66,51 @@ struct CompositionPresentation: Equatable {
 }
 
 /// Builds marked text with an explicit visual cue for Left/Right revision.
-/// The selection range remains authoritative for the client, while the
-/// background and thick underline stay visible in clients that paint the
-/// entire active composition with one selection color.
+/// The selection range remains authoritative for the client, while explicit
+/// attributes provide an additional cue in clients that honor marked-text
+/// styling.
 enum CompositionMarkedTextRenderer {
+    enum HighlightStyle {
+        case revisionFocus
+        case phraseSelection
+    }
+
     static func make(
         presentation: CompositionPresentation,
-        focusedRange: NSRange?
+        highlightedRange: NSRange?,
+        style: HighlightStyle = .revisionFocus
     ) -> NSAttributedString {
         let markedText = NSMutableAttributedString(
             string: presentation.text
         )
-        guard let focusedRange,
-              focusedRange.location != NSNotFound,
-              focusedRange.length > 0,
-              focusedRange.location <= presentation.text.utf16.count,
-              focusedRange.length
-                <= presentation.text.utf16.count - focusedRange.location else {
+        guard let highlightedRange,
+              highlightedRange.location != NSNotFound,
+              highlightedRange.length > 0,
+              highlightedRange.location <= presentation.text.utf16.count,
+              highlightedRange.length
+                <= presentation.text.utf16.count - highlightedRange.location else {
             return markedText
         }
 
-        markedText.addAttributes(
-            [
+        let attributes: [NSAttributedString.Key: Any]
+        switch style {
+        case .revisionFocus:
+            attributes = [
                 .backgroundColor: NSColor.systemYellow.withAlphaComponent(0.32),
                 .underlineColor: NSColor.systemOrange,
                 .underlineStyle: NSUnderlineStyle.thick.rawValue,
-            ],
-            range: focusedRange
+            ]
+        case .phraseSelection:
+            attributes = [
+                .backgroundColor: NSColor.selectedTextBackgroundColor,
+                .foregroundColor: NSColor.selectedTextColor,
+                .underlineColor: NSColor.systemGreen,
+                .underlineStyle: NSUnderlineStyle.thick.rawValue,
+            ]
+        }
+        markedText.addAttributes(
+            attributes,
+            range: highlightedRange
         )
         return markedText
     }

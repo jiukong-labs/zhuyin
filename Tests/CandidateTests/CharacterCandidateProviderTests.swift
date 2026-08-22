@@ -8,7 +8,12 @@ final class CharacterCandidateProviderTests: XCTestCase {
 
         let candidates = try provider.candidates(for: "ㄨㄛˇ")
 
-        XCTAssertEqual(candidates.map(\.text), try dictionary.candidates(for: "ㄨㄛˇ"))
+        XCTAssertEqual(
+            candidates.map(\.text),
+            try dictionary.candidateEntries(for: "ㄨㄛˇ")
+                .filter(\.isInGeneralCandidateRepertoire)
+                .map(\.text)
+        )
         XCTAssertEqual(candidates.first?.text, "我")
         XCTAssertTrue(candidates.allSatisfy { candidate in
             candidate.type == .character
@@ -87,7 +92,9 @@ final class CharacterCandidateProviderTests: XCTestCase {
 
         XCTAssertEqual(
             try provider.candidates(for: "ㄨㄛˇ").map(\.text),
-            try dictionary.candidates(for: "ㄨㄛˇ")
+            try dictionary.candidateEntries(for: "ㄨㄛˇ")
+                .filter(\.isInGeneralCandidateRepertoire)
+                .map(\.text)
         )
     }
 
@@ -97,6 +104,50 @@ final class CharacterCandidateProviderTests: XCTestCase {
         )
 
         XCTAssertEqual(try provider.candidates(for: "not-zhuyin"), [])
+    }
+
+    func testProviderOmitsCandidatesRejectedByDisplayPolicy() throws {
+        let dictionary = try makeDictionary()
+        let unfilteredProvider = CharacterCandidateProvider(
+            dictionary: dictionary,
+            showsRareCandidates: { true }
+        )
+        let rejectedCharacter = "𢳀"
+        let provider = CharacterCandidateProvider(
+            dictionary: dictionary,
+            showsRareCandidates: { true },
+            isCandidateDisplayable: { $0 != rejectedCharacter }
+        )
+
+        let unfiltered = try unfilteredProvider.candidates(for: "ㄇㄚ")
+        let filtered = try provider.candidates(for: "ㄇㄚ")
+
+        XCTAssertTrue(unfiltered.contains { $0.text == rejectedCharacter })
+        XCTAssertFalse(filtered.contains { $0.text == rejectedCharacter })
+        XCTAssertEqual(
+            filtered.map(\.text),
+            unfiltered.map(\.text).filter { $0 != rejectedCharacter }
+        )
+    }
+
+    func testGeneralCandidateScopeKeepsOnlyCNSPlanesOneAndTwo() throws {
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary()
+        )
+        let rareProvider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            showsRareCandidates: { true }
+        )
+
+        XCTAssertEqual(
+            try provider.candidates(for: "ㄇㄚ").map(\.text),
+            ["媽", "摩", "螞", "嬤"]
+        )
+        XCTAssertTrue(
+            try rareProvider.candidates(for: "ㄇㄚ").contains {
+                $0.text == "嬷"
+            }
+        )
     }
 
     func testEveryCommitReasonRecordsCharacterSelection() throws {
@@ -307,6 +358,32 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(learning.addedPhrases.first?.date, date)
     }
 
+    func testDeleteUserPhraseUsesExactValidatedIdentity() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        let readings = ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+
+        XCTAssertTrue(
+            provider.deleteUserPhrase(
+                phrase: "久空",
+                pronunciationSequence: readings
+            )
+        )
+        XCTAssertFalse(
+            provider.deleteUserPhrase(
+                phrase: "錯誤",
+                pronunciationSequence: ["ASCII", "ㄨˋ"]
+            )
+        )
+        XCTAssertEqual(
+            learning.deletedPhrases,
+            [PhraseIdentity(phrase: "久空", readings: readings)]
+        )
+    }
+
     func testRecordCommittedSelectionRecordsPhraseCandidate() throws {
         let learning = LearningSpy()
         let date = Date(timeIntervalSince1970: 456)
@@ -457,6 +534,11 @@ final class CharacterCandidateProviderTests: XCTestCase {
         let date: Date
     }
 
+    private struct PhraseIdentity: Equatable {
+        let phrase: String
+        let readings: [String]
+    }
+
     private final class LearningSpy: UserLearningProviding {
         var recordsByPronunciation: [String: [String: CharacterLearningRecord]] = [:]
         var phraseRecordsByPronunciation: [[String]: [UserPhraseRecord]] = [:]
@@ -464,6 +546,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
         var requestedPhraseReadings: [[String]] = []
         var addedPhrases: [PhraseOperation] = []
         var recordedPhraseSelections: [PhraseOperation] = []
+        var deletedPhrases: [PhraseIdentity] = []
 
         func records(
             for pronunciation: String
@@ -514,6 +597,19 @@ final class CharacterCandidateProviderTests: XCTestCase {
                     date: date
                 )
             )
+        }
+
+        func deletePhrase(
+            phrase: String,
+            pronunciationSequence: [String]
+        ) -> Bool {
+            deletedPhrases.append(
+                PhraseIdentity(
+                    phrase: phrase,
+                    readings: pronunciationSequence
+                )
+            )
+            return true
         }
     }
 

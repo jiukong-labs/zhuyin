@@ -14,9 +14,9 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(
             dataset.statistics,
             JiukongPhraseStatistics(
-                entryCount: 83,
-                uniquePhraseCount: 82,
-                pronunciationSequenceCount: 82
+                entryCount: 815,
+                uniquePhraseCount: 814,
+                pronunciationSequenceCount: 809
             )
         )
         XCTAssertEqual(dataset.entries.first?.phrase, "測試")
@@ -24,6 +24,50 @@ final class CNS11643ParserTests: XCTestCase {
             dataset.entries.first?.pronunciationSequence,
             ["ㄘㄜˋ", "ㄕˋ"]
         )
+    }
+
+    func testFirstPartyPhraseReadingsMatchPinnedOfficialCharacterData() throws {
+        let phraseURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongPhrases", isDirectory: true)
+            .appendingPathComponent("phrases.tsv")
+        let phrases = try JiukongPhraseParser.parse(sourceURL: phraseURL)
+        let sourceDirectory = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("CNS11643", isDirectory: true)
+            .appendingPathComponent("20260805", isDirectory: true)
+        let manifest = try CNS11643Manifest.load(from: sourceDirectory)
+        let official = try CNS11643Parser.parse(
+            sourceDirectory: sourceDirectory,
+            manifest: manifest
+        )
+        let officialPairs = Set(official.entries.map {
+            $0.character + "\u{1F}" + $0.pronunciation
+        })
+
+        var mismatches: [String] = []
+        for entry in phrases.entries {
+            for (index, pair) in zip(
+                entry.phrase.map(String.init),
+                entry.pronunciationSequence
+            ).enumerated() {
+                let (character, pronunciation) = pair
+                let isDocumentedConversationalVariant = entry.phrase == "謝謝"
+                    && entry.pronunciationSequence == ["ㄒㄧㄝˋ", "˙ㄒㄧㄝ"]
+                    && index == 1
+                guard !isDocumentedConversationalVariant,
+                      !officialPairs.contains(
+                          character + "\u{1F}" + pronunciation
+                      ) else {
+                    continue
+                }
+                mismatches.append(
+                    "\(entry.phrase): \(character) \(pronunciation)"
+                )
+            }
+        }
+
+        XCTAssertEqual(mismatches, [])
     }
 
     func testFirstPartyPhraseParserRejectsMalformedAndDuplicateRows() throws {

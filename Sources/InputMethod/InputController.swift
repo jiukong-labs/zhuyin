@@ -37,6 +37,8 @@ final class InputController: IMKInputController {
     private var candidateSyllable: BopomofoSyllable?
     private var revisingUnitID: UUID?
     private var lastCandidateAnchor: NSRect?
+    private var phraseSelectionPresentationID: UUID?
+    private var savedPhraseConfirmation: SavedUserPhraseConfirmation?
     private var languageModeHUDToken: UUID?
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
@@ -48,6 +50,12 @@ final class InputController: IMKInputController {
                 learning: UserLearningService.shared,
                 isAutomaticLearningEnabled: {
                     preferences.current.automaticLearningEnabled
+                },
+                showsRareCandidates: {
+                    preferences.current.showsRareCandidates
+                },
+                isCandidateDisplayable: {
+                    CandidateTextDisplayability.canRender($0)
                 }
             )
         } catch {
@@ -99,10 +107,12 @@ final class InputController: IMKInputController {
             return handleModifierChange(event, inputClient: inputClient)
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
             shiftToggleController.reset()
+            hideSavedPhraseConfirmation()
             finishComposition(reason: .lifecycle, using: inputClient)
             return false
         case .keyDown:
             shiftToggleController.noteKeyDown()
+            hideSavedPhraseConfirmation()
         default:
             return false
         }
@@ -121,6 +131,16 @@ final class InputController: IMKInputController {
                 command,
                 inputClient: inputClient
             )
+        }
+
+        if let command = CompositionDeletionCommandRouter.command(
+            keyCode: event.keyCode,
+            modifierFlags: event.modifierFlags
+        ), handleCompositionDeletionCommand(
+            command,
+            inputClient: inputClient
+        ) {
+            return true
         }
 
         if !compositionBuffer.isEmpty,
@@ -229,10 +249,10 @@ final class InputController: IMKInputController {
     }
 
     override func activateServer(_ sender: Any!) {
+        super.activateServer(sender)
         shiftToggleController.reset()
         synchronizeLanguageModeWithCurrentInputSource()
         startCursorIndicator()
-        super.activateServer(sender)
     }
 
     override func deactivateServer(_ sender: Any!) {
@@ -274,7 +294,7 @@ final class InputController: IMKInputController {
                         using: self.client()
                     )
                 }
-                self.languageModeController.setMode(mode)
+                self.languageModeController.synchronize(withSystemMode: mode)
                 self.cursorIndicator.update(mode: mode)
             }
             return
@@ -332,40 +352,16 @@ final class InputController: IMKInputController {
         }
 
         finishComposition(reason: .lifecycle, using: inputClient)
-        let mode: LanguageMode = languageModeController.mode == .chinese
-            ? .english
-            : .chinese
-
-        guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
-            return false
-        }
-
-        do {
-            try InputSourceRegistrar.select(
-                mode: mode,
-                bundleIdentifier: bundleIdentifier
-            )
-        } catch {
-            NSLog(
-                "Jiukong Zhuyin could not select the %@ mode: %@",
-                mode.rawValue,
-                error.localizedDescription
-            )
-            return false
-        }
-
-        languageModeController.setMode(mode)
+        // Keep a standalone Shift toggle inside the input method. Selecting a
+        // separate TIS mode here makes macOS present its own fixed 中/ABC
+        // overlay, whose label and color cannot follow Jiukong's cursor
+        // indicator preferences.
+        let mode = languageModeController.toggleInternally()
         cursorIndicator.update(mode: mode)
-
-        // The persistent indicator already answers "which mode am I in", so the
-        // transient HUD would only duplicate it at a different position.
-        guard !cursorIndicator.isEnabled else {
-            return false
-        }
 
         languageModeHUDToken = languageModeHUD.show(
             mode: mode,
-            anchor: candidateAnchor(on: inputClient),
+            indicator: preferences.current.cursorIndicator,
             clientWindowLevel: inputClient.windowLevel()
         )
         return false
@@ -396,21 +392,48 @@ final class InputController: IMKInputController {
     }
 
     private func synchronizeLanguageModeWithCurrentInputSource() {
+        // An internal Shift toggle intentionally does not change the selected
+        // TIS mode. Preserve that state across client activations until the
+        // user explicitly selects a system input source again.
+        guard !languageModeController.isInternallyManaged else {
+            return
+        }
         let parentID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
         ) as? String
+        let currentInputSourceID = Self.currentInputSourceID()
         guard let mode = LanguageMode.mode(
-            forInputSourceID: Self.currentInputSourceID(),
+            forInputSourceID: currentInputSourceID,
             parentID: parentID
         ) else {
+            // A freshly enabled input method can initially activate through
+            // its parent source. Select the concrete mode immediately so the
+            // system input menu uses that mode's 中/A icon instead of the
+            // application icon.
+            guard currentInputSourceID == parentID,
+                  let parentID else {
+                return
+            }
+            do {
+                try InputSourceRegistrar.select(
+                    mode: languageModeController.mode,
+                    bundleIdentifier: parentID
+                )
+            } catch {
+                NSLog(
+                    "Jiukong Zhuyin could not select its initial mode: %@",
+                    error.localizedDescription
+                )
+            }
             return
         }
-        languageModeController.setMode(mode)
+        languageModeController.synchronize(withSystemMode: mode)
     }
 
     private func resetTransientInputState() {
         shiftToggleController.reset()
         cursorIndicator.setActive(false)
+        hideSavedPhraseConfirmation()
         if let languageModeHUDToken {
             languageModeHUD.hide(token: languageModeHUDToken)
             self.languageModeHUDToken = nil
@@ -621,22 +644,73 @@ final class InputController: IMKInputController {
         _ command: CompositionSelectionCommand,
         inputClient: any IMKTextInput
     ) -> Bool {
-        // An active raw syllable or candidate owns the inline suffix. Consume
-        // Shift-arrow without accepting it or leaking selection to the client.
-        guard candidateSession == nil, !inputSession.hasComposition else {
+        // A raw syllable and an expanded candidate list still own their
+        // arrows. A revision locator, however, is a valid phrase-selection
+        // starting point: close its panel and extend from the focused unit.
+        guard !inputSession.hasComposition else {
             return true
         }
         guard !compositionBuffer.isEmpty else {
             return false
         }
 
+        let startingUnitID = revisingUnitID
+        if let candidateSession {
+            guard candidateSession.revisionFocus != nil,
+                  !candidateSession.isExpanded,
+                  startingUnitID != nil else {
+                return true
+            }
+            clearCandidatePresentation()
+        }
+
         revisingUnitID = nil
         switch command {
-        case .expandBackward:
-            compositionBuffer.expandSelectionBackward()
-        case .shrinkForward:
-            compositionBuffer.shrinkSelectionForward()
+        case .extendLeft:
+            compositionBuffer.extendSelectionLeft(startingAt: startingUnitID)
+        case .extendRight:
+            compositionBuffer.extendSelectionRight(startingAt: startingUnitID)
         }
+        updateMarkedComposition(on: inputClient)
+        presentPhraseSelection(on: inputClient)
+        return true
+    }
+
+    /// An explicit inline focus or phrase range owns both physical deletion
+    /// keys before candidate routing. This prevents revision Backspace from
+    /// merely dismissing the candidate panel and gives forward Delete the same
+    /// focused-unit behavior.
+    private func handleCompositionDeletionCommand(
+        _ command: CompositionDeletionCommand,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        guard !inputSession.hasComposition,
+              !compositionBuffer.isEmpty,
+              revisingUnitID != nil || compositionBuffer.hasSelection else {
+            return false
+        }
+
+        if candidateSession != nil {
+            clearCandidatePresentation()
+        }
+
+        if let revisingUnitID {
+            let direction: CompositionRevisionDeletionDirection
+            switch command {
+            case .deleteBackward:
+                direction = .backward
+            case .deleteForward:
+                direction = .forward
+            }
+            self.revisingUnitID = compositionBuffer.deleteRevisionUnit(
+                withID: revisingUnitID,
+                direction: direction
+            )
+        } else {
+            _ = compositionBuffer.deleteBackward()
+            revisingUnitID = nil
+        }
+
         updateMarkedComposition(on: inputClient)
         return true
     }
@@ -653,13 +727,26 @@ final class InputController: IMKInputController {
 
         switch key {
         case .returnKey, .keypadEnter:
-            if let phrase = compositionBuffer.selectedPhrase {
-                _ = candidateProvider?.addUserPhrase(
+            let confirmation: SavedUserPhraseConfirmation?
+            if let phrase = compositionBuffer.selectedPhrase,
+               candidateProvider?.addUserPhrase(
+                    phrase: phrase.text,
+                    pronunciationSequence: phrase.pronunciationSequence
+               ) == true {
+                confirmation = SavedUserPhraseConfirmation(
                     phrase: phrase.text,
                     pronunciationSequence: phrase.pronunciationSequence
                 )
+            } else {
+                confirmation = nil
             }
             flushComposition(reason: .returnKey, to: inputClient)
+            if let confirmation {
+                presentSavedPhraseConfirmation(
+                    confirmation,
+                    on: inputClient
+                )
+            }
             return true
         case .escape:
             if revisingUnitID != nil {
@@ -674,11 +761,10 @@ final class InputController: IMKInputController {
             return true
         case .deleteBackward:
             if let revisingUnitID {
-                let previousUnitID = compositionBuffer.readingUnitID(
-                    before: revisingUnitID
+                self.revisingUnitID = compositionBuffer.deleteRevisionUnit(
+                    withID: revisingUnitID,
+                    direction: .backward
                 )
-                _ = compositionBuffer.deleteUnit(withID: revisingUnitID)
-                self.revisingUnitID = previousUnitID
             } else {
                 compositionBuffer.deleteBackward()
             }
@@ -894,6 +980,57 @@ final class InputController: IMKInputController {
         }
     }
 
+    private func presentPhraseSelection(
+        on inputClient: any IMKTextInput
+    ) {
+        guard let status = compositionBuffer.phraseSelectionStatus else {
+            hidePhraseSelectionPresentation()
+            return
+        }
+
+        let presentationID = phraseSelectionPresentationID ?? UUID()
+        phraseSelectionPresentationID = presentationID
+        candidatePresenter.presentPhraseSelection(
+            id: presentationID,
+            displayText: status.displayText,
+            anchor: candidateAnchor(on: inputClient),
+            clientWindowLevel: inputClient.windowLevel()
+        )
+    }
+
+    private func hidePhraseSelectionPresentation() {
+        guard let phraseSelectionPresentationID else {
+            return
+        }
+        self.phraseSelectionPresentationID = nil
+        candidatePresenter.hidePhraseSelection(
+            id: phraseSelectionPresentationID
+        )
+    }
+
+    private func presentSavedPhraseConfirmation(
+        _ confirmation: SavedUserPhraseConfirmation,
+        on inputClient: any IMKTextInput
+    ) {
+        savedPhraseConfirmation = confirmation
+        candidatePresenter.presentSavedPhraseConfirmation(
+            confirmation,
+            anchor: candidateAnchor(on: inputClient),
+            clientWindowLevel: inputClient.windowLevel(),
+            delegate: self
+        )
+    }
+
+    private func hideSavedPhraseConfirmation() {
+        guard let savedPhraseConfirmation else {
+            return
+        }
+        self.savedPhraseConfirmation = nil
+        candidatePresenter.hideSavedPhraseConfirmation(
+            id: savedPhraseConfirmation.id
+        )
+    }
+
     private func appendLiteralReading(
         _ pronunciation: String,
         to inputClient: any IMKTextInput
@@ -911,6 +1048,7 @@ final class InputController: IMKInputController {
         reason: CandidateCommitReason,
         to inputClient: any IMKTextInput
     ) {
+        hidePhraseSelectionPresentation()
         _ = acceptPreferredCandidate(reason: reason)
         revisingUnitID = nil
 
@@ -935,6 +1073,7 @@ final class InputController: IMKInputController {
     }
 
     private func discardAllComposition() {
+        hidePhraseSelectionPresentation()
         discardCandidateState()
         _ = inputSession.discardComposition()
         compositionBuffer.discard()
@@ -962,6 +1101,9 @@ final class InputController: IMKInputController {
                 let localRange = compositionBuffer.markedSelectionRange(
                     focusedUnitID: revisingUnitID
                 )
+                localOffset = localRange.location + localRange.length
+            } else if compositionBuffer.hasSelection {
+                let localRange = compositionBuffer.markedSelectionRange
                 localOffset = localRange.location + localRange.length
             } else {
                 localOffset = markedRange.length
@@ -1041,6 +1183,9 @@ final class InputController: IMKInputController {
     private func updateMarkedComposition(
         on inputClient: any IMKTextInput
     ) {
+        if !compositionBuffer.hasSelection {
+            hidePhraseSelectionPresentation()
+        }
         let presentation: CompositionPresentation?
         if revisingUnitID == nil,
            let candidateSession,
@@ -1067,18 +1212,30 @@ final class InputController: IMKInputController {
         let focusedRange = revisingUnitID.map {
             compositionBuffer.markedSelectionRange(focusedUnitID: $0)
         }
+        let phraseRange = compositionBuffer.hasSelection
+            ? presentation.selectionRange
+            : nil
         let markedText: Any
         if let focusedRange {
             markedText = CompositionMarkedTextRenderer.make(
                 presentation: presentation,
-                focusedRange: focusedRange
+                highlightedRange: focusedRange
+            )
+        } else if let phraseRange {
+            markedText = CompositionMarkedTextRenderer.make(
+                presentation: presentation,
+                highlightedRange: phraseRange,
+                style: .phraseSelection
             )
         } else {
             markedText = presentation.text as NSString
         }
+        let clientSelectionRange = phraseRange == nil
+            ? presentation.selectionRange
+            : presentation.caretAfterSelectionRange
         inputClient.setMarkedText(
             markedText,
-            selectionRange: presentation.selectionRange,
+            selectionRange: clientSelectionRange,
             replacementRange: Self.currentSelectionRange
         )
     }
@@ -1132,5 +1289,26 @@ extension InputController: CandidateWindowPresenterDelegate {
 
         _ = acceptCandidate(candidate, reason: .mouse)
         updateMarkedComposition(on: inputClient)
+    }
+
+    func candidateWindowPresenter(
+        _ presenter: CandidateWindowPresenter,
+        requestsDeletionOf confirmation: SavedUserPhraseConfirmation
+    ) {
+        guard savedPhraseConfirmation?.id == confirmation.id else {
+            return
+        }
+
+        let succeeded = candidateProvider?.deleteUserPhrase(
+            phrase: confirmation.phrase,
+            pronunciationSequence: confirmation.pronunciationSequence
+        ) ?? false
+        if succeeded {
+            savedPhraseConfirmation = nil
+        }
+        presenter.resolveSavedPhraseDeletion(
+            id: confirmation.id,
+            succeeded: succeeded
+        )
     }
 }

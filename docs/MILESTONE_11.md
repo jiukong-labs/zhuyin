@@ -39,7 +39,7 @@ The consequence is the one real behavioral difference: the indicator exists only
 - Placement is computed by `CursorIndicatorGeometry` and clamped to the display holding the cursor, so the panel cannot be pushed off-screen and negative-origin displays work.
 - Caps Lock is polled at 5 Hz through `CGEventSource.flagsState`, which needs no Input Monitoring permission and works even while another application holds key focus. The badge widens the panel; the panel is resized and repositioned in the same step so it never clips.
 - Timers run only while the indicator is enabled *and* a client is using the input method. `activateServer` starts it, and every path that already resets transient state — deactivation, controller closure, palette hiding, input-source change — stops it.
-- When the indicator is enabled, the transient Shift HUD is suppressed. Two indicators for one fact, in two different places, is worse than either alone.
+- A standalone Shift also presents the transient HUD using this same per-mode text and color. This replaces the fixed macOS `ABC` overlay while the persistent indicator continues to show the resulting state.
 
 Settings are read when a client activates, so a change applies on the next activation without an observer.
 

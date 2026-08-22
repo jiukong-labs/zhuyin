@@ -88,14 +88,14 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertTrue(session.presentsCandidatePanel)
         XCTAssertEqual(
             session.revisionDisplayText,
-            "定位 1／3：測　ㄘㄜˋ　↓ 進入選字"
+            "定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字"
         )
 
         XCTAssertTrue(session.expand())
         XCTAssertEqual(session.revisionMode, .choosing)
         XCTAssertEqual(
             session.revisionDisplayText,
-            "選字 1／3：測　←／→ 選候選　Esc 返回"
+            "選字 1／3：測　←／→ 選候選　⌫／Del 刪字　Esc 返回"
         )
 
         XCTAssertTrue(session.collapse())

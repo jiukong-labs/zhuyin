@@ -38,7 +38,7 @@ typeset -a requested
 if (( $# > 0 )); then
   requested=("$@")
 else
-  requested=(single number-one continuous builtin-phrase sentence revision-arrows escape punctuation brackets phrase)
+  requested=(single number-one continuous builtin-phrase sentence revision-arrows revision-backspace revision-forward-delete escape punctuation brackets phrase phrase-right)
 fi
 
 typeset -i failures=0

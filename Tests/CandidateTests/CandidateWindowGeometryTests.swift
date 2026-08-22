@@ -1,7 +1,24 @@
 import CoreGraphics
+import CoreText
 import XCTest
 
 final class CandidateWindowGeometryTests: XCTestCase {
+    func testLastResortFontIsRecognizedAsMissingGlyphFallback() {
+        let lastResort = CTFontCreateWithName(
+            "LastResort" as CFString,
+            18,
+            nil
+        )
+        let ordinaryFont = CTFontCreateWithName(
+            "Helvetica" as CFString,
+            18,
+            nil
+        )
+
+        XCTAssertTrue(CandidateTextDisplayability.isLastResort(lastResort))
+        XCTAssertFalse(CandidateTextDisplayability.isLastResort(ordinaryFont))
+    }
+
     func testPlacesWindowBelowCaretWhenThereIsRoom() {
         let frame = CandidateWindowPlacement.frame(
             anchor: CGRect(x: 100, y: 500, width: 1, height: 20),
@@ -195,6 +212,38 @@ final class CandidateWindowGeometryTests: XCTestCase {
                 revisionHeaderContentWidth: nil
             ),
             candidateSize
+        )
+    }
+
+    func testPhraseStatusPanelHasOneHeaderRowAndExpandsForItsText() {
+        XCTAssertEqual(
+            CandidateWindowSizing.phraseStatusPanelSize(contentWidth: 100),
+            CGSize(
+                width: CandidateWindowSizing.phraseStatusMinimumWidth,
+                height: CandidateWindowSizing.revisionHeaderHeight
+            )
+        )
+        XCTAssertEqual(
+            CandidateWindowSizing.phraseStatusPanelSize(contentWidth: 400),
+            CGSize(
+                width: 400 + (2 * CandidateWindowSizing.contentInset),
+                height: CandidateWindowSizing.revisionHeaderHeight
+            )
+        )
+    }
+
+    func testSavedPhraseConfirmationReservesDeleteButton() {
+        XCTAssertEqual(
+            CandidateWindowSizing.savedPhraseConfirmationPanelSize(
+                contentWidth: 400
+            ),
+            CGSize(
+                width: 400
+                    + CandidateWindowSizing.savedPhraseActionGap
+                    + CandidateWindowSizing.savedPhraseActionButtonWidth
+                    + (2 * CandidateWindowSizing.contentInset),
+                height: CandidateWindowSizing.revisionHeaderHeight
+            )
         )
     }
 

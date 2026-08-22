@@ -37,7 +37,7 @@ Apple's default click-outside composition handling applies only to input methods
 
 ## Mode indicator and lifecycle
 
-`LanguageModeHUD` is one reusable borderless, nonactivating panel. It displays only `中` or `A` for 0.75 seconds near the text caret, stays above the client level, cannot become key or main, and ignores mouse events. Each presentation receives a UUID. Timer and hide operations must match that UUID, so an old controller or timer cannot hide a newer client's indicator.
+`LanguageModeHUD` is one reusable borderless, nonactivating panel. It displays the cursor indicator's configured `中` or `A` text, color, size, and placement for 0.75 seconds beside the pointer, stays above the client level, cannot become key or main, and ignores mouse events. Each presentation receives a UUID. Timer and hide operations must match that UUID, so an old controller or timer cannot hide a newer client's indicator.
 
 Switching away from Jiukong, deactivation, palette hiding, and controller closure reset the pending Shift gesture and hide only the HUD owned by that controller. The shared language mode itself remains unchanged until the input-method process exits.
 

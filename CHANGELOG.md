@@ -18,6 +18,9 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Versioned read-only SQLite dictionary with pronunciation and reverse-character indexes.
 - Strict first-party phrase TSV validation and exact pronunciation-sequence index.
 - Original starter phrase lexicon, including continuous conversion of `ㄘㄜˋ ㄕˋ` to「測試」.
+- A manually authored 815-entry everyday phrase foundation covering
+  conversation, time, people, daily life, travel, work, learning, computing,
+  descriptions, health, and weather, with pinned CNS character-reading checks.
 - Base single-character candidates through the native InputMethodKit candidate panel.
 - Candidate selection, cancellation, lifecycle finalization, and raw-Bopomofo fallback.
 - Milestone 3 dictionary, licensing, architecture, and verification documentation.
@@ -79,12 +82,25 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Ordinary conversion now previews the first candidate inline without opening
   a window. Down explicitly opens the expanded chooser; only then do 1-9 and
   navigation keys select candidates, removing the number/Bopomofo ambiguity.
-- Chinese and English are now first-class macOS input modes with original
-  template icons, so the existing input-menu icon shows `中` or `英` after a
-  Shift language switch.
+- Chinese and English are first-class macOS input modes with original color
+  icons showing red `中` and blue `A` when selected from the input menu.
+- Shift-Left and Shift-Right can now start phrase selection from the currently
+  located reading and extend the matching left or right edge; revision locating
+  no longer consumes those gestures without feedback.
+- Phrase selection now draws its exact range itself and gives clients a
+  collapsed marked-text caret, preventing web-backed fields from displaying a
+  two-character phrase range as a full-composition selection.
+- A persistent, nonactivating phrase-range status now shows the exact selected
+  text and length after every Shift-arrow, including in clients that ignore
+  marked-text colors entirely.
+- Backspace and forward Delete now remove the explicitly located revision
+  character or the active phrase range before candidate-window routing.
 
 ### Changed
 
+- Standalone Shift now changes language inside Jiukong and presents its own
+  cursor-matched red `中`／blue `A` HUD beside the pointer, avoiding both
+  macOS's fixed `ABC` overlay and invalid client coordinates at screen edges.
 - Windowless candidate preview yields the number row to the next syllable,
   allowing uninterrupted composition across readings that begin on a number
   key; pressing Down makes all displayed `1`–`9` slots explicit selections.

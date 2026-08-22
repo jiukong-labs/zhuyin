@@ -5,6 +5,8 @@ final class CharacterCandidateProvider {
     private let learning: (any UserLearningProviding)?
     private let ranker: CandidateRanker
     private let isAutomaticLearningEnabled: () -> Bool
+    private let showsRareCandidates: () -> Bool
+    private let isCandidateDisplayable: (String) -> Bool
     private let now: () -> Date
 
     init(
@@ -12,12 +14,16 @@ final class CharacterCandidateProvider {
         learning: (any UserLearningProviding)? = nil,
         ranker: CandidateRanker = CandidateRanker(),
         isAutomaticLearningEnabled: @escaping () -> Bool = { true },
+        showsRareCandidates: @escaping () -> Bool = { false },
+        isCandidateDisplayable: @escaping (String) -> Bool = { _ in true },
         now: @escaping () -> Date = Date.init
     ) {
         self.dictionary = dictionary
         self.learning = learning
         self.ranker = ranker
         self.isAutomaticLearningEnabled = isAutomaticLearningEnabled
+        self.showsRareCandidates = showsRareCandidates
+        self.isCandidateDisplayable = isCandidateDisplayable
         self.now = now
     }
 
@@ -26,7 +32,12 @@ final class CharacterCandidateProvider {
         phraseQueries: [CompositionPhraseQuery] = []
     ) throws -> [Candidate] {
         let learningRecords = learning?.records(for: pronunciation) ?? [:]
+        let includesRareCandidates = showsRareCandidates()
         let characterCandidates = try dictionary.candidateEntries(for: pronunciation)
+            .filter {
+                includesRareCandidates
+                    || $0.isInGeneralCandidateRepertoire
+            }
             .enumerated()
             .map { baseRank, entry in
                 let learningRecord = learningRecords[entry.text]
@@ -45,8 +56,10 @@ final class CharacterCandidateProvider {
             for: pronunciation,
             queries: phraseQueries
         )
+        let displayableCandidates = (phraseCandidates + characterCandidates)
+            .filter { isCandidateDisplayable($0.text) }
         return ranker.ranked(
-            phraseCandidates + characterCandidates,
+            displayableCandidates,
             at: now()
         )
     }
@@ -66,6 +79,26 @@ final class CharacterCandidateProvider {
             phrase: identity.phrase,
             pronunciationSequence: identity.pronunciationSequence,
             createdAt: now()
+        ) ?? false
+    }
+
+    /// Removes exactly one user-authored phrase identity. Validation keeps an
+    /// undo action from broadening into a text-only delete that could remove a
+    /// different reading of the same phrase.
+    @discardableResult
+    func deleteUserPhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool {
+        guard let identity = try? UserPhraseValidator.validate(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence
+        ) else {
+            return false
+        }
+        return learning?.deletePhrase(
+            phrase: identity.phrase,
+            pronunciationSequence: identity.pronunciationSequence
         ) ?? false
     }
 

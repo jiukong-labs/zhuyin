@@ -34,6 +34,12 @@ protocol UserLearningProviding: AnyObject {
         phrase: String,
         pronunciationSequence: [String]
     )
+
+    @discardableResult
+    func deletePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool
 }
 
 extension UserLearningProviding {
@@ -63,6 +69,14 @@ extension UserLearningProviding {
         phrase: String,
         pronunciationSequence: [String]
     ) {}
+
+    @discardableResult
+    func deletePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool {
+        false
+    }
 }
 
 protocol UserLearningStoring: AnyObject {

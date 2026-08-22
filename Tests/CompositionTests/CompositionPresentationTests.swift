@@ -160,7 +160,7 @@ final class CompositionPresentationTests: XCTestCase {
 
         let rendered = CompositionMarkedTextRenderer.make(
             presentation: presentation,
-            focusedRange: presentation.selectionRange
+            highlightedRange: presentation.selectionRange
         )
 
         XCTAssertNil(rendered.attribute(.backgroundColor, at: 0, effectiveRange: nil))
@@ -185,11 +185,45 @@ final class CompositionPresentationTests: XCTestCase {
         ] {
             let rendered = CompositionMarkedTextRenderer.make(
                 presentation: presentation,
-                focusedRange: focusedRange
+                highlightedRange: focusedRange
             )
             XCTAssertEqual(rendered.string, "測試")
             XCTAssertEqual(rendered.length, 2)
             XCTAssertTrue(rendered.attributes(at: 0, effectiveRange: nil).isEmpty)
         }
+    }
+
+    func testPhraseRendererStylesRangeAndKeepsClientCaretCollapsed() {
+        let presentation = CompositionPresentation(
+            text: "一載入",
+            selectionRange: NSRange(location: 1, length: 2)
+        )
+
+        let rendered = CompositionMarkedTextRenderer.make(
+            presentation: presentation,
+            highlightedRange: presentation.selectionRange,
+            style: .phraseSelection
+        )
+
+        XCTAssertNil(
+            rendered.attribute(.backgroundColor, at: 0, effectiveRange: nil)
+        )
+        XCTAssertEqual(
+            rendered.attribute(.backgroundColor, at: 1, effectiveRange: nil)
+                as? NSColor,
+            NSColor.selectedTextBackgroundColor
+        )
+        XCTAssertNotNil(
+            rendered.attribute(.foregroundColor, at: 2, effectiveRange: nil)
+        )
+        XCTAssertEqual(
+            rendered.attribute(.underlineStyle, at: 2, effectiveRange: nil)
+                as? Int,
+            NSUnderlineStyle.thick.rawValue
+        )
+        XCTAssertEqual(
+            presentation.caretAfterSelectionRange,
+            NSRange(location: 3, length: 0)
+        )
     }
 }

@@ -24,9 +24,27 @@ enum CharacterDictionaryError: LocalizedError {
 struct DictionaryCharacter: Equatable {
     let text: String
     let sourceOrder: Int64
+    let cnsPlane: Int
+
+    init(
+        text: String,
+        sourceOrder: Int64,
+        cnsPlane: Int = 1
+    ) {
+        self.text = text
+        self.sourceOrder = sourceOrder
+        self.cnsPlane = cnsPlane
+    }
 
     var character: String {
         text
+    }
+
+    /// CNS planes 1 and 2 are the standard's common and less-common everyday
+    /// repertoires. Later planes contain rare, variant, administrative, and
+    /// other specialized characters that are opt-in candidates.
+    var isInGeneralCandidateRepertoire: Bool {
+        (1 ... 2).contains(cnsPlane)
     }
 }
 
@@ -151,7 +169,7 @@ final class CharacterDictionary {
 
         do {
             _ = try database.prepare(
-                "SELECT character, source_order FROM dictionary_entries LIMIT 0"
+                "SELECT character, source_order, cns_code FROM dictionary_entries LIMIT 0"
             )
             _ = try database.prepare(
                 "SELECT pronunciation, source_order FROM dictionary_entries LIMIT 0"
@@ -178,7 +196,7 @@ final class CharacterDictionary {
     ) throws -> [DictionaryCharacter] {
         let statement = try database.prepare(
             """
-            SELECT character, source_order
+            SELECT character, source_order, cns_code
             FROM dictionary_entries
             WHERE pronunciation = ?
             ORDER BY source_order, character
@@ -188,10 +206,12 @@ final class CharacterDictionary {
 
         var values: [DictionaryCharacter] = []
         while try statement.step() == .row {
+            let cnsCode = try statement.text(at: 2)
             values.append(
                 DictionaryCharacter(
                     text: try statement.text(at: 0),
-                    sourceOrder: statement.integer(at: 1)
+                    sourceOrder: statement.integer(at: 1),
+                    cnsPlane: try cnsPlane(from: cnsCode)
                 )
             )
         }
@@ -269,5 +289,16 @@ final class CharacterDictionary {
             return 0
         }
         return statement.integer(at: 0)
+    }
+
+    private func cnsPlane(from cnsCode: String) throws -> Int {
+        guard let separator = cnsCode.firstIndex(of: "-"),
+              let plane = Int(cnsCode[..<separator]),
+              plane > 0 else {
+            throw CharacterDictionaryError.invalidSchema(
+                "dictionary entry has an invalid CNS code"
+            )
+        }
+        return plane
     }
 }

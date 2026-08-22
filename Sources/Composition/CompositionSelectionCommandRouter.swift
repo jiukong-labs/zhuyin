@@ -2,11 +2,12 @@ import AppKit
 import Carbon
 
 enum CompositionSelectionCommand: Equatable {
-    case expandBackward
-    case shrinkForward
+    case extendLeft
+    case extendRight
 }
 
-/// Recognizes only the two phrase-selection gestures owned by composition.
+/// Recognizes only the two directional phrase-selection gestures owned by
+/// composition.
 /// Carbon reports arrow keys with `.function` and some keyboards may also set
 /// `.numericPad`; those inherent flags are allowed. Real shortcut modifiers
 /// remain available to the client application.
@@ -29,9 +30,9 @@ enum CompositionSelectionCommandRouter {
 
         switch Int(keyCode) {
         case kVK_LeftArrow:
-            return .expandBackward
+            return .extendLeft
         case kVK_RightArrow:
-            return .shrinkForward
+            return .extendRight
         default:
             return nil
         }
@@ -68,6 +69,43 @@ enum CompositionCursorCommandRouter {
             return .previousReading
         case kVK_RightArrow:
             return .nextReading
+        default:
+            return nil
+        }
+    }
+}
+
+enum CompositionDeletionCommand: Equatable {
+    case deleteBackward
+    case deleteForward
+}
+
+/// Recognizes the two physical deletion keys only when no real shortcut
+/// modifier is present. The controller claims them only for an explicit
+/// composition focus or phrase range; otherwise normal candidate, syllable,
+/// and client editing behavior remains in charge.
+enum CompositionDeletionCommandRouter {
+    private static let rejectedModifiers: NSEvent.ModifierFlags = [
+        .command,
+        .control,
+        .option,
+        .shift
+    ]
+
+    static func command(
+        keyCode: UInt16,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> CompositionDeletionCommand? {
+        let modifiers = modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifiers.intersection(rejectedModifiers).isEmpty else {
+            return nil
+        }
+
+        switch Int(keyCode) {
+        case kVK_Delete:
+            return .deleteBackward
+        case kVK_ForwardDelete:
+            return .deleteForward
         default:
             return nil
         }

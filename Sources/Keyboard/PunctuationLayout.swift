@@ -15,7 +15,7 @@ struct PunctuationLayout {
         .backslash: "、",
     ]
 
-    /// Shift plus a key that is Bopomofo on its own.
+    /// Shift plus a physical key reserved for Chinese punctuation.
     private let shifted: [KeyboardKey: String] = [
         .comma: "，",
         .period: "。",
@@ -28,6 +28,7 @@ struct PunctuationLayout {
         .minus: "—",
         .leftBracket: "『",
         .rightBracket: "』",
+        .backslash: "／",
     ]
 
     func punctuation(for key: KeyboardKey, shifted isShifted: Bool) -> String? {

@@ -1,4 +1,63 @@
+import AppKit
 import CoreGraphics
+import CoreText
+
+/// Rejects text for which macOS can only supply its LastResort missing-glyph
+/// font. Real fallback fonts remain valid, so uncommon characters are kept
+/// whenever this Mac can actually draw them.
+enum CandidateTextDisplayability {
+    private static let cache = NSCache<NSString, NSNumber>()
+
+    static func canRender(_ text: String) -> Bool {
+        guard !text.isEmpty else {
+            return false
+        }
+        let key = text as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached.boolValue
+        }
+
+        let baseFont = NSFont.systemFont(
+            ofSize: 18,
+            weight: .medium
+        ) as CTFont
+        let renderable = composedCharacterSequences(in: key).allSatisfy {
+            sequence in
+            let fallback = CTFontCreateForString(
+                baseFont,
+                sequence as CFString,
+                CFRange(
+                    location: 0,
+                    length: (sequence as NSString).length
+                )
+            )
+            return !isLastResort(fallback)
+        }
+        cache.setObject(NSNumber(value: renderable), forKey: key)
+        return renderable
+    }
+
+    static func isLastResort(_ font: CTFont) -> Bool {
+        let postScriptName = CTFontCopyPostScriptName(font) as String
+        let familyName = CTFontCopyFamilyName(font) as String
+        return postScriptName.localizedCaseInsensitiveContains("LastResort")
+            || familyName.localizedCaseInsensitiveContains("LastResort")
+            || familyName.localizedCaseInsensitiveContains("Last Resort")
+    }
+
+    private static func composedCharacterSequences(
+        in text: NSString
+    ) -> [String] {
+        var result: [String] = []
+        var location = 0
+        while location < text.length {
+            let range = text.rangeOfComposedCharacterSequence(at: location)
+            result.append(text.substring(with: range))
+            location = NSMaxRange(range)
+        }
+        return result
+    }
+}
 
 struct CandidateScrollAxes: Equatable {
     let horizontal: Bool
@@ -17,6 +76,29 @@ enum CandidateWindowSizing {
     static let cellSpacing: CGFloat = 4
     static let defaultScrollerThickness: CGFloat = 17
     static let revisionHeaderHeight: CGFloat = 38
+    static let phraseStatusMinimumWidth: CGFloat = 280
+    static let savedPhraseActionButtonWidth: CGFloat = 28
+    static let savedPhraseActionGap: CGFloat = 6
+
+    static func phraseStatusPanelSize(contentWidth: CGFloat) -> CGSize {
+        CGSize(
+            width: max(
+                phraseStatusMinimumWidth,
+                contentWidth + (2 * contentInset)
+            ),
+            height: revisionHeaderHeight
+        )
+    }
+
+    static func savedPhraseConfirmationPanelSize(
+        contentWidth: CGFloat
+    ) -> CGSize {
+        phraseStatusPanelSize(
+            contentWidth: contentWidth
+                + savedPhraseActionGap
+                + savedPhraseActionButtonWidth
+        )
+    }
 
     static func cellWidth(for candidateText: String) -> CGFloat {
         min(

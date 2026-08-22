@@ -1,5 +1,29 @@
 import AppKit
 
+struct SavedUserPhraseConfirmation: Equatable {
+    let id: UUID
+    let phrase: String
+    let pronunciationSequence: [String]
+
+    init(
+        id: UUID = UUID(),
+        phrase: String,
+        pronunciationSequence: [String]
+    ) {
+        self.id = id
+        self.phrase = phrase
+        self.pronunciationSequence = pronunciationSequence
+    }
+
+    var displayText: String {
+        "已儲存：【\(phrase)】"
+    }
+
+    var deletionToolTip: String {
+        "刪除剛儲存的使用者詞「\(phrase)」；不會刪除文件中的文字"
+    }
+}
+
 protocol CandidateWindowPresenterDelegate: AnyObject {
     func candidateWindowPresenter(
         _ presenter: CandidateWindowPresenter,
@@ -10,6 +34,11 @@ protocol CandidateWindowPresenterDelegate: AnyObject {
         _ presenter: CandidateWindowPresenter,
         choseCandidateAt index: Int,
         sessionID: UUID
+    )
+
+    func candidateWindowPresenter(
+        _ presenter: CandidateWindowPresenter,
+        requestsDeletionOf confirmation: SavedUserPhraseConfirmation
     )
 }
 
@@ -33,6 +62,15 @@ private final class CandidateButton: NSButton {
         fatalError("CandidateButton does not support NSCoder initialization.")
     }
 
+    override var acceptsFirstResponder: Bool { false }
+    override var needsPanelToBecomeKey: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+}
+
+private final class SavedPhraseDeleteButton: NSButton {
     override var acceptsFirstResponder: Bool { false }
     override var needsPanelToBecomeKey: Bool { false }
 
@@ -174,6 +212,8 @@ private final class CandidateGridView: NSView {
 
 final class CandidateWindowPresenter {
     static let shared = CandidateWindowPresenter()
+    private static let savedPhraseDisplayDuration: TimeInterval = 10
+    private static let deletionResultDisplayDuration: TimeInterval = 2
 
     private weak var delegate: CandidateWindowPresenterDelegate?
     private let panel: CandidatePanel
@@ -181,7 +221,12 @@ final class CandidateWindowPresenter {
     private let scrollView: NSScrollView
     private let gridView: CandidateGridView
     private let revisionLabel: NSTextField
+    private let savedPhraseDeleteButton: SavedPhraseDeleteButton
+    private var savedPhraseHideWorkItem: DispatchWorkItem?
     private(set) var presentedSessionID: UUID?
+    private(set) var presentedPhraseSelectionID: UUID?
+    private(set) var presentedSavedPhraseConfirmation:
+        SavedUserPhraseConfirmation?
 
     private init() {
         precondition(Thread.isMainThread)
@@ -195,6 +240,11 @@ final class CandidateWindowPresenter {
         scrollView = NSScrollView(frame: .zero)
         gridView = CandidateGridView(frame: .zero)
         revisionLabel = NSTextField(labelWithString: "")
+        savedPhraseDeleteButton = SavedPhraseDeleteButton(
+            title: "×",
+            target: nil,
+            action: nil
+        )
 
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -237,6 +287,20 @@ final class CandidateWindowPresenter {
             .withAlphaComponent(0.18).cgColor
         revisionLabel.isHidden = true
         backgroundView.addSubview(revisionLabel)
+
+        savedPhraseDeleteButton.target = self
+        savedPhraseDeleteButton.action = #selector(deleteSavedPhrase(_:))
+        savedPhraseDeleteButton.bezelStyle = .circular
+        savedPhraseDeleteButton.font = NSFont.systemFont(
+            ofSize: 17,
+            weight: .semibold
+        )
+        savedPhraseDeleteButton.focusRingType = .none
+        savedPhraseDeleteButton.isHidden = true
+        savedPhraseDeleteButton.setAccessibilityLabel(
+            "刪除剛儲存的使用者詞"
+        )
+        backgroundView.addSubview(savedPhraseDeleteButton)
         panel.contentView = backgroundView
 
         gridView.onChoose = { [weak self] sessionID, candidateIndex in
@@ -261,6 +325,7 @@ final class CandidateWindowPresenter {
         delegate: CandidateWindowPresenterDelegate
     ) {
         precondition(Thread.isMainThread)
+        clearSavedPhraseConfirmationState()
         if let previousSessionID = presentedSessionID,
            previousSessionID != session.id {
             self.delegate?.candidateWindowPresenter(
@@ -271,6 +336,11 @@ final class CandidateWindowPresenter {
 
         self.delegate = delegate
         presentedSessionID = session.id
+        presentedPhraseSelectionID = nil
+        panel.ignoresMouseEvents = false
+        scrollView.isHidden = false
+        revisionLabel.alignment = .center
+        savedPhraseDeleteButton.isHidden = true
 
         let scrollerThickness = NSScroller.scrollerWidth(
             for: .regular,
@@ -361,6 +431,164 @@ final class CandidateWindowPresenter {
         panel.orderFrontRegardless()
     }
 
+    /// Shows a header-only phrase-range status. This remains reliable in
+    /// clients that ignore marked-text attributes or paint a non-empty marked
+    /// selection as the complete composition.
+    func presentPhraseSelection(
+        id: UUID,
+        displayText: String,
+        anchor: NSRect,
+        clientWindowLevel: CGWindowLevel
+    ) {
+        precondition(Thread.isMainThread)
+        clearSavedPhraseConfirmationState()
+        if let previousSessionID = presentedSessionID {
+            delegate?.candidateWindowPresenter(
+                self,
+                requestsFinalizationOf: previousSessionID
+            )
+        }
+
+        delegate = nil
+        presentedSessionID = nil
+        presentedPhraseSelectionID = id
+        panel.ignoresMouseEvents = true
+        scrollView.isHidden = true
+        scrollView.frame = .zero
+        gridView.clear()
+
+        revisionLabel.alignment = .center
+        revisionLabel.stringValue = displayText
+        revisionLabel.toolTip = displayText
+        revisionLabel.isHidden = false
+        revisionLabel.layer?.backgroundColor = NSColor.systemGreen
+            .withAlphaComponent(0.22).cgColor
+
+        let desiredSize = CandidateWindowSizing.phraseStatusPanelSize(
+            contentWidth: revisionLabel.intrinsicContentSize.width
+        )
+        let frame = CandidateWindowPlacement.frame(
+            anchor: anchor.standardized,
+            desiredSize: desiredSize,
+            visibleFrames: NSScreen.screens.map(\.visibleFrame)
+        )
+        panel.level = NSWindow.Level(
+            rawValue: Int(clientWindowLevel) + 1
+        )
+        panel.setFrame(frame, display: true)
+        revisionLabel.frame = NSRect(
+            x: CandidateWindowSizing.contentInset,
+            y: 5,
+            width: max(
+                1,
+                frame.width - (2 * CandidateWindowSizing.contentInset)
+            ),
+            height: max(1, frame.height - 10)
+        )
+        backgroundView.setAccessibilityLabel(displayText)
+        panel.contentView?.layoutSubtreeIfNeeded()
+        panel.orderFrontRegardless()
+    }
+
+    /// Confirms a successfully saved user phrase and offers one precise undo
+    /// action. The panel stays nonactivating, so clicking × cannot steal the
+    /// insertion focus from the client application.
+    func presentSavedPhraseConfirmation(
+        _ confirmation: SavedUserPhraseConfirmation,
+        anchor: NSRect,
+        clientWindowLevel: CGWindowLevel,
+        delegate: CandidateWindowPresenterDelegate
+    ) {
+        precondition(Thread.isMainThread)
+        clearSavedPhraseConfirmationState()
+        if let previousSessionID = presentedSessionID {
+            self.delegate?.candidateWindowPresenter(
+                self,
+                requestsFinalizationOf: previousSessionID
+            )
+        }
+
+        self.delegate = delegate
+        presentedSessionID = nil
+        presentedPhraseSelectionID = nil
+        presentedSavedPhraseConfirmation = confirmation
+        panel.ignoresMouseEvents = false
+        scrollView.isHidden = true
+        scrollView.frame = .zero
+        gridView.clear()
+
+        revisionLabel.alignment = .left
+        revisionLabel.stringValue = confirmation.displayText
+        revisionLabel.toolTip = confirmation.displayText
+        revisionLabel.isHidden = false
+        revisionLabel.layer?.backgroundColor = NSColor.systemGreen
+            .withAlphaComponent(0.22).cgColor
+
+        savedPhraseDeleteButton.toolTip = confirmation.deletionToolTip
+        savedPhraseDeleteButton.isHidden = false
+
+        let desiredSize = CandidateWindowSizing
+            .savedPhraseConfirmationPanelSize(
+                contentWidth: revisionLabel.intrinsicContentSize.width
+            )
+        let frame = CandidateWindowPlacement.frame(
+            anchor: anchor.standardized,
+            desiredSize: desiredSize,
+            visibleFrames: NSScreen.screens.map(\.visibleFrame)
+        )
+        panel.level = NSWindow.Level(
+            rawValue: Int(clientWindowLevel) + 1
+        )
+        panel.setFrame(frame, display: true)
+        layoutSavedPhraseConfirmationContent()
+        backgroundView.setAccessibilityLabel(
+            "\(confirmation.displayText)，可刪除"
+        )
+        panel.contentView?.layoutSubtreeIfNeeded()
+        panel.orderFrontRegardless()
+        scheduleSavedPhraseHide(
+            id: confirmation.id,
+            after: Self.savedPhraseDisplayDuration
+        )
+    }
+
+    func resolveSavedPhraseDeletion(
+        id: UUID,
+        succeeded: Bool
+    ) {
+        precondition(Thread.isMainThread)
+        guard let confirmation = presentedSavedPhraseConfirmation,
+              confirmation.id == id else {
+            return
+        }
+
+        savedPhraseHideWorkItem?.cancel()
+        savedPhraseHideWorkItem = nil
+        if succeeded {
+            revisionLabel.stringValue = "已刪除：【\(confirmation.phrase)】"
+            revisionLabel.toolTip = revisionLabel.stringValue
+            savedPhraseDeleteButton.isHidden = true
+            delegate = nil
+            backgroundView.setAccessibilityLabel(revisionLabel.stringValue)
+            layoutSavedPhraseConfirmationContent()
+            scheduleSavedPhraseHide(
+                id: id,
+                after: Self.deletionResultDisplayDuration
+            )
+        } else {
+            revisionLabel.stringValue = "無法刪除：【\(confirmation.phrase)】"
+            revisionLabel.toolTip = revisionLabel.stringValue
+            backgroundView.setAccessibilityLabel(
+                "\(revisionLabel.stringValue)，請再試一次"
+            )
+            layoutSavedPhraseConfirmationContent()
+            scheduleSavedPhraseHide(
+                id: id,
+                after: Self.savedPhraseDisplayDuration
+            )
+        }
+    }
+
     private func revisionHeaderColor(
         for mode: CandidateRevisionMode?
     ) -> NSColor {
@@ -384,5 +612,98 @@ final class CandidateWindowPresenter {
         delegate = nil
         panel.orderOut(nil)
         gridView.clear()
+    }
+
+    func hidePhraseSelection(id: UUID) {
+        precondition(Thread.isMainThread)
+        guard presentedPhraseSelectionID == id else {
+            return
+        }
+
+        presentedPhraseSelectionID = nil
+        panel.orderOut(nil)
+        revisionLabel.isHidden = true
+        gridView.clear()
+    }
+
+    func hideSavedPhraseConfirmation(id: UUID) {
+        precondition(Thread.isMainThread)
+        guard presentedSavedPhraseConfirmation?.id == id else {
+            return
+        }
+
+        clearSavedPhraseConfirmationState()
+        panel.orderOut(nil)
+    }
+
+    @objc private func deleteSavedPhrase(_ sender: NSButton) {
+        guard let confirmation = presentedSavedPhraseConfirmation else {
+            return
+        }
+        delegate?.candidateWindowPresenter(
+            self,
+            requestsDeletionOf: confirmation
+        )
+    }
+
+    private func layoutSavedPhraseConfirmationContent() {
+        let inset = CandidateWindowSizing.contentInset
+        let buttonWidth = CandidateWindowSizing.savedPhraseActionButtonWidth
+        let gap = CandidateWindowSizing.savedPhraseActionGap
+        let contentHeight = max(1, backgroundView.bounds.height - 10)
+        let buttonIsVisible = !savedPhraseDeleteButton.isHidden
+        let reservedButtonWidth = buttonIsVisible ? gap + buttonWidth : 0
+
+        revisionLabel.frame = NSRect(
+            x: inset,
+            y: 5,
+            width: max(
+                1,
+                backgroundView.bounds.width
+                    - (2 * inset)
+                    - reservedButtonWidth
+            ),
+            height: contentHeight
+        )
+        savedPhraseDeleteButton.frame = buttonIsVisible
+            ? NSRect(
+                x: backgroundView.bounds.width - inset - buttonWidth,
+                y: 5,
+                width: buttonWidth,
+                height: contentHeight
+            )
+            : .zero
+    }
+
+    private func scheduleSavedPhraseHide(
+        id: UUID,
+        after duration: TimeInterval
+    ) {
+        savedPhraseHideWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.presentedSavedPhraseConfirmation?.id == id else {
+                return
+            }
+            self.clearSavedPhraseConfirmationState()
+            self.panel.orderOut(nil)
+        }
+        savedPhraseHideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + duration,
+            execute: workItem
+        )
+    }
+
+    private func clearSavedPhraseConfirmationState() {
+        guard presentedSavedPhraseConfirmation != nil else {
+            return
+        }
+        savedPhraseHideWorkItem?.cancel()
+        savedPhraseHideWorkItem = nil
+        presentedSavedPhraseConfirmation = nil
+        savedPhraseDeleteButton.isHidden = true
+        savedPhraseDeleteButton.toolTip = nil
+        delegate = nil
     }
 }

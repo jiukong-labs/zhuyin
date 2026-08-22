@@ -15,10 +15,10 @@ Shift+,  ，      Shift+.  。      Shift+/  ？      Shift+;  ：
 Shift+1  ！      Shift+6  …       Shift+9  （      Shift+0  ）
 Shift+-  —
 [  「            ]  」            \  、
-Shift+[  『      Shift+]  』
+Shift+[  『      Shift+]  』      Shift+\  ／
 ```
 
-`…` and `—` are inserted one at a time, so the conventional `……` and `——` are two keypresses. `\` carries 、 because the arrangement never uses that key and the mark is needed constantly. Anything not in this table is still returned to the client application, so the current macOS keyboard layout keeps producing ordinary ASCII, and English mode is unaffected.
+`…` and `—` are inserted one at a time, so the conventional `……` and `——` are two keypresses. `\` carries 、 because the arrangement never uses that key and the mark is needed constantly; `Shift+\` produces ／. Anything not in this table is still returned to the client application, so the current macOS keyboard layout keeps producing ordinary ASCII, and English mode is unaffected.
 
 `PunctuationLayout` is a pure table keyed by physical key and Shift state, in the same `KeyboardKey` domain as `StandardZhuyinLayout`. `KeyboardKey` gained `leftBracket`, `rightBracket`, and `backslash`; the Zhuyin layout returns `nil` for them, and its exhaustive switch makes that explicit rather than implicit.
 
