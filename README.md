@@ -84,7 +84,9 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 未學習過且在目前候選範圍內、系統也能顯示的單字候選，忠實保留 CNS11643 注音資料的相對來源順序；該順序不是字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
 
-完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），即使第一音暫時顯示 CNS 順序的「冊」，第二音完成後第一候選會成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 815 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），即使第一音暫時顯示 CNS 順序的「冊」，第二音完成後第一候選會成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 1,958 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+
+若 CNS11643 缺少久空需要支援的常用單字讀音，會逐筆記錄在 `Data/JiukongCharacters/characters.tsv`，由建置器驗證後合併；目前包含「麼／˙ㄇㄛ」，因此輸入 `ㄇㄛ` 加輕聲即可直接選到「麼」。補充項目必須是 CNS 已收字元，並沿用其 CNS 字碼與來源位置。
 
 同一機制可處理「測試中請稍後」：前五音可不停頓直接繼續，完成 `ㄏㄡˋ` 後會把六音完整句列為第一候選，而不是只顯示「後」的單字候選。候選格會依詞的長度自動加寬，不會把整句裁成一個字。
 
@@ -200,7 +202,7 @@ A file that exists on disk but is missing from the checked-in project is silentl
 
 GitHub Actions runs the same checks on every push and pull request: the source-membership check, the Debug test suite, a universal Release build, and a rebuild of the dictionary from its pinned snapshot that must reproduce the checked-in artifact byte for byte. A separate advisory job reports when the checked-in project no longer matches `project.yml`.
 
-The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot and Jiukong's first-party phrase TSV without network access:
+The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot and Jiukong's first-party character and phrase TSV files without network access:
 
 ```sh
 ./scripts/build-dictionary.sh

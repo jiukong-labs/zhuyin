@@ -304,6 +304,40 @@ enum CandidateWindowSizing {
 
 }
 
+/// Validates a caret rectangle reported by the text client before it is
+/// trusted as a candidate-window anchor.
+///
+/// Some web-backed clients (Electron/Chromium apps, canvas-rendered
+/// terminals) cannot determine a real caret position and report a rect
+/// pinned to the screen's own coordinate origin instead of failing
+/// outright. That rect is otherwise finite and non-empty, so a naive
+/// finiteness check accepts it — pinning the candidate window to the
+/// screen's lower-left corner no matter where the user is actually typing.
+/// A genuine caret is never rendered at that exact corner (window chrome,
+/// insets, and the menu bar all keep real text away from it), so a rect
+/// sitting within `originEpsilon` of `(0, 0)` is rejected as that known
+/// stub value rather than trusted.
+enum CandidateAnchorValidation {
+    static let originEpsilon: CGFloat = 2
+
+    static func isPlausibleCaretAnchor(_ rect: CGRect) -> Bool {
+        guard rect.origin.x.isFinite,
+              rect.origin.y.isFinite,
+              rect.size.width.isFinite,
+              rect.size.height.isFinite,
+              rect.size.height > 0 else {
+            return false
+        }
+
+        return !isPinnedToScreenOrigin(rect)
+    }
+
+    private static func isPinnedToScreenOrigin(_ rect: CGRect) -> Bool {
+        abs(rect.origin.x) <= originEpsilon
+            && abs(rect.origin.y) <= originEpsilon
+    }
+}
+
 enum CandidateWindowPlacement {
     static func frame(
         anchor: CGRect,

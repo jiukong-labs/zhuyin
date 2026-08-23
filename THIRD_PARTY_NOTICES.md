@@ -15,6 +15,60 @@ The repository retains the pinned phonetic and CNS/Unicode mapping source snapsh
 
 The CNS11643 source snapshot and the character data derived from it in the generated dictionary are not covered by Jiukong Zhuyin's MIT License; their use and redistribution are governed by the Open Government Data License above. The separate phrase table is original Jiukong data covered by this repository's MIT License. CNS11643 fonts, glyph files, and audio are not included.
 
+## MOE standard character tables
+
+Jiukong Zhuyin's candidate ranking contains data derived from:
+
+- Provider: 教育部 (Ministry of Education, Taiwan)
+- Datasets: 常用國字標準字體表 (Standard Form of Common National Characters,
+  4,808 characters, promulgated 1982-09-01) and 次常用國字標準字體表
+  (Standard Form of Semi-Common National Characters, 6,343 characters,
+  promulgated 1993)
+- Sources: https://language.moe.gov.tw/uploads/files/17694982751710.ods
+  (common characters); https://zh.wikisource.org/wiki/次常用國字標準字體表
+  (semi-common characters, no direct machine-readable file published by the
+  Ministry)
+- Retrieved: 2026-08-23
+- License: promulgations of a central government agency, public domain under
+  Republic of China Copyright Act Article 9 — the same basis as the CNS11643
+  data above; see `Data/MOEStandardCharacterTables/README.md` for the full
+  provenance and extraction method.
+
+`JiukongDictionaryBuilder` uses these two disjoint character lists as a
+coarse three-tier (common / semi-common / other) usage score per dictionary
+entry; a separate, first-party, manually reviewed override table in
+`Data/JiukongHeteronyms` (MIT-licensed, covered by this repository's normal
+license, not this notice) can override that tier for one specific
+(character, reading) pair. Like the CNS11643 data above, the MOE tables
+themselves are not covered by Jiukong Zhuyin's MIT License.
+
+## MOE idiom lexicon
+
+Jiukong Zhuyin's phrase candidates contain data derived from:
+
+- Provider: 教育部 (Ministry of Education, Taiwan) / 國家教育研究院
+- Dataset: 《成語典》2020 (Dictionary of Chinese Idioms)
+- Source file: `dict_idioms_2020_20260625.xlsx`, downloaded from
+  https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/dict_idiomsdict_download.html
+- Retrieved: 2026-08-23
+- License: 創用CC－姓名標示－禁止改作 臺灣3.0版 (CC BY-ND 3.0 TW) — a
+  copyrighted government publication, **not** the Article 9 public-domain
+  basis the CNS11643 and MOE character-table data above rely on. See
+  `Data/MOEIdioms/README.md` for the full provenance, extraction method, and
+  the license reasoning for reproducing only the headword and reading
+  fields.
+
+Attribution, as required by the license:
+
+> 中華民國教育部（Ministry of Education, R.O.C.）。《成語典》（版本編
+> 號：dict_idioms_2020_20260625）網址：http://dict.idioms.moe.edu.tw/
+
+The license's full usage note is retained verbatim in
+`Data/MOEIdioms/idiomsdict_usage_note.txt` per its own retention requirement.
+`JiukongDictionaryBuilder` merges these entries into the same phrase table as
+the first-party lexicon; like the CNS11643 and MOE character-table data
+above, this idiom data itself is not covered by Jiukong Zhuyin's MIT License.
+
 ## Development-only tooling
 
 The checked-in Xcode project was generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen), copyright Yonatan Karp-Rudin and contributors, licensed under the MIT License. XcodeGen is a development tool and is not copied into or distributed with Jiukong Zhuyin.

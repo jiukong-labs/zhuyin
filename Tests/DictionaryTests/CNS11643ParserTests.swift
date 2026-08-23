@@ -3,6 +3,66 @@ import Foundation
 import XCTest
 
 final class CNS11643ParserTests: XCTestCase {
+    func testPinnedFirstPartyCharacterSupplement() throws {
+        let sourceURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongCharacters", isDirectory: true)
+            .appendingPathComponent("characters.tsv")
+
+        let dataset = try JiukongCharacterParser.parse(sourceURL: sourceURL)
+
+        XCTAssertEqual(
+            dataset.statistics,
+            JiukongCharacterStatistics(
+                entryCount: 3,
+                uniqueCharacterCount: 3
+            )
+        )
+        XCTAssertEqual(
+            dataset.entries,
+            [
+                JiukongCharacterEntry(
+                    character: "麼",
+                    pronunciation: "˙ㄇㄛ"
+                ),
+                JiukongCharacterEntry(
+                    character: "嗎",
+                    pronunciation: "ㄇㄚ"
+                ),
+                JiukongCharacterEntry(
+                    character: "框",
+                    pronunciation: "ㄎㄨㄤ"
+                ),
+            ]
+        )
+    }
+
+    func testFirstPartyCharacterParserRejectsInvalidRows() throws {
+        let invalidSources = [
+            "麼 ˙ㄇㄛ\n",
+            "什麼\t˙ㄇㄛ\n",
+            "麼\tASCII\n",
+            "麼\t˙ㄇㄛ\n麼\t˙ㄇㄛ\n",
+        ]
+
+        for source in invalidSources {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let sourceURL = directory.appendingPathComponent("characters.tsv")
+            try Data(source.utf8).write(to: sourceURL)
+
+            XCTAssertThrowsError(
+                try JiukongCharacterParser.parse(sourceURL: sourceURL),
+                "Unexpectedly accepted: \(source)"
+            )
+        }
+    }
+
     func testPinnedFirstPartyPhraseLexiconStatistics() throws {
         let sourceURL = repositoryRoot
             .appendingPathComponent("Data", isDirectory: true)
@@ -14,9 +74,9 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(
             dataset.statistics,
             JiukongPhraseStatistics(
-                entryCount: 815,
-                uniquePhraseCount: 814,
-                pronunciationSequenceCount: 809
+                entryCount: 1_958,
+                uniquePhraseCount: 1_957,
+                pronunciationSequenceCount: 1_950
             )
         )
         XCTAssertEqual(dataset.entries.first?.phrase, "測試")
@@ -68,6 +128,138 @@ final class CNS11643ParserTests: XCTestCase {
         }
 
         XCTAssertEqual(mismatches, [])
+    }
+
+    func testPinnedMOEIdiomLexiconStatistics() throws {
+        let sourceURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOEIdioms", isDirectory: true)
+            .appendingPathComponent("idioms.tsv")
+
+        let dataset = try JiukongPhraseParser.parse(sourceURL: sourceURL)
+
+        XCTAssertEqual(
+            dataset.statistics,
+            JiukongPhraseStatistics(
+                entryCount: 1_642,
+                uniquePhraseCount: 1_642,
+                pronunciationSequenceCount: 1_642
+            )
+        )
+        XCTAssertEqual(dataset.entries.first?.phrase, "一毛不拔")
+        XCTAssertEqual(
+            dataset.entries.first?.pronunciationSequence,
+            ["ㄧ", "ㄇㄠˊ", "ㄅㄨˋ", "ㄅㄚˊ"]
+        )
+    }
+
+    func testMOEIdiomReadingsMatchPinnedOfficialCharacterData() throws {
+        let idiomURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOEIdioms", isDirectory: true)
+            .appendingPathComponent("idioms.tsv")
+        let idioms = try JiukongPhraseParser.parse(sourceURL: idiomURL)
+        let sourceDirectory = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("CNS11643", isDirectory: true)
+            .appendingPathComponent("20260805", isDirectory: true)
+        let manifest = try CNS11643Manifest.load(from: sourceDirectory)
+        let official = try CNS11643Parser.parse(
+            sourceDirectory: sourceDirectory,
+            manifest: manifest
+        )
+        let officialPairs = Set(official.entries.map {
+            $0.character + "\u{1F}" + $0.pronunciation
+        })
+
+        var mismatches: [String] = []
+        for entry in idioms.entries {
+            for (character, pronunciation) in zip(
+                entry.phrase.map(String.init),
+                entry.pronunciationSequence
+            ) where !officialPairs.contains(
+                character + "\u{1F}" + pronunciation
+            ) {
+                mismatches.append("\(entry.phrase): \(character) \(pronunciation)")
+            }
+        }
+
+        XCTAssertEqual(mismatches, [])
+    }
+
+    func testMOEIdiomLexiconDoesNotDuplicateFirstPartyPhrases() throws {
+        let phraseURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongPhrases", isDirectory: true)
+            .appendingPathComponent("phrases.tsv")
+        let idiomURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOEIdioms", isDirectory: true)
+            .appendingPathComponent("idioms.tsv")
+        let phrases = try JiukongPhraseParser.parse(sourceURL: phraseURL)
+        let idioms = try JiukongPhraseParser.parse(sourceURL: idiomURL)
+
+        let merged = try JiukongPhraseDataset.merged(
+            firstParty: phrases,
+            governmentSourced: idioms
+        )
+
+        XCTAssertEqual(
+            merged.statistics.entryCount,
+            phrases.statistics.entryCount + idioms.statistics.entryCount
+        )
+        XCTAssertEqual(
+            merged.entries.suffix(idioms.entries.count).map(\.phrase),
+            idioms.entries.map(\.phrase)
+        )
+    }
+
+    func testPhraseMergeRejectsACrossSourceDuplicate() throws {
+        let firstParty = JiukongPhraseDataset(
+            entries: [
+                JiukongPhraseEntry(
+                    phrase: "測試",
+                    pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+                    pronunciationKey: DictionaryPronunciationSequenceKey.encode(
+                        ["ㄘㄜˋ", "ㄕˋ"]
+                    )!,
+                    sourceOrder: 0
+                ),
+            ],
+            statistics: JiukongPhraseStatistics(
+                entryCount: 1,
+                uniquePhraseCount: 1,
+                pronunciationSequenceCount: 1
+            )
+        )
+        let governmentSourced = JiukongPhraseDataset(
+            entries: [
+                JiukongPhraseEntry(
+                    phrase: "測試",
+                    pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+                    pronunciationKey: DictionaryPronunciationSequenceKey.encode(
+                        ["ㄘㄜˋ", "ㄕˋ"]
+                    )!,
+                    sourceOrder: 0
+                ),
+            ],
+            statistics: JiukongPhraseStatistics(
+                entryCount: 1,
+                uniquePhraseCount: 1,
+                pronunciationSequenceCount: 1
+            )
+        )
+
+        XCTAssertThrowsError(
+            try JiukongPhraseDataset.merged(
+                firstParty: firstParty,
+                governmentSourced: governmentSourced
+            )
+        ) { error in
+            guard case JiukongPhraseMergeError.duplicateAcrossSources("測試") = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
     }
 
     func testFirstPartyPhraseParserRejectsMalformedAndDuplicateRows() throws {

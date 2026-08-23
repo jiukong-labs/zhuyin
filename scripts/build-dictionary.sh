@@ -6,7 +6,12 @@ script_directory="${0:A:h}"
 repository_root="${script_directory:h}"
 derived_data_path="${JIUKONG_DICTIONARY_DERIVED_DATA_PATH:-${repository_root}/.build/DictionaryBuilder}"
 source_directory="${repository_root}/Data/CNS11643/20260805"
+character_source="${repository_root}/Data/JiukongCharacters/characters.tsv"
 phrase_source="${repository_root}/Data/JiukongPhrases/phrases.tsv"
+idiom_source="${repository_root}/Data/MOEIdioms/idioms.tsv"
+frequency_common_source="${repository_root}/Data/MOEStandardCharacterTables/common-4808.txt"
+frequency_semi_common_source="${repository_root}/Data/MOEStandardCharacterTables/semi-common-6343.txt"
+heteronym_tier_source="${repository_root}/Data/JiukongHeteronyms/heteronym-tiers.tsv"
 output_path="${repository_root}/Resources/Dictionary/JiukongZhuyin.sqlite3"
 
 xcodebuild \
@@ -25,5 +30,10 @@ fi
 
 "${builder_path}" \
   --source "${source_directory}" \
+  --characters "${character_source}" \
   --phrases "${phrase_source}" \
+  --idioms "${idiom_source}" \
+  --frequency-common "${frequency_common_source}" \
+  --frequency-semi-common "${frequency_semi_common_source}" \
+  --heteronym-tiers "${heteronym_tier_source}" \
   --output "${output_path}"

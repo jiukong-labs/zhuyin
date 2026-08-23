@@ -5,7 +5,557 @@ import SQLite3
 struct DictionaryBuildSummary {
     let outputURL: URL
     let statistics: CNS11643Statistics
+    let characterStatistics: JiukongCharacterStatistics
     let phraseStatistics: JiukongPhraseStatistics
+    let idiomStatistics: JiukongPhraseStatistics
+    let frequencyTierStatistics: JiukongFrequencyTierStatistics
+}
+
+struct JiukongCharacterEntry: Equatable {
+    let character: String
+    let pronunciation: String
+}
+
+struct JiukongCharacterStatistics: Equatable {
+    let entryCount: Int
+    let uniqueCharacterCount: Int
+
+    static let empty = JiukongCharacterStatistics(
+        entryCount: 0,
+        uniqueCharacterCount: 0
+    )
+}
+
+struct JiukongCharacterDataset {
+    let entries: [JiukongCharacterEntry]
+    let statistics: JiukongCharacterStatistics
+
+    static let empty = JiukongCharacterDataset(
+        entries: [],
+        statistics: .empty
+    )
+}
+
+enum JiukongCharacterParserError: LocalizedError, Equatable {
+    case invalidTextEncoding(file: String)
+    case malformedLine(line: Int)
+    case invalidEntry(line: Int, reason: String)
+    case duplicateEntry(line: Int, character: String)
+    case emptyDataset
+
+    var errorDescription: String? {
+        switch self {
+        case let .invalidTextEncoding(file):
+            return "The Jiukong character source is not valid UTF-8: \(file)"
+        case let .malformedLine(line):
+            return "Malformed Jiukong character TSV row at line \(line)."
+        case let .invalidEntry(line, reason):
+            return "Invalid Jiukong character reading at line \(line): \(reason)"
+        case let .duplicateEntry(line, character):
+            return "Duplicate Jiukong character reading at line \(line): \(character)"
+        case .emptyDataset:
+            return "The Jiukong character source produced an empty supplement."
+        }
+    }
+}
+
+enum JiukongCharacterParser {
+    private struct Identity: Hashable {
+        let character: String
+        let pronunciation: String
+    }
+
+    static func parse(sourceURL: URL) throws -> JiukongCharacterDataset {
+        guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            throw JiukongCharacterParserError.invalidTextEncoding(
+                file: sourceURL.lastPathComponent
+            )
+        }
+
+        var entries: [JiukongCharacterEntry] = []
+        var identities: Set<Identity> = []
+        let lines = source.split(
+            separator: "\n",
+            omittingEmptySubsequences: false
+        )
+        for (offset, rawLine) in lines.enumerated() {
+            let lineNumber = offset + 1
+            let line = rawLine.last == "\r" ? rawLine.dropLast() : rawLine[...]
+            if line.isEmpty || line.first == "#" {
+                continue
+            }
+
+            let fields = line.split(
+                separator: "\t",
+                omittingEmptySubsequences: false
+            )
+            guard fields.count == 2 else {
+                throw JiukongCharacterParserError.malformedLine(line: lineNumber)
+            }
+
+            let character = String(fields[0])
+                .precomposedStringWithCanonicalMapping
+            let pronunciation = String(fields[1])
+                .precomposedStringWithCanonicalMapping
+            guard character.count == 1 else {
+                throw JiukongCharacterParserError.invalidEntry(
+                    line: lineNumber,
+                    reason: "the text must contain exactly one character"
+                )
+            }
+            guard CanonicalBopomofoReading.isValid(pronunciation) else {
+                throw JiukongCharacterParserError.invalidEntry(
+                    line: lineNumber,
+                    reason: "the reading is not canonical Bopomofo"
+                )
+            }
+
+            let identity = Identity(
+                character: character,
+                pronunciation: pronunciation
+            )
+            guard identities.insert(identity).inserted else {
+                throw JiukongCharacterParserError.duplicateEntry(
+                    line: lineNumber,
+                    character: character
+                )
+            }
+            entries.append(
+                JiukongCharacterEntry(
+                    character: character,
+                    pronunciation: pronunciation
+                )
+            )
+        }
+
+        guard !entries.isEmpty else {
+            throw JiukongCharacterParserError.emptyDataset
+        }
+        return JiukongCharacterDataset(
+            entries: entries,
+            statistics: JiukongCharacterStatistics(
+                entryCount: entries.count,
+                uniqueCharacterCount: Set(entries.map(\.character)).count
+            )
+        )
+    }
+}
+
+enum JiukongCharacterMergerError: LocalizedError, Equatable {
+    case characterMissingFromCNS(String)
+    case readingAlreadyExists(character: String, pronunciation: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .characterMissingFromCNS(character):
+            return "Supplemental Jiukong character is missing from CNS11643: \(character)"
+        case let .readingAlreadyExists(character, pronunciation):
+            return "Supplemental Jiukong reading already exists in CNS11643: \(character) \(pronunciation)"
+        }
+    }
+}
+
+enum JiukongCharacterMerger {
+    private struct Identity: Hashable {
+        let character: String
+        let pronunciation: String
+    }
+
+    static func merge(
+        _ supplement: JiukongCharacterDataset,
+        into dataset: CNS11643Dataset
+    ) throws -> CNS11643Dataset {
+        guard !supplement.entries.isEmpty else {
+            return dataset
+        }
+
+        let entriesByCharacter = Dictionary(
+            grouping: dataset.entries,
+            by: \.character
+        )
+        var identities = Set(dataset.entries.map {
+            Identity(
+                character: $0.character,
+                pronunciation: $0.pronunciation
+            )
+        })
+        var entries = dataset.entries
+
+        for supplementalEntry in supplement.entries {
+            guard let representative = entriesByCharacter[
+                supplementalEntry.character
+            ]?.min(by: { $0.sourceOrder < $1.sourceOrder }) else {
+                throw JiukongCharacterMergerError.characterMissingFromCNS(
+                    supplementalEntry.character
+                )
+            }
+            let identity = Identity(
+                character: supplementalEntry.character,
+                pronunciation: supplementalEntry.pronunciation
+            )
+            guard identities.insert(identity).inserted else {
+                throw JiukongCharacterMergerError.readingAlreadyExists(
+                    character: supplementalEntry.character,
+                    pronunciation: supplementalEntry.pronunciation
+                )
+            }
+            entries.append(
+                DictionarySourceEntry(
+                    pronunciation: supplementalEntry.pronunciation,
+                    character: supplementalEntry.character,
+                    cnsCode: representative.cnsCode,
+                    sourceOrder: representative.sourceOrder
+                )
+            )
+        }
+
+        let pronunciationsByCharacter = Dictionary(
+            grouping: entries,
+            by: \.character
+        )
+        return CNS11643Dataset(
+            entries: entries,
+            statistics: CNS11643Statistics(
+                phoneticRowCount: dataset.statistics.phoneticRowCount,
+                uniqueCNSCodeCount: dataset.statistics.uniqueCNSCodeCount,
+                excludedPrivateUseRowCount: dataset.statistics.excludedPrivateUseRowCount,
+                duplicateEntryCount: dataset.statistics.duplicateEntryCount,
+                dictionaryEntryCount: entries.count,
+                uniqueCharacterCount: pronunciationsByCharacter.count,
+                pronunciationCount: Set(entries.map(\.pronunciation)).count,
+                multiPronunciationCharacterCount: pronunciationsByCharacter.values
+                    .filter { Set($0.map(\.pronunciation)).count > 1 }
+                    .count
+            )
+        )
+    }
+}
+
+struct JiukongFrequencyTierStatistics: Equatable {
+    let commonCharacterCount: Int
+    let semiCommonCharacterCount: Int
+    let heteronymOverrideCount: Int
+
+    static let empty = JiukongFrequencyTierStatistics(
+        commonCharacterCount: 0,
+        semiCommonCharacterCount: 0,
+        heteronymOverrideCount: 0
+    )
+}
+
+/// Coarse, three-tier candidate usage score: 0 (common), 1 (semi-common), or
+/// the implicit default of 2 (everything else) for a character absent from
+/// both tables. Sourced from the Ministry of Education's officially
+/// promulgated 常用國字標準字體表 (4,808 characters) and 次常用國字標準字體表
+/// (6,343 characters) — government standard tables, not a private corpus or
+/// another input method's lexicon. See `Data/MOEStandardCharacterTables/README.md`.
+enum MOEFrequencyTierParserError: LocalizedError, Equatable {
+    case invalidTextEncoding(file: String)
+    case invalidEntry(file: String, line: Int, reason: String)
+    case duplicateCharacter(file: String, line: Int, character: String)
+    case characterListedInBothTiers(String)
+    case emptyDataset(file: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .invalidTextEncoding(file):
+            return "The MOE frequency tier source is not valid UTF-8: \(file)"
+        case let .invalidEntry(file, line, reason):
+            return "Invalid MOE frequency tier entry in \(file):\(line): \(reason)"
+        case let .duplicateCharacter(file, line, character):
+            return "Duplicate character in \(file):\(line): \(character)"
+        case let .characterListedInBothTiers(character):
+            return "Character is listed in both MOE frequency tables: \(character)"
+        case let .emptyDataset(file):
+            return "The MOE frequency tier source produced an empty list: \(file)"
+        }
+    }
+}
+
+enum MOEFrequencyTierParser {
+    /// Parses a plain-text MOE standard character table: one Han character
+    /// per non-comment, non-blank line, UTF-8 encoded.
+    static func parseCharacterList(sourceURL: URL) throws -> [String] {
+        guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            throw MOEFrequencyTierParserError.invalidTextEncoding(
+                file: sourceURL.lastPathComponent
+            )
+        }
+
+        var characters: [String] = []
+        var seen: Set<String> = []
+        let lines = source.split(
+            separator: "\n",
+            omittingEmptySubsequences: false
+        )
+        for (offset, rawLine) in lines.enumerated() {
+            let lineNumber = offset + 1
+            let line = rawLine.last == "\r" ? rawLine.dropLast() : rawLine[...]
+            if line.isEmpty || line.first == "#" {
+                continue
+            }
+
+            let character = String(line).precomposedStringWithCanonicalMapping
+            guard character.count == 1 else {
+                throw MOEFrequencyTierParserError.invalidEntry(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber,
+                    reason: "expected exactly one character"
+                )
+            }
+            guard seen.insert(character).inserted else {
+                throw MOEFrequencyTierParserError.duplicateCharacter(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber,
+                    character: character
+                )
+            }
+            characters.append(character)
+        }
+
+        guard !characters.isEmpty else {
+            throw MOEFrequencyTierParserError.emptyDataset(
+                file: sourceURL.lastPathComponent
+            )
+        }
+        return characters
+    }
+
+    /// Builds a character → tier (0 = common, 1 = semi-common) map from the
+    /// two disjoint MOE standard character tables. A character absent from
+    /// both tables has no entry; callers treat that as tier 2.
+    static func loadTiers(
+        commonURL: URL,
+        semiCommonURL: URL
+    ) throws -> (tiers: [String: Int], statistics: JiukongFrequencyTierStatistics) {
+        let common = try parseCharacterList(sourceURL: commonURL)
+        let semiCommon = try parseCharacterList(sourceURL: semiCommonURL)
+
+        var tiers: [String: Int] = [:]
+        for character in common {
+            tiers[character] = 0
+        }
+        for character in semiCommon {
+            guard tiers[character] == nil else {
+                throw MOEFrequencyTierParserError.characterListedInBothTiers(character)
+            }
+            tiers[character] = 1
+        }
+
+        return (
+            tiers,
+            JiukongFrequencyTierStatistics(
+                commonCharacterCount: common.count,
+                semiCommonCharacterCount: semiCommon.count,
+                heteronymOverrideCount: 0
+            )
+        )
+    }
+}
+
+/// A first-party, manually reviewed override for one (character, reading)
+/// pair. MOE's standard tables classify a character as a whole, so they
+/// cannot express that one of its readings is common while another is rare
+/// (e.g. 疋 is a common character, but its ㄕㄨ reading is not). Each row is
+/// verified against the pinned CNS snapshot before being added — see
+/// `Data/JiukongHeteronyms/README.md`.
+struct JiukongHeteronymTierEntry: Equatable {
+    let character: String
+    let pronunciation: String
+    let tier: Int
+}
+
+enum JiukongHeteronymTierParserError: LocalizedError, Equatable {
+    case invalidTextEncoding(file: String)
+    case malformedLine(line: Int)
+    case invalidEntry(line: Int, reason: String)
+    case duplicateEntry(line: Int, character: String, pronunciation: String)
+    case emptyDataset
+
+    var errorDescription: String? {
+        switch self {
+        case let .invalidTextEncoding(file):
+            return "The Jiukong heteronym tier source is not valid UTF-8: \(file)"
+        case let .malformedLine(line):
+            return "Malformed Jiukong heteronym tier TSV row at line \(line)."
+        case let .invalidEntry(line, reason):
+            return "Invalid Jiukong heteronym tier entry at line \(line): \(reason)"
+        case let .duplicateEntry(line, character, pronunciation):
+            return "Duplicate Jiukong heteronym tier entry at line \(line): \(character) \(pronunciation)"
+        case .emptyDataset:
+            return "The Jiukong heteronym tier source produced an empty override set."
+        }
+    }
+}
+
+enum JiukongHeteronymTierParser {
+    private struct Identity: Hashable {
+        let character: String
+        let pronunciation: String
+    }
+
+    static func parse(sourceURL: URL) throws -> [JiukongHeteronymTierEntry] {
+        guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            throw JiukongHeteronymTierParserError.invalidTextEncoding(
+                file: sourceURL.lastPathComponent
+            )
+        }
+
+        var entries: [JiukongHeteronymTierEntry] = []
+        var identities: Set<Identity> = []
+        let lines = source.split(
+            separator: "\n",
+            omittingEmptySubsequences: false
+        )
+        for (offset, rawLine) in lines.enumerated() {
+            let lineNumber = offset + 1
+            let line = rawLine.last == "\r" ? rawLine.dropLast() : rawLine[...]
+            if line.isEmpty || line.first == "#" {
+                continue
+            }
+
+            let fields = line.split(
+                separator: "\t",
+                omittingEmptySubsequences: false
+            )
+            guard fields.count == 3 else {
+                throw JiukongHeteronymTierParserError.malformedLine(line: lineNumber)
+            }
+
+            let character = String(fields[0]).precomposedStringWithCanonicalMapping
+            let pronunciation = String(fields[1]).precomposedStringWithCanonicalMapping
+            guard character.count == 1 else {
+                throw JiukongHeteronymTierParserError.invalidEntry(
+                    line: lineNumber,
+                    reason: "the text must contain exactly one character"
+                )
+            }
+            guard CanonicalBopomofoReading.isValid(pronunciation) else {
+                throw JiukongHeteronymTierParserError.invalidEntry(
+                    line: lineNumber,
+                    reason: "the reading is not canonical Bopomofo"
+                )
+            }
+            guard let tier = Int(fields[2]), (0 ... 2).contains(tier) else {
+                throw JiukongHeteronymTierParserError.invalidEntry(
+                    line: lineNumber,
+                    reason: "the tier must be 0, 1, or 2"
+                )
+            }
+
+            let identity = Identity(character: character, pronunciation: pronunciation)
+            guard identities.insert(identity).inserted else {
+                throw JiukongHeteronymTierParserError.duplicateEntry(
+                    line: lineNumber,
+                    character: character,
+                    pronunciation: pronunciation
+                )
+            }
+            entries.append(
+                JiukongHeteronymTierEntry(
+                    character: character,
+                    pronunciation: pronunciation,
+                    tier: tier
+                )
+            )
+        }
+
+        guard !entries.isEmpty else {
+            throw JiukongHeteronymTierParserError.emptyDataset
+        }
+        return entries
+    }
+}
+
+enum FrequencyTierResolverError: LocalizedError, Equatable {
+    case overrideNotFoundInDictionary(character: String, pronunciation: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .overrideNotFoundInDictionary(character, pronunciation):
+            return "Heteronym tier override does not match any dictionary entry: \(character) \(pronunciation)"
+        }
+    }
+}
+
+/// Resolves the final per-entry usage tier: a manually reviewed heteronym
+/// override always wins; otherwise a character falls back to its MOE
+/// standard-table tier, or 2 if it appears in neither table.
+struct FrequencyTierResolver {
+    private struct Key: Hashable {
+        let character: String
+        let pronunciation: String
+    }
+
+    private let characterTiers: [String: Int]
+    private let overrides: [Key: Int]
+    let statistics: JiukongFrequencyTierStatistics
+
+    static let empty = FrequencyTierResolver(
+        characterTiers: [:],
+        overrides: [:],
+        statistics: .empty
+    )
+
+    private init(
+        characterTiers: [String: Int],
+        overrides: [Key: Int],
+        statistics: JiukongFrequencyTierStatistics
+    ) {
+        self.characterTiers = characterTiers
+        self.overrides = overrides
+        self.statistics = statistics
+    }
+
+    static func make(
+        characterTiers: [String: Int],
+        characterTierStatistics: JiukongFrequencyTierStatistics,
+        heteronymOverrides: [JiukongHeteronymTierEntry],
+        validatingAgainst dataset: CNS11643Dataset
+    ) throws -> FrequencyTierResolver {
+        guard !heteronymOverrides.isEmpty else {
+            return FrequencyTierResolver(
+                characterTiers: characterTiers,
+                overrides: [:],
+                statistics: characterTierStatistics
+            )
+        }
+
+        let knownPairs = Set(dataset.entries.map {
+            Key(character: $0.character, pronunciation: $0.pronunciation)
+        })
+        var overrides: [Key: Int] = [:]
+        for override in heteronymOverrides {
+            let key = Key(
+                character: override.character,
+                pronunciation: override.pronunciation
+            )
+            guard knownPairs.contains(key) else {
+                throw FrequencyTierResolverError.overrideNotFoundInDictionary(
+                    character: override.character,
+                    pronunciation: override.pronunciation
+                )
+            }
+            overrides[key] = override.tier
+        }
+
+        return FrequencyTierResolver(
+            characterTiers: characterTiers,
+            overrides: overrides,
+            statistics: JiukongFrequencyTierStatistics(
+                commonCharacterCount: characterTierStatistics.commonCharacterCount,
+                semiCommonCharacterCount: characterTierStatistics.semiCommonCharacterCount,
+                heteronymOverrideCount: overrides.count
+            )
+        )
+    }
+
+    func tier(character: String, pronunciation: String) -> Int {
+        if let override = overrides[Key(character: character, pronunciation: pronunciation)] {
+            return override
+        }
+        return characterTiers[character] ?? 2
+    }
 }
 
 struct JiukongPhraseEntry: Equatable {
@@ -165,6 +715,69 @@ enum JiukongPhraseParser {
     }
 }
 
+enum JiukongPhraseMergeError: LocalizedError, Equatable {
+    case duplicateAcrossSources(phrase: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .duplicateAcrossSources(phrase):
+            return "Phrase \"\(phrase)\" is present with the same reading in both the first-party phrase lexicon and the government-sourced idiom lexicon."
+        }
+    }
+}
+
+extension JiukongPhraseDataset {
+    /// Combines the first-party phrase lexicon with a second,
+    /// government-sourced phrase dataset (e.g. `Data/MOEIdioms/idioms.tsv`)
+    /// for storage in the same `phrase_entries` table; the runtime does not
+    /// distinguish a phrase's origin at lookup time. Government-sourced
+    /// entries are renumbered to continue `sourceOrder` after the
+    /// first-party entries, so each file's own internal order remains the
+    /// deterministic tie-break within its source, and first-party entries
+    /// keep winning ties against a same-reading duplicate that slips into
+    /// the second source.
+    static func merged(
+        firstParty: JiukongPhraseDataset,
+        governmentSourced: JiukongPhraseDataset
+    ) throws -> JiukongPhraseDataset {
+        guard !governmentSourced.entries.isEmpty else {
+            return firstParty
+        }
+
+        var identities = Set(
+            firstParty.entries.map { $0.phrase + "\u{1F}" + $0.pronunciationKey }
+        )
+        var mergedEntries = firstParty.entries
+        for entry in governmentSourced.entries {
+            let identity = entry.phrase + "\u{1F}" + entry.pronunciationKey
+            guard identities.insert(identity).inserted else {
+                throw JiukongPhraseMergeError.duplicateAcrossSources(
+                    phrase: entry.phrase
+                )
+            }
+            mergedEntries.append(
+                JiukongPhraseEntry(
+                    phrase: entry.phrase,
+                    pronunciationSequence: entry.pronunciationSequence,
+                    pronunciationKey: entry.pronunciationKey,
+                    sourceOrder: Int64(mergedEntries.count)
+                )
+            )
+        }
+
+        return JiukongPhraseDataset(
+            entries: mergedEntries,
+            statistics: JiukongPhraseStatistics(
+                entryCount: mergedEntries.count,
+                uniquePhraseCount: Set(mergedEntries.map(\.phrase)).count,
+                pronunciationSequenceCount: Set(
+                    mergedEntries.map(\.pronunciationKey)
+                ).count
+            )
+        )
+    }
+}
+
 enum DictionaryDatabaseBuilderError: LocalizedError {
     case integrityCheckFailed(String)
     case unsafeOutput(path: String, reason: String)
@@ -185,19 +798,64 @@ enum DictionaryDatabaseBuilderError: LocalizedError {
 enum DictionaryDatabaseBuilder {
     static func build(
         sourceDirectory: URL,
+        characterSourceURL: URL? = nil,
         phraseSourceURL: URL? = nil,
+        idiomSourceURL: URL? = nil,
+        commonCharacterTierURL: URL? = nil,
+        semiCommonCharacterTierURL: URL? = nil,
+        heteronymTierURL: URL? = nil,
         outputURL: URL
     ) throws -> DictionaryBuildSummary {
         try validateOutputURL(
             outputURL,
             sourceDirectory: sourceDirectory,
-            phraseSourceURL: phraseSourceURL
+            characterSourceURL: characterSourceURL,
+            phraseSourceURL: phraseSourceURL,
+            idiomSourceURL: idiomSourceURL
         )
         let manifest = try CNS11643Manifest.load(from: sourceDirectory)
         let dataset = try CNS11643Parser.parse(
             sourceDirectory: sourceDirectory,
             manifest: manifest
         )
+        let characterDataset: JiukongCharacterDataset
+        if let characterSourceURL {
+            characterDataset = try JiukongCharacterParser.parse(
+                sourceURL: characterSourceURL
+            )
+        } else {
+            characterDataset = .empty
+        }
+        let mergedDataset = try JiukongCharacterMerger.merge(
+            characterDataset,
+            into: dataset
+        )
+
+        let characterTiers: [String: Int]
+        let characterTierStatistics: JiukongFrequencyTierStatistics
+        if let commonCharacterTierURL, let semiCommonCharacterTierURL {
+            (characterTiers, characterTierStatistics) = try MOEFrequencyTierParser.loadTiers(
+                commonURL: commonCharacterTierURL,
+                semiCommonURL: semiCommonCharacterTierURL
+            )
+        } else {
+            (characterTiers, characterTierStatistics) = ([:], .empty)
+        }
+        let heteronymOverrides: [JiukongHeteronymTierEntry]
+        if let heteronymTierURL {
+            heteronymOverrides = try JiukongHeteronymTierParser.parse(
+                sourceURL: heteronymTierURL
+            )
+        } else {
+            heteronymOverrides = []
+        }
+        let frequencyTierResolver = try FrequencyTierResolver.make(
+            characterTiers: characterTiers,
+            characterTierStatistics: characterTierStatistics,
+            heteronymOverrides: heteronymOverrides,
+            validatingAgainst: mergedDataset
+        )
+
         let phraseDataset: JiukongPhraseDataset
         if let phraseSourceURL {
             phraseDataset = try JiukongPhraseParser.parse(
@@ -206,6 +864,18 @@ enum DictionaryDatabaseBuilder {
         } else {
             phraseDataset = .empty
         }
+        let idiomDataset: JiukongPhraseDataset
+        if let idiomSourceURL {
+            idiomDataset = try JiukongPhraseParser.parse(
+                sourceURL: idiomSourceURL
+            )
+        } else {
+            idiomDataset = .empty
+        }
+        let combinedPhraseDataset = try JiukongPhraseDataset.merged(
+            firstParty: phraseDataset,
+            governmentSourced: idiomDataset
+        )
 
         let fileManager = FileManager.default
         try fileManager.createDirectory(
@@ -219,8 +889,12 @@ enum DictionaryDatabaseBuilder {
             try writeDatabase(
                 at: temporaryURL,
                 manifest: manifest,
-                dataset: dataset,
-                phraseDataset: phraseDataset
+                dataset: mergedDataset,
+                characterDataset: characterDataset,
+                phraseDataset: combinedPhraseDataset,
+                phraseStatistics: phraseDataset.statistics,
+                idiomStatistics: idiomDataset.statistics,
+                frequencyTierResolver: frequencyTierResolver
             )
             guard Darwin.rename(temporaryURL.path, outputURL.path) == 0 else {
                 throw DictionaryDatabaseBuilderError.outputReplacementFailed(
@@ -235,8 +909,11 @@ enum DictionaryDatabaseBuilder {
 
         return DictionaryBuildSummary(
             outputURL: outputURL,
-            statistics: dataset.statistics,
-            phraseStatistics: phraseDataset.statistics
+            statistics: mergedDataset.statistics,
+            characterStatistics: characterDataset.statistics,
+            phraseStatistics: phraseDataset.statistics,
+            idiomStatistics: idiomDataset.statistics,
+            frequencyTierStatistics: frequencyTierResolver.statistics
         )
     }
 
@@ -244,7 +921,11 @@ enum DictionaryDatabaseBuilder {
         at outputURL: URL,
         manifest: CNS11643Manifest,
         dataset: CNS11643Dataset,
-        phraseDataset: JiukongPhraseDataset
+        characterDataset: JiukongCharacterDataset,
+        phraseDataset: JiukongPhraseDataset,
+        phraseStatistics: JiukongPhraseStatistics,
+        idiomStatistics: JiukongPhraseStatistics,
+        frequencyTierResolver: FrequencyTierResolver
     ) throws {
         let fileDescriptor = Darwin.open(
             outputURL.path,
@@ -290,6 +971,7 @@ enum DictionaryDatabaseBuilder {
                 character TEXT NOT NULL,
                 source_order INTEGER NOT NULL CHECK(source_order >= 0),
                 cns_code TEXT NOT NULL,
+                usage_tier INTEGER NOT NULL CHECK(usage_tier IN (0, 1, 2)),
                 PRIMARY KEY (pronunciation, character)
             ) WITHOUT ROWID;
 
@@ -310,8 +992,9 @@ enum DictionaryDatabaseBuilder {
                     pronunciation,
                     character,
                     source_order,
-                    cns_code
-                ) VALUES (?, ?, ?, ?)
+                    cns_code,
+                    usage_tier
+                ) VALUES (?, ?, ?, ?, ?)
                 """
             )
             for entry in dataset.entries {
@@ -319,6 +1002,13 @@ enum DictionaryDatabaseBuilder {
                 try insertEntry.bind(entry.character, at: 2)
                 try insertEntry.bind(entry.sourceOrder, at: 3)
                 try insertEntry.bind(entry.cnsCode, at: 4)
+                try insertEntry.bind(
+                    Int64(frequencyTierResolver.tier(
+                        character: entry.character,
+                        pronunciation: entry.pronunciation
+                    )),
+                    at: 5
+                )
                 guard try insertEntry.step() == .done else {
                     throw SQLiteDatabaseError.operation(
                         sql: "INSERT INTO dictionary_entries",
@@ -356,7 +1046,10 @@ enum DictionaryDatabaseBuilder {
             for (key, value) in metadata(
                 manifest: manifest,
                 statistics: dataset.statistics,
-                phraseStatistics: phraseDataset.statistics
+                characterStatistics: characterDataset.statistics,
+                phraseStatistics: phraseStatistics,
+                idiomStatistics: idiomStatistics,
+                frequencyTierStatistics: frequencyTierResolver.statistics
             ).sorted(by: { $0.key < $1.key }) {
                 try insertMetadata.bind(key, at: 1)
                 try insertMetadata.bind(value, at: 2)
@@ -404,9 +1097,12 @@ enum DictionaryDatabaseBuilder {
     private static func metadata(
         manifest: CNS11643Manifest,
         statistics: CNS11643Statistics,
-        phraseStatistics: JiukongPhraseStatistics
+        characterStatistics: JiukongCharacterStatistics,
+        phraseStatistics: JiukongPhraseStatistics,
+        idiomStatistics: JiukongPhraseStatistics,
+        frequencyTierStatistics: JiukongFrequencyTierStatistics
     ) -> [String: String] {
-        var values = [
+        var values: [String: String] = [
             "dataset_name": manifest.datasetName,
             "dataset_url": manifest.datasetURL,
             "excluded_private_use_rows": String(statistics.excludedPrivateUseRowCount),
@@ -423,13 +1119,29 @@ enum DictionaryDatabaseBuilder {
             "unique_cns_codes": String(statistics.uniqueCNSCodeCount),
             "dictionary_entries": String(statistics.dictionaryEntryCount),
             "duplicate_entries_removed": String(statistics.duplicateEntryCount),
+            "first_party_character_dataset_name": "Jiukong first-party character readings",
+            "first_party_character_entries": String(characterStatistics.entryCount),
+            "first_party_unique_characters": String(characterStatistics.uniqueCharacterCount),
+            "first_party_character_transformation": "Validated original TSV rows; reused each character's pinned CNS code and source position; rejected duplicate CNS readings.",
             "phrase_dataset_name": "Jiukong first-party phrase lexicon",
             "phrase_entries": String(phraseStatistics.entryCount),
             "phrase_pronunciation_sequences": String(
                 phraseStatistics.pronunciationSequenceCount
             ),
             "phrase_transformation": "Validated original TSV rows; encoded exact pronunciation sequences; preserved repository source order; no imported frequency data.",
-            "unique_phrases": String(phraseStatistics.uniquePhraseCount)
+            "unique_phrases": String(phraseStatistics.uniquePhraseCount),
+            "idiom_dataset_name": "MOE 《成語典》 government-sourced idiom lexicon (1,642 主條 four-character entries)",
+            "idiom_entries": String(idiomStatistics.entryCount),
+            "idiom_pronunciation_sequences": String(
+                idiomStatistics.pronunciationSequenceCount
+            ),
+            "unique_idioms": String(idiomStatistics.uniquePhraseCount),
+            "idiom_transformation": "Headword and reading fields only, copied verbatim from the Ministry's 《成語典》 2020 database; every other column discarded; tone-sandhi （變） variant readings dropped in favor of the primary reading; every syllable cross-checked against this dictionary's own CNS11643-backed character readings. CC BY-ND 3.0 TW, not first-party; see Data/MOEIdioms/README.md.",
+            "frequency_tier_dataset_name": "MOE 常用/次常用國字標準字體表 + Jiukong first-party heteronym overrides",
+            "frequency_tier_common_characters": String(frequencyTierStatistics.commonCharacterCount),
+            "frequency_tier_semi_common_characters": String(frequencyTierStatistics.semiCommonCharacterCount),
+            "frequency_tier_heteronym_overrides": String(frequencyTierStatistics.heteronymOverrideCount),
+            "frequency_tier_transformation": "Character tier 0/1 taken verbatim from the two MOE standard tables (public-domain government promulgations); tier 2 is the default for a character in neither table; a manually reviewed (character, reading) override, verified against this snapshot, wins over the character tier. No private corpus or other input method's frequency data."
         ]
         for (archiveName, hash) in manifest.archiveSHA256 {
             values["sha256_\(archiveName)"] = hash
@@ -443,7 +1155,9 @@ enum DictionaryDatabaseBuilder {
     private static func validateOutputURL(
         _ outputURL: URL,
         sourceDirectory: URL,
-        phraseSourceURL: URL?
+        characterSourceURL: URL?,
+        phraseSourceURL: URL?,
+        idiomSourceURL: URL?
     ) throws {
         let sourcePath = sourceDirectory.standardizedFileURL
             .resolvingSymlinksInPath()
@@ -461,6 +1175,18 @@ enum DictionaryDatabaseBuilder {
             )
         }
 
+        if let characterSourceURL {
+            let characterSourcePath = characterSourceURL.standardizedFileURL
+                .resolvingSymlinksInPath()
+                .path
+            if outputPath == characterSourcePath {
+                throw DictionaryDatabaseBuilderError.unsafeOutput(
+                    path: outputURL.path,
+                    reason: "the output is the character source file"
+                )
+            }
+        }
+
 
         if let phraseSourceURL {
             let phraseSourcePath = phraseSourceURL.standardizedFileURL
@@ -470,6 +1196,18 @@ enum DictionaryDatabaseBuilder {
                 throw DictionaryDatabaseBuilderError.unsafeOutput(
                     path: outputURL.path,
                     reason: "the output is the phrase source file"
+                )
+            }
+        }
+
+        if let idiomSourceURL {
+            let idiomSourcePath = idiomSourceURL.standardizedFileURL
+                .resolvingSymlinksInPath()
+                .path
+            if outputPath == idiomSourcePath {
+                throw DictionaryDatabaseBuilderError.unsafeOutput(
+                    path: outputURL.path,
+                    reason: "the output is the idiom source file"
                 )
             }
         }

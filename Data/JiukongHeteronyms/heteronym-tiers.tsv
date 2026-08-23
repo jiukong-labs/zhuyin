@@ -1,0 +1,12 @@
+# Jiukong first-party heteronym tier overrides. See README.md.
+#
+# Each non-comment row is: character, tab, canonical Bopomofo reading, tab,
+# usage tier (0 = common, 1 = semi-common, 2 = other/rare). The tier here
+# wins over the MOE standard-table tier for this exact (character, reading)
+# pair only; every other reading of the same character is unaffected.
+#
+# 疋 is a common character (MOE 常用字表) primarily read ㄆㄧˇ; its ㄕㄨ
+# reading is an archaic/rare alternate that otherwise tied with 書, 舒, 俞,
+# and other everyday ㄕㄨ characters and outranked them on CNS source order
+# alone. Verified against Resources/Dictionary/JiukongZhuyin.sqlite3.
+疋	ㄕㄨ	2

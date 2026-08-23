@@ -18,9 +18,9 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(
             entries.prefix(3),
             [
-                DictionaryCharacter(text: "我", sourceOrder: 827, cnsPlane: 1),
-                DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1),
-                DictionaryCharacter(text: "婑", sourceOrder: 9_357, cnsPlane: 2),
+                DictionaryCharacter(text: "我", sourceOrder: 827, cnsPlane: 1, usageTier: 0),
+                DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1, usageTier: 0),
+                DictionaryCharacter(text: "婑", sourceOrder: 9_357, cnsPlane: 2, usageTier: 2),
             ]
         )
         XCTAssertTrue(entries[0].isInGeneralCandidateRepertoire)
@@ -40,6 +40,15 @@ final class CharacterDictionaryTests: XCTestCase {
         for expected in ["件", "見", "建", "健", "薦", "鍵"] {
             XCTAssertTrue(candidates.contains(expected), "Missing \(expected)")
         }
+    }
+
+    func testNeutralMoOffersMeAsTheFirstCandidate() throws {
+        let dictionary = try makeDictionary()
+
+        XCTAssertEqual(try dictionary.candidates(for: "˙ㄇㄛ").first, "麼")
+        XCTAssertTrue(
+            try dictionary.pronunciations(for: "麼").contains("˙ㄇㄛ")
+        )
     }
 
     func testReverseLookupPreservesMultiplePronunciations() throws {
@@ -102,13 +111,29 @@ final class CharacterDictionaryTests: XCTestCase {
         let dictionary = try makeDictionary()
 
         XCTAssertEqual(try dictionary.metadataValue(for: "source_version"), "20260805")
-        XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94708")
+        XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94711")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_characters"), "76373")
-        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "815")
-        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "814")
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "first_party_character_entries"),
+            "3"
+        )
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "1958")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "1957")
         XCTAssertEqual(
             try dictionary.metadataValue(for: "phrase_dataset_name"),
             "Jiukong first-party phrase lexicon"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "frequency_tier_common_characters"),
+            "4808"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "frequency_tier_semi_common_characters"),
+            "6343"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "frequency_tier_heteronym_overrides"),
+            "1"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "sha256_Properties.zip"),

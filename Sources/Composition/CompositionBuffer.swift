@@ -295,6 +295,30 @@ struct CompositionBuffer: Equatable {
         return true
     }
 
+    /// Adds unlearned text (such as a raw Bopomofo fallback) immediately
+    /// before `anchorUnitID`, instead of at the end of the buffer. Used while
+    /// the caret is positioned via revision-focus navigation.
+    @discardableResult
+    mutating func insert(
+        text: String,
+        pronunciation: String,
+        before anchorUnitID: UUID,
+        kind: CompositionUnit.Kind = .reading
+    ) -> CompositionUnit? {
+        guard let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID }) else {
+            return nil
+        }
+
+        let unit = CompositionUnit(text: text, pronunciation: pronunciation, kind: kind)
+        guard isValid(unit) else {
+            return nil
+        }
+
+        units.insert(unit, at: anchorIndex)
+        clearSelection()
+        return unit
+    }
+
     /// Accepts a candidate into marked composition without learning it yet.
     /// Character candidates append one unit; phrase candidates replace their
     /// exact reading suffix and the currently active final reading.
@@ -308,6 +332,33 @@ struct CompositionBuffer: Equatable {
             return appendCharacterCandidate(candidate, reason: reason)
         case .phrase:
             return replaceSuffix(with: candidate, reason: reason)
+        }
+    }
+
+    /// Inserts a candidate immediately before `anchorUnitID` instead of at the
+    /// end of the buffer, mirroring `acceptCandidate`. Used while the caret is
+    /// positioned via revision-focus navigation and the user types a new
+    /// reading rather than replacing the focused one. Returns the inserted
+    /// units (empty on failure) so the caller can refocus onto them.
+    @discardableResult
+    mutating func insertCandidate(
+        _ candidate: Candidate,
+        before anchorUnitID: UUID,
+        reason: CandidateCommitReason
+    ) -> [CompositionUnit] {
+        switch candidate.type {
+        case .character:
+            return insertCharacterCandidate(
+                candidate,
+                before: anchorUnitID,
+                reason: reason
+            )
+        case .phrase:
+            return insertPhraseSuffix(
+                candidate,
+                before: anchorUnitID,
+                reason: reason
+            )
         }
     }
 
@@ -419,6 +470,49 @@ struct CompositionBuffer: Equatable {
         ).map { unitCount in
             let existingUnitCount = unitCount - 1
             let suffix = units.suffix(existingUnitCount)
+            return CompositionPhraseQuery(
+                pronunciationSequence: suffix.map(\.pronunciation)
+                    + [pronunciation],
+                existingSuffixUnitIDs: suffix.map(\.id)
+            )
+        }
+    }
+
+    /// Like `phraseLookupQueries(appending:)`, but scoped to the context that
+    /// precedes `anchorUnitID` (not including it) instead of the trailing end
+    /// of the whole buffer. Used while the caret is positioned via
+    /// revision-focus navigation and the new reading is about to be inserted
+    /// right before that unit, so a phrase can only combine with readings up
+    /// to the insertion point rather than the anchor or anything after it.
+    func phraseLookupQueries(
+        appending pronunciation: String,
+        before anchorUnitID: UUID,
+        minimumUnitCount: Int = Self.minimumPhraseUnitCount,
+        maximumUnitCount: Int = Self.maximumPhraseUnitCount
+    ) -> [CompositionPhraseQuery] {
+        guard !pronunciation.isEmpty,
+              minimumUnitCount >= Self.minimumPhraseUnitCount,
+              maximumUnitCount >= minimumUnitCount,
+              let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
+        else {
+            return []
+        }
+
+        let context = units[..<anchorIndex]
+        let trailingReadingCount = context.reversed()
+            .prefix { $0.kind == .reading }.count
+        let longestCount = min(maximumUnitCount, trailingReadingCount + 1)
+        guard longestCount >= minimumUnitCount else {
+            return []
+        }
+
+        return stride(
+            from: longestCount,
+            through: minimumUnitCount,
+            by: -1
+        ).map { unitCount in
+            let existingUnitCount = unitCount - 1
+            let suffix = context.suffix(existingUnitCount)
             return CompositionPhraseQuery(
                 pronunciationSequence: suffix.map(\.pronunciation)
                     + [pronunciation],
@@ -667,6 +761,79 @@ struct CompositionBuffer: Equatable {
         )
         clearSelection()
         return true
+    }
+
+    @discardableResult
+    private mutating func insertCharacterCandidate(
+        _ candidate: Candidate,
+        before anchorUnitID: UUID,
+        reason: CandidateCommitReason
+    ) -> [CompositionUnit] {
+        guard candidate.type == .character,
+              !candidate.text.isEmpty,
+              candidate.pronunciationSequence.count == 1,
+              let pronunciation = candidate.pronunciationSequence.first,
+              !pronunciation.isEmpty,
+              let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
+        else {
+            return []
+        }
+
+        let unit = CompositionUnit(text: candidate.text, pronunciation: pronunciation)
+        units.insert(unit, at: anchorIndex)
+        pendingCandidateSelections.append(
+            PendingCandidateSelection(
+                candidate: candidate,
+                reason: reason,
+                coveredUnitIDs: [unit.id]
+            )
+        )
+        clearSelection()
+        return [unit]
+    }
+
+    @discardableResult
+    private mutating func insertPhraseSuffix(
+        _ candidate: Candidate,
+        before anchorUnitID: UUID,
+        reason: CandidateCommitReason
+    ) -> [CompositionUnit] {
+        let readings = candidate.pronunciationSequence
+        let characters = Array(candidate.text)
+        guard candidate.type == .phrase,
+              (Self.minimumPhraseUnitCount ... Self.maximumPhraseUnitCount)
+                .contains(readings.count),
+              characters.count == readings.count,
+              readings.allSatisfy({ !$0.isEmpty }),
+              let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
+        else {
+            return []
+        }
+
+        let existingReadings = Array(readings.dropLast())
+        let context = units[..<anchorIndex]
+        guard context.suffix(existingReadings.count).map(\.pronunciation)
+                == existingReadings else {
+            return []
+        }
+
+        let removalRange = (anchorIndex - existingReadings.count) ..< anchorIndex
+        units.removeSubrange(removalRange)
+        pruneInvalidPendingSelections()
+
+        let replacementUnits = zip(characters, readings).map {
+            CompositionUnit(text: String($0), pronunciation: $1)
+        }
+        units.insert(contentsOf: replacementUnits, at: removalRange.lowerBound)
+        pendingCandidateSelections.append(
+            PendingCandidateSelection(
+                candidate: candidate,
+                reason: reason,
+                coveredUnitIDs: replacementUnits.map(\.id)
+            )
+        )
+        clearSelection()
+        return replacementUnits
     }
 
     private func isValid(_ unit: CompositionUnit) -> Bool {

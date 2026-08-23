@@ -141,6 +141,7 @@
 		DE83BDCA385BDE0B8EC5C726 /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
 		DFAB5EC9BDD65F6D06466116 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
 		E0A46594541AEC11CB5E0A3F /* CursorIndicatorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */; };
+		A279E5BDD67F41A69B28EAE9 /* JiukongDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC5BD0E219545EB92CDECA8 /* JiukongDebugLog.swift */; };
 		E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		E0E3E8A547EFCC37BACA41EA /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		E28F248C99C7DF51EDAF39E1 /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
@@ -155,6 +156,7 @@
 		FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */; };
 		FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */; };
 		FBAF5AFE01B9D5EE4BDAFFF3 /* CursorIndicatorAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */; };
+		5939FCBE4868CF9DA9A4701C /* SystemInputSourceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB3B72214D99EBFEC7B1CC62 /* SystemInputSourceObserver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -241,6 +243,7 @@
 		D01F60E94243161D89FAC2DA /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowPresenter.swift; sourceTree = "<group>"; };
 		D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorController.swift; sourceTree = "<group>"; };
+		1CC5BD0E219545EB92CDECA8 /* JiukongDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiukongDebugLog.swift; sourceTree = "<group>"; };
 		D54FE3D81889F06781B4BBD5 /* CNS11643ParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643ParserTests.swift; sourceTree = "<group>"; };
 		DB6A7847C769C7EBFA02807B /* UserLearningServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningServiceTests.swift; sourceTree = "<group>"; };
 		DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CNS11643_NOTICE.txt; sourceTree = "<group>"; };
@@ -262,6 +265,7 @@
 		FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesController.swift; sourceTree = "<group>"; };
 		FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchive.swift; sourceTree = "<group>"; };
 		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		EB3B72214D99EBFEC7B1CC62 /* SystemInputSourceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInputSourceObserver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -549,6 +553,7 @@
 				6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */,
 				7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */,
 				C30667214FEE41C9496CF28D /* main.swift */,
+				EB3B72214D99EBFEC7B1CC62 /* SystemInputSourceObserver.swift */,
 			);
 			path = InputMethod;
 			sourceTree = "<group>";
@@ -655,6 +660,7 @@
 				CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */,
 				D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */,
 				7D12FCF239B86FEA58145D48 /* CursorIndicatorSettings.swift */,
+				1CC5BD0E219545EB92CDECA8 /* JiukongDebugLog.swift */,
 			);
 			path = Overlay;
 			sourceTree = "<group>";
@@ -867,6 +873,7 @@
 				542B8FDDC49A9321AEAD8936 /* CursorIndicatorAppearance.swift in Sources */,
 				E0A46594541AEC11CB5E0A3F /* CursorIndicatorController.swift in Sources */,
 				B45DB918B600DC2BB2A429FC /* CursorIndicatorSettings.swift in Sources */,
+				A279E5BDD67F41A69B28EAE9 /* JiukongDebugLog.swift in Sources */,
 				D3809C7726558145797A7920 /* CursorIndicatorSettingsController.swift in Sources */,
 				1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */,
 				E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */,
@@ -893,6 +900,7 @@
 				DE72C8816E0AB3015D3E6A41 /* UserPhraseRecord.swift in Sources */,
 				D242D1A724515FE9CBB3864F /* ZhuyinKeyboardArrangement.swift in Sources */,
 				F32A31CF08E28712EA537A8F /* main.swift in Sources */,
+				5939FCBE4868CF9DA9A4701C /* SystemInputSourceObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

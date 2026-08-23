@@ -668,6 +668,128 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertFalse(buffer.clearSelection())
     }
 
+    func testInsertLiteralReadingLandsRightBeforeTheAnchorUnit() throws {
+        var buffer = bufferWithThreeUnits()
+        let anchorID = try XCTUnwrap(buffer.units.first?.id)
+        let followingIDs = Array(buffer.units.dropFirst()).map(\.id)
+
+        let inserted = try XCTUnwrap(
+            buffer.insert(text: "ㄖㄨˋ", pronunciation: "ㄖㄨˋ", before: anchorID)
+        )
+
+        XCTAssertEqual(buffer.text, "ㄖㄨˋ輸入法")
+        XCTAssertEqual(
+            buffer.units.map(\.id),
+            [inserted.id, anchorID] + followingIDs
+        )
+        XCTAssertFalse(buffer.hasSelection)
+    }
+
+    func testInsertingBeforeAnUnknownAnchorFailsWithoutMutation() {
+        var buffer = bufferWithThreeUnits()
+        let before = buffer
+
+        XCTAssertNil(
+            buffer.insert(text: "字", pronunciation: "ㄗˋ", before: UUID())
+        )
+        XCTAssertEqual(
+            buffer.insertCandidate(
+                characterCandidate("字", reading: "ㄗˋ"),
+                before: UUID(),
+                reason: .space
+            ),
+            []
+        )
+        XCTAssertEqual(buffer, before)
+    }
+
+    func testInsertingACharacterCandidateLandsBeforeTheAnchorAndLearnsIt() throws {
+        var buffer = bufferWithThreeUnits()
+        let anchorID = try XCTUnwrap(buffer.units.first?.id)
+        let followingIDs = Array(buffer.units.dropFirst()).map(\.id)
+        let candidate = characterCandidate("了", reading: "ㄌㄜ˙")
+
+        let inserted = buffer.insertCandidate(
+            candidate,
+            before: anchorID,
+            reason: .number(2)
+        )
+
+        let insertedUnit = try XCTUnwrap(inserted.first)
+        XCTAssertEqual(inserted.count, 1)
+        XCTAssertEqual(insertedUnit.text, "了")
+        XCTAssertEqual(buffer.text, "了輸入法")
+        // The anchor keeps its identity and position right after the new
+        // unit, exactly like a text cursor sitting before it, rather than the
+        // candidate landing at the end.
+        XCTAssertEqual(
+            buffer.units.map(\.id),
+            [insertedUnit.id, anchorID] + followingIDs
+        )
+        XCTAssertEqual(
+            buffer.pendingCandidateSelections,
+            [
+                PendingCandidateSelection(
+                    candidate: candidate,
+                    reason: .number(2),
+                    coveredUnitIDs: [insertedUnit.id]
+                )
+            ]
+        )
+    }
+
+    func testInsertingAPhraseCandidateOnlyConsumesReadingsBeforeTheAnchor() throws {
+        var buffer = bufferWithThreeUnits()
+        let anchorID = try XCTUnwrap(buffer.units.dropFirst().first?.id)
+        let anchorUnit = try XCTUnwrap(buffer.units.dropFirst().first)
+        let trailingUnit = try XCTUnwrap(buffer.units.last)
+
+        let phrase = phraseCandidate("書局", readings: ["ㄕㄨ", "ㄐㄩˊ"])
+        let inserted = buffer.insertCandidate(
+            phrase,
+            before: anchorID,
+            reason: .returnKey
+        )
+
+        XCTAssertEqual(inserted.map(\.text), ["書", "局"])
+        // Only the reading before the anchor was consumed into the phrase;
+        // the anchor itself and anything after it are untouched.
+        XCTAssertEqual(buffer.text, "書局入法")
+        XCTAssertTrue(buffer.units.contains(anchorUnit))
+        XCTAssertEqual(buffer.units.last, trailingUnit)
+        XCTAssertEqual(
+            buffer.pendingCandidateSelections.last?.coveredUnitIDs,
+            inserted.map(\.id)
+        )
+    }
+
+    func testPhraseLookupQueriesBeforeAnchorIgnoreTheAnchorAndWhatFollowsIt() throws {
+        var buffer = bufferWithThreeUnits()
+        let anchorID = try XCTUnwrap(buffer.units.dropFirst().first?.id)
+        let firstID = try XCTUnwrap(buffer.units.first?.id)
+
+        let queries = buffer.phraseLookupQueries(
+            appending: "final",
+            before: anchorID
+        )
+
+        // Only what precedes the anchor may combine with the new reading;
+        // the anchor ("入") and the trailing "法" unit must never appear.
+        XCTAssertEqual(
+            queries,
+            [
+                CompositionPhraseQuery(
+                    pronunciationSequence: ["ㄕㄨ", "final"],
+                    existingSuffixUnitIDs: [firstID]
+                )
+            ]
+        )
+        XCTAssertTrue(
+            buffer.phraseLookupQueries(appending: "final", before: UUID())
+                .isEmpty
+        )
+    }
+
     private func bufferWithThreeUnits() -> CompositionBuffer {
         var buffer = CompositionBuffer()
         XCTAssertNotNil(buffer.append(text: "輸", pronunciation: "ㄕㄨ"))

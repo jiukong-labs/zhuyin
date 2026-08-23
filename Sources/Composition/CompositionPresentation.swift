@@ -50,15 +50,32 @@ struct CompositionPresentation: Equatable {
     /// Renders the current first/highlighted candidate without mutating the
     /// real composition buffer. This supports a quiet inline preview before
     /// the user explicitly opens the candidate window with Down Arrow.
+    ///
+    /// `insertionAnchorUnitID`, when set, previews landing right before that
+    /// existing unit (mirroring `CompositionBuffer.insertCandidate(before:)`)
+    /// instead of appending at the buffer's end — matching what will actually
+    /// happen once the caller accepts this candidate while the caret is
+    /// positioned via revision-focus navigation.
     static func make(
         buffer: CompositionBuffer,
-        previewing candidate: Candidate
+        previewing candidate: Candidate,
+        insertionAnchorUnitID: UUID? = nil
     ) -> CompositionPresentation? {
         var previewBuffer = buffer
-        guard previewBuffer.acceptCandidate(
-            candidate,
-            reason: .implicitPassThrough
-        ) else {
+        let didInsert: Bool
+        if let insertionAnchorUnitID {
+            didInsert = !previewBuffer.insertCandidate(
+                candidate,
+                before: insertionAnchorUnitID,
+                reason: .implicitPassThrough
+            ).isEmpty
+        } else {
+            didInsert = previewBuffer.acceptCandidate(
+                candidate,
+                reason: .implicitPassThrough
+            )
+        }
+        guard didInsert else {
             return nil
         }
         return make(buffer: previewBuffer, activeSuffix: nil)

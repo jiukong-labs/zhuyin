@@ -36,6 +36,12 @@ final class InputController: IMKInputController {
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
     private var revisingUnitID: UUID?
+    /// The existing unit a not-yet-accepted candidate should be inserted
+    /// after, captured when a new reading is typed while the caret is
+    /// positioned via revision-focus navigation (rather than appended at the
+    /// end of the buffer as usual). Cleared whenever the candidate it belongs
+    /// to is accepted or abandoned.
+    private var pendingInsertionAnchorUnitID: UUID?
     private var lastCandidateAnchor: NSRect?
     private var phraseSelectionPresentationID: UUID?
     private var savedPhraseConfirmation: SavedUserPhraseConfirmation?
@@ -218,6 +224,14 @@ final class InputController: IMKInputController {
             return true
         }
 
+        // A positioned caret is about to be superseded by a freshly typed
+        // reading: remember it as where the resulting candidate should be
+        // inserted, rather than at the buffer's end. Left untouched (not
+        // cleared) on every later keystroke of the same syllable, so a
+        // backspace-and-retype mid-syllable does not lose the anchor.
+        if let revisingUnitID {
+            pendingInsertionAnchorUnitID = revisingUnitID
+        }
         revisingUnitID = nil
         let result = inputSession.handle(key)
         return apply(result, to: inputClient)
@@ -382,9 +396,13 @@ final class InputController: IMKInputController {
         inputSession = BopomofoInputSession(keyboardLayout: arrangement.layout)
     }
 
-    /// The indicator reads its settings when a client starts using this input
-    /// method, so a change made in the settings window applies on the next
-    /// activation without any observer.
+    /// `SystemInputSourceObserver` is the process-wide owner of whether the
+    /// indicator is showing at all, but it only reacts to the system's
+    /// selected-input-source notification. Re-applying here too means a
+    /// settings-window change or the bootstrap mode selected in
+    /// `synchronizeLanguageModeWithCurrentInputSource()` is reflected
+    /// immediately on activation instead of waiting for that notification to
+    /// round-trip back.
     private func startCursorIndicator() {
         cursorIndicator.apply(preferences.current.cursorIndicator)
         cursorIndicator.update(mode: languageModeController.mode)
@@ -432,7 +450,6 @@ final class InputController: IMKInputController {
 
     private func resetTransientInputState() {
         shiftToggleController.reset()
-        cursorIndicator.setActive(false)
         hideSavedPhraseConfirmation()
         if let languageModeHUDToken {
             languageModeHUD.hide(token: languageModeHUDToken)
@@ -517,9 +534,7 @@ final class InputController: IMKInputController {
         do {
             let candidates = try candidateProvider.candidates(
                 for: pronunciation,
-                phraseQueries: compositionBuffer.phraseLookupQueries(
-                    appending: pronunciation
-                )
+                phraseQueries: phraseLookupQueries(appending: pronunciation)
             )
             guard let session = CandidateSession(
                 pronunciation: pronunciation,
@@ -543,6 +558,21 @@ final class InputController: IMKInputController {
         }
     }
 
+    /// Routes phrase lookup to context ending just before the pending
+    /// insertion anchor when one is set, or the trailing end of the buffer
+    /// otherwise.
+    private func phraseLookupQueries(
+        appending pronunciation: String
+    ) -> [CompositionPhraseQuery] {
+        if let pendingInsertionAnchorUnitID {
+            return compositionBuffer.phraseLookupQueries(
+                appending: pronunciation,
+                before: pendingInsertionAnchorUnitID
+            )
+        }
+        return compositionBuffer.phraseLookupQueries(appending: pronunciation)
+    }
+
     private func handleCompositionCursorCommand(
         _ command: CompositionCursorCommand,
         inputClient: any IMKTextInput
@@ -552,11 +582,28 @@ final class InputController: IMKInputController {
         if candidateSession != nil, revisingUnitID == nil {
             // Finish the active final reading before moving inside the buffer.
             _ = acceptPreferredCandidate(reason: .implicitPassThrough)
-            switch command {
-            case .previousReading:
-                targetUnitID = compositionBuffer.lastReadingUnitID
-            case .nextReading:
-                targetUnitID = nil
+            if let revisingUnitID {
+                // The reading just accepted landed mid-buffer (the caret had
+                // been positioned there before typing it), so navigate from
+                // it like any other positioned unit instead of assuming it
+                // landed at the buffer's end.
+                switch command {
+                case .previousReading:
+                    targetUnitID = compositionBuffer.readingUnitID(
+                        before: revisingUnitID
+                    ) ?? revisingUnitID
+                case .nextReading:
+                    targetUnitID = compositionBuffer.readingUnitID(
+                        after: revisingUnitID
+                    )
+                }
+            } else {
+                switch command {
+                case .previousReading:
+                    targetUnitID = compositionBuffer.lastReadingUnitID
+                case .nextReading:
+                    targetUnitID = nil
+                }
             }
         } else {
             if candidateSession != nil {
@@ -906,6 +953,7 @@ final class InputController: IMKInputController {
     ) -> Bool {
         let fallbackReading = candidateSession?.pronunciation
         let revisionUnitID = revisingUnitID
+        let insertionAnchorUnitID = pendingInsertionAnchorUnitID
         clearCandidatePresentation()
 
         if let revisionUnitID {
@@ -917,6 +965,30 @@ final class InputController: IMKInputController {
                 NSLog("Jiukong Zhuyin rejected an inconsistent revision candidate.")
                 return false
             }
+            return true
+        }
+
+        if let insertionAnchorUnitID {
+            let insertedUnits = compositionBuffer.insertCandidate(
+                candidate,
+                before: insertionAnchorUnitID,
+                reason: reason
+            )
+            guard !insertedUnits.isEmpty else {
+                if let fallbackReading {
+                    _ = compositionBuffer.append(
+                        text: fallbackReading,
+                        pronunciation: fallbackReading
+                    )
+                }
+                NSLog("Jiukong Zhuyin rejected an inconsistent insertion candidate.")
+                return false
+            }
+            // The anchor itself keeps the caret, exactly like a text cursor
+            // sitting right before it: each further reading keeps landing at
+            // the same spot, so consecutively typed syllables accumulate to
+            // its left in the order they were typed.
+            revisingUnitID = insertionAnchorUnitID
             return true
         }
 
@@ -958,7 +1030,11 @@ final class InputController: IMKInputController {
             return
         }
 
+        // Backspacing into the same syllable's partial composition continues
+        // the same pending insertion, so its anchor must survive the reset.
+        let insertionAnchorUnitID = pendingInsertionAnchorUnitID
         discardCandidateState()
+        pendingInsertionAnchorUnitID = insertionAnchorUnitID
         _ = apply(
             inputSession.resumeEditingAndDeleteBackward(completedSyllable),
             to: inputClient
@@ -975,6 +1051,7 @@ final class InputController: IMKInputController {
         candidateSession = nil
         candidateSyllable = nil
         lastCandidateAnchor = nil
+        pendingInsertionAnchorUnitID = nil
         if let sessionID {
             candidatePresenter.hide(sessionID: sessionID)
         }
@@ -1035,6 +1112,21 @@ final class InputController: IMKInputController {
         _ pronunciation: String,
         to inputClient: any IMKTextInput
     ) {
+        if let anchorUnitID = pendingInsertionAnchorUnitID {
+            pendingInsertionAnchorUnitID = nil
+            if compositionBuffer.insert(
+                text: pronunciation,
+                pronunciation: pronunciation,
+                before: anchorUnitID
+            ) != nil {
+                // The anchor keeps the caret; see the matching comment in
+                // `acceptCandidate`.
+                revisingUnitID = anchorUnitID
+                updateMarkedComposition(on: inputClient)
+                return
+            }
+        }
+
         _ = compositionBuffer.append(
             text: pronunciation,
             pronunciation: pronunciation
@@ -1146,15 +1238,16 @@ final class InputController: IMKInputController {
             return lastCandidateAnchor
         }
 
-        let fallbackFrame = NSScreen.main?.visibleFrame ?? NSRect(
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1
-        )
+        // No client-reported rect was trustworthy (see
+        // `CandidateAnchorValidation`) and there is no prior anchor to
+        // reuse. Anchoring near the mouse keeps the panel close to where
+        // the user is actually looking instead of a fixed screen position,
+        // matching `LanguageModeHUD`'s handling of the same class of
+        // web-backed clients.
+        let mouseLocation = NSEvent.mouseLocation
         return NSRect(
-            x: fallbackFrame.midX,
-            y: fallbackFrame.midY,
+            x: mouseLocation.x,
+            y: mouseLocation.y,
             width: 1,
             height: 1
         )
@@ -1173,11 +1266,7 @@ final class InputController: IMKInputController {
     }
 
     private func isValidAnchor(_ rect: NSRect) -> Bool {
-        rect.origin.x.isFinite
-            && rect.origin.y.isFinite
-            && rect.size.width.isFinite
-            && rect.size.height.isFinite
-            && rect.size.height > 0
+        CandidateAnchorValidation.isPlausibleCaretAnchor(rect)
     }
 
     private func updateMarkedComposition(
@@ -1192,7 +1281,8 @@ final class InputController: IMKInputController {
            candidateSession.revisionFocus == nil {
             presentation = CompositionPresentation.make(
                 buffer: compositionBuffer,
-                previewing: candidateSession.highlightedCandidate
+                previewing: candidateSession.highlightedCandidate,
+                insertionAnchorUnitID: pendingInsertionAnchorUnitID
             ) ?? CompositionPresentation.make(
                 buffer: compositionBuffer,
                 activeSuffix: candidateSession.pronunciation

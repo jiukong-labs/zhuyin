@@ -46,6 +46,7 @@ final class CharacterCandidateProvider {
                     pronunciation: pronunciation,
                     baseRank: baseRank,
                     sourceOrder: entry.sourceOrder,
+                    baseFrequency: Double(2 - entry.usageTier),
                     userFrequency: learningRecord?.selectionCount ?? 0,
                     lastUsed: learningRecord?.lastSelectedAt,
                     pinned: learningRecord?.pinned ?? false

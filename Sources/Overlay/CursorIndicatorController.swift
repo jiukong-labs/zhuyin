@@ -9,9 +9,12 @@ private final class CursorIndicatorPanel: NSPanel {
 ///
 /// This is the counterpart of the transient `LanguageModeHUD`: the HUD answers
 /// "what did that Shift press do", while this answers "what mode am I in right
-/// now" without the user having to type anything. Only one exists per process,
-/// and it runs only while a client is actually using this input method, so it
-/// disappears as soon as the user switches to another input source.
+/// now" without the user having to type anything. Only one exists per process.
+/// Its visibility is driven by `SystemInputSourceObserver`, which is the
+/// process-wide source of truth for whether Jiukong is the selected system
+/// input source: the indicator shows whenever that is true, regardless of
+/// whether a text field currently has focus, and disappears as soon as the
+/// user switches to another input source.
 final class CursorIndicatorController {
     static let shared = CursorIndicatorController()
 
@@ -42,8 +45,17 @@ final class CursorIndicatorController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.level = .popUpMenu
         panel.isFloatingPanel = true
+        // Must come *after* `isFloatingPanel = true`: that setter has the
+        // side effect of resetting the window's level to `.floating`, which
+        // was silently undoing every level assigned before it here (measured
+        // via a runtime probe — the level always read back as `.floating`
+        // regardless of what was requested). `.screenSaver` is high enough to
+        // sit above the system Input Source menu in the menu bar, which sits
+        // above `.popUpMenu` itself.
+        panel.level = NSWindow.Level(
+            rawValue: NSWindow.Level.screenSaver.rawValue + 1000
+        )
         panel.hidesOnDeactivate = false
         panel.ignoresMouseEvents = true
         panel.animationBehavior = .none
@@ -88,6 +100,9 @@ final class CursorIndicatorController {
     /// Called when a client starts or stops using this input method.
     func setActive(_ active: Bool) {
         precondition(Thread.isMainThread)
+        jiukongDebugLog(
+            "setActive called active=\(active) currentIsActive=\(isActive) isEnabled=\(settings.isEnabled)"
+        )
         guard isActive != active else {
             return
         }
@@ -114,6 +129,9 @@ final class CursorIndicatorController {
     }
 
     private func updateRunState() {
+        jiukongDebugLog(
+            "updateRunState isRunning=\(isRunning) isEnabled=\(settings.isEnabled) isActive=\(isActive)"
+        )
         guard isRunning else {
             stopTimers()
             panel.orderOut(nil)
@@ -123,6 +141,9 @@ final class CursorIndicatorController {
         startTimers()
         reposition(easing: false)
         panel.orderFrontRegardless()
+        jiukongDebugLog(
+            "indicator windowNumber=\(panel.windowNumber) requestedLevel=\(panel.level.rawValue) isVisible=\(panel.isVisible) frame=\(panel.frame)"
+        )
     }
 
     private func refreshContent() {

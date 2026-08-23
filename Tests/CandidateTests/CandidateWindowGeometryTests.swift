@@ -19,6 +19,48 @@ final class CandidateWindowGeometryTests: XCTestCase {
         XCTAssertFalse(CandidateTextDisplayability.isLastResort(ordinaryFont))
     }
 
+    func testRejectsCaretRectPinnedToScreenOrigin() {
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 0, y: 0, width: 0, height: 16)
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 1, y: -1, width: 40, height: 16)
+            )
+        )
+    }
+
+    func testRejectsNonFiniteOrEmptyCaretRects() {
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: CGFloat.nan, y: 500, width: 40, height: 16)
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 100, y: 500, width: 40, height: 0)
+            )
+        )
+    }
+
+    func testAcceptsOrdinaryAndNegativeOriginCaretRects() {
+        XCTAssertTrue(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 100, y: 500, width: 1, height: 20)
+            )
+        )
+        // Negative-origin displays are supported, so a caret on a monitor
+        // placed to the left of or below the primary display must not be
+        // mistaken for the near-origin stub rect.
+        XCTAssertTrue(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: -1_500, y: -300, width: 1, height: 20)
+            )
+        )
+    }
+
     func testPlacesWindowBelowCaretWhenThereIsRoom() {
         let frame = CandidateWindowPlacement.frame(
             anchor: CGRect(x: 100, y: 500, width: 1, height: 20),

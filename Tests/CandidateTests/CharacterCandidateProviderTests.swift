@@ -2,22 +2,29 @@ import Foundation
 import XCTest
 
 final class CharacterCandidateProviderTests: XCTestCase {
-    func testProviderWithoutLearningPreservesBundledDictionaryOrder() throws {
+    func testProviderWithoutLearningOrdersByUsageTierThenBundledDictionaryOrder() throws {
         let dictionary = try makeDictionary()
         let provider = CharacterCandidateProvider(dictionary: dictionary)
 
         let candidates = try provider.candidates(for: "ㄨㄛˇ")
 
-        XCTAssertEqual(
-            candidates.map(\.text),
-            try dictionary.candidateEntries(for: "ㄨㄛˇ")
-                .filter(\.isInGeneralCandidateRepertoire)
-                .map(\.text)
-        )
+        // No learning history yet, so ranking falls back to the MOE usage
+        // tier (0 = common … 2 = other), then the CNS source order within a
+        // tier — never the raw CNS order alone, which is what let a rare
+        // reading like ㄕㄨ's 疋 outrank everyday characters.
+        let expectedOrder = try dictionary.candidateEntries(for: "ㄨㄛˇ")
+            .filter(\.isInGeneralCandidateRepertoire)
+            .sorted { lhs, rhs in
+                lhs.usageTier != rhs.usageTier
+                    ? lhs.usageTier < rhs.usageTier
+                    : lhs.sourceOrder < rhs.sourceOrder
+            }
+            .map(\.text)
+        XCTAssertEqual(candidates.map(\.text), expectedOrder)
         XCTAssertEqual(candidates.first?.text, "我")
         XCTAssertTrue(candidates.allSatisfy { candidate in
             candidate.type == .character
-                && candidate.baseFrequency == nil
+                && candidate.baseFrequency != nil
                 && candidate.userFrequency == 0
                 && candidate.lastUsed == nil
                 && !candidate.pinned
@@ -141,7 +148,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
 
         XCTAssertEqual(
             try provider.candidates(for: "ㄇㄚ").map(\.text),
-            ["媽", "摩", "螞", "嬤"]
+            ["嗎", "媽", "摩", "螞", "嬤"]
         )
         XCTAssertTrue(
             try rareProvider.candidates(for: "ㄇㄚ").contains {

@@ -109,11 +109,17 @@ final class UserDataClearingTests: XCTestCase {
         )
         XCTAssertTrue(service.clearAllUserData())
 
+        let expectedOrder = try dictionary.candidateEntries(for: "ㄐㄧㄢˋ")
+            .filter(\.isInGeneralCandidateRepertoire)
+            .sorted { lhs, rhs in
+                lhs.usageTier != rhs.usageTier
+                    ? lhs.usageTier < rhs.usageTier
+                    : lhs.sourceOrder < rhs.sourceOrder
+            }
+            .map(\.text)
         XCTAssertEqual(
             try provider.candidates(for: "ㄐㄧㄢˋ").map(\.text),
-            try dictionary.candidateEntries(for: "ㄐㄧㄢˋ")
-                .filter(\.isInGeneralCandidateRepertoire)
-                .map(\.text)
+            expectedOrder
         )
     }
 
