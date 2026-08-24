@@ -307,20 +307,23 @@ enum CandidateWindowSizing {
 /// Validates a caret rectangle reported by the text client before it is
 /// trusted as a candidate-window anchor.
 ///
-/// Some web-backed clients (Electron/Chromium apps, canvas-rendered
-/// terminals) cannot determine a real caret position and report a rect
-/// pinned to the screen's own coordinate origin instead of failing
+/// Some web-backed clients cannot determine a real caret position and report
+/// a rect pinned to a screen or visible-work-area corner instead of failing
 /// outright. That rect is otherwise finite and non-empty, so a naive
-/// finiteness check accepts it — pinning the candidate window to the
-/// screen's lower-left corner no matter where the user is actually typing.
-/// A genuine caret is never rendered at that exact corner (window chrome,
-/// insets, and the menu bar all keep real text away from it), so a rect
-/// sitting within `originEpsilon` of `(0, 0)` is rejected as that known
-/// stub value rather than trusted.
+/// finiteness check accepts it and pins the candidate window far away from the
+/// editor. A genuine caret is not rendered inside the small corner band used
+/// by these sentinel rectangles because window chrome and content insets keep
+/// editable text away from it. Outlook can also return finite bit-pattern
+/// garbage tens of thousands of points beyond every display; requiring the
+/// anchor point to remain near a real display rejects that form as well.
 enum CandidateAnchorValidation {
     static let originEpsilon: CGFloat = 2
+    static let cornerTolerance: CGFloat = 32
 
-    static func isPlausibleCaretAnchor(_ rect: CGRect) -> Bool {
+    static func isPlausibleCaretAnchor(
+        _ rect: CGRect,
+        screenFrames: [CGRect] = []
+    ) -> Bool {
         guard rect.origin.x.isFinite,
               rect.origin.y.isFinite,
               rect.size.width.isFinite,
@@ -329,12 +332,65 @@ enum CandidateAnchorValidation {
             return false
         }
 
+        guard screenFrames.isEmpty || screenFrames.contains(where: {
+            containsAnchorPoint($0, rect: rect)
+        }) else {
+            return false
+        }
+
         return !isPinnedToScreenOrigin(rect)
+            && !screenFrames.contains(where: {
+                isPinnedToCorner(of: $0, rect: rect)
+            })
     }
 
     private static func isPinnedToScreenOrigin(_ rect: CGRect) -> Bool {
         abs(rect.origin.x) <= originEpsilon
             && abs(rect.origin.y) <= originEpsilon
+    }
+
+    private static func isPinnedToCorner(
+        of screenFrame: CGRect,
+        rect: CGRect
+    ) -> Bool {
+        let isAtHorizontalEdge = coordinatesAreNear(
+            rect.minX,
+            screenFrame.minX
+        ) || coordinatesAreNear(
+            rect.maxX,
+            screenFrame.maxX
+        )
+        let isAtVerticalEdge = coordinatesAreNear(
+            rect.minY,
+            screenFrame.minY
+        ) || coordinatesAreNear(
+            rect.maxY,
+            screenFrame.maxY
+        ) || coordinatesAreNear(
+            rect.minY,
+            screenFrame.maxY
+        )
+        return isAtHorizontalEdge && isAtVerticalEdge
+    }
+
+    private static func coordinatesAreNear(
+        _ lhs: CGFloat,
+        _ rhs: CGFloat
+    ) -> Bool {
+        abs(lhs - rhs) <= cornerTolerance
+    }
+
+    private static func containsAnchorPoint(
+        _ screenFrame: CGRect,
+        rect: CGRect
+    ) -> Bool {
+        let toleranceFrame = screenFrame.insetBy(
+            dx: -cornerTolerance,
+            dy: -cornerTolerance
+        )
+        return toleranceFrame.contains(
+            CGPoint(x: rect.midX, y: rect.midY)
+        )
     }
 }
 
@@ -373,6 +429,38 @@ enum CandidateAnchorRanges {
                 length: 0
             )
         ]
+    }
+
+    /// Chooses a real character near the desired caret for the client's
+    /// line-height fallback. A zero-length caret at a document boundary uses
+    /// the preceding character when available instead of querying character
+    /// zero, which is commonly the top-left of a web-backed document.
+    static func lineHeightCharacterIndex(
+        markedRange: NSRange,
+        localAnchorRange: NSRange,
+        selectedRange: NSRange
+    ) -> Int? {
+        let primaryRange = requestedRanges(
+            markedRange: markedRange,
+            localAnchorRange: localAnchorRange
+        ).first
+        let targetRange: NSRange
+        if let primaryRange {
+            targetRange = primaryRange
+        } else {
+            guard selectedRange.location != NSNotFound else {
+                return nil
+            }
+            targetRange = NSRange(
+                location: selectedRange.location,
+                length: selectedRange.length
+            )
+        }
+
+        if targetRange.length > 0 || targetRange.location == 0 {
+            return targetRange.location
+        }
+        return targetRange.location - 1
     }
 }
 

@@ -32,6 +32,66 @@ final class CandidateWindowGeometryTests: XCTestCase {
         )
     }
 
+    func testRejectsCaretRectsPinnedToScreenTopCorners() {
+        let screenFrame = CGRect(x: 0, y: 0, width: 2_816, height: 1_180)
+
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 0, y: 1_180, width: 40, height: 16),
+                screenFrames: [screenFrame]
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 0, y: 1_164, width: 40, height: 16),
+                screenFrames: [screenFrame]
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 2_776, y: 1_164, width: 40, height: 16),
+                screenFrames: [screenFrame]
+            )
+        )
+    }
+
+    func testRejectsCaretRectsPinnedToVisibleWorkAreaTopCorner() {
+        let screenFrame = CGRect(x: 0, y: 0, width: 1_408, height: 880)
+        let visibleFrame = CGRect(x: 0, y: 0, width: 1_408, height: 856)
+        let boundaryFrames = [screenFrame, visibleFrame]
+
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 0, y: 856, width: 40, height: 16),
+                screenFrames: boundaryFrames
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 0, y: 840, width: 40, height: 16),
+                screenFrames: boundaryFrames
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 1_368, y: 840, width: 40, height: 16),
+                screenFrames: boundaryFrames
+            )
+        )
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 12, y: 820, width: 1, height: 16),
+                screenFrames: boundaryFrames
+            )
+        )
+        XCTAssertTrue(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(x: 48, y: 820, width: 1, height: 16),
+                screenFrames: boundaryFrames
+            )
+        )
+    }
+
     func testRejectsNonFiniteOrEmptyCaretRects() {
         XCTAssertFalse(
             CandidateAnchorValidation.isPlausibleCaretAnchor(
@@ -45,10 +105,37 @@ final class CandidateWindowGeometryTests: XCTestCase {
         )
     }
 
+    func testRejectsFiniteCaretRectFarOutsideEveryScreen() {
+        let boundaryFrames = [
+            CGRect(x: 0, y: 0, width: 1_408, height: 880),
+            CGRect(x: 0, y: 0, width: 1_408, height: 856),
+        ]
+
+        // Outlook has returned this class of finite bit-pattern garbage. Its
+        // placement would otherwise select the nearest screen and clamp the
+        // candidate panel into that screen's top-left corner.
+        XCTAssertFalse(
+            CandidateAnchorValidation.isPlausibleCaretAnchor(
+                CGRect(
+                    x: 1.6080749353408704e-314,
+                    y: 21_684.365037375002,
+                    width: 1.6080749353408704e-314,
+                    height: 1
+                ),
+                screenFrames: boundaryFrames
+            )
+        )
+    }
+
     func testAcceptsOrdinaryAndNegativeOriginCaretRects() {
+        let screenFrames = [
+            CGRect(x: 0, y: 0, width: 1_920, height: 1_080),
+            CGRect(x: -1_920, y: -500, width: 1_920, height: 1_080),
+        ]
         XCTAssertTrue(
             CandidateAnchorValidation.isPlausibleCaretAnchor(
-                CGRect(x: 100, y: 500, width: 1, height: 20)
+                CGRect(x: 100, y: 500, width: 1, height: 20),
+                screenFrames: screenFrames
             )
         )
         // Negative-origin displays are supported, so a caret on a monitor
@@ -56,7 +143,8 @@ final class CandidateWindowGeometryTests: XCTestCase {
         // mistaken for the near-origin stub rect.
         XCTAssertTrue(
             CandidateAnchorValidation.isPlausibleCaretAnchor(
-                CGRect(x: -1_500, y: -300, width: 1, height: 20)
+                CGRect(x: -1_500, y: -300, width: 1, height: 20),
+                screenFrames: screenFrames
             )
         )
     }
@@ -80,6 +168,43 @@ final class CandidateWindowGeometryTests: XCTestCase {
                 markedRange: NSRange(location: 100, length: 11),
                 localAnchorRange: NSRange(location: 11, length: 1)
             ).isEmpty
+        )
+    }
+
+    func testLineHeightFallbackUsesCharacterBesideTheCurrentCaret() {
+        XCTAssertEqual(
+            CandidateAnchorRanges.lineHeightCharacterIndex(
+                markedRange: NSRange(location: 100, length: 11),
+                localAnchorRange: NSRange(location: 11, length: 0),
+                selectedRange: NSRange(location: 40, length: 0)
+            ),
+            110
+        )
+        XCTAssertEqual(
+            CandidateAnchorRanges.lineHeightCharacterIndex(
+                markedRange: NSRange(location: 100, length: 11),
+                localAnchorRange: NSRange(location: 8, length: 1),
+                selectedRange: NSRange(location: 40, length: 0)
+            ),
+            108
+        )
+    }
+
+    func testLineHeightFallbackUsesSelectionWhenMarkedRangeIsUnavailable() {
+        XCTAssertEqual(
+            CandidateAnchorRanges.lineHeightCharacterIndex(
+                markedRange: NSRange(location: NSNotFound, length: 0),
+                localAnchorRange: NSRange(location: 0, length: 0),
+                selectedRange: NSRange(location: 40, length: 0)
+            ),
+            39
+        )
+        XCTAssertNil(
+            CandidateAnchorRanges.lineHeightCharacterIndex(
+                markedRange: NSRange(location: NSNotFound, length: 0),
+                localAnchorRange: NSRange(location: 0, length: 0),
+                selectedRange: NSRange(location: NSNotFound, length: 0)
+            )
         )
     }
 

@@ -55,6 +55,13 @@ final class InputController: IMKInputController {
     /// unrelated text.
     private var isEditingRevisionPronunciation = false
     private var lastCandidateAnchor: NSRect?
+    /// A caret captured before the client receives its first marked text.
+    /// Some web-backed editors can report the insertion point correctly only
+    /// before composition begins, so keep it for the life of that composition.
+    private var compositionFallbackAnchor: NSRect?
+    /// The most recent click delivered for this client. This remains useful
+    /// when a web editor never exposes usable text geometry at all.
+    private var lastClientClickAnchor: NSRect?
     private var phraseSelectionPresentationID: UUID?
     private var savedPhraseConfirmation: SavedUserPhraseConfirmation?
     private var languageModeHUDToken: UUID?
@@ -127,6 +134,15 @@ final class InputController: IMKInputController {
             shiftToggleController.reset()
             hideSavedPhraseConfirmation()
             finishComposition(reason: .lifecycle, using: inputClient)
+            let clickLocation = NSEvent.mouseLocation
+            let clickAnchor = NSRect(
+                x: clickLocation.x,
+                y: clickLocation.y,
+                width: 1,
+                height: 1
+            )
+            lastClientClickAnchor = clickAnchor
+            logCandidateAnchor(clickAnchor, source: "recordClientClick")
             return false
         case .keyDown:
             shiftToggleController.noteKeyDown()
@@ -528,6 +544,7 @@ final class InputController: IMKInputController {
                 )
             }
         case .updateMarkedText:
+            captureCompositionFallbackAnchorIfNeeded(on: inputClient)
             compositionBuffer.clearSelection()
             updateMarkedComposition(on: inputClient)
         case .clearMarkedText:
@@ -671,6 +688,7 @@ final class InputController: IMKInputController {
     ) {
         isEditingRevisionPronunciation = false
         pendingInsertionAnchorUnitID = nil
+        compositionFallbackAnchor = nil
         if candidateSession != nil {
             clearCandidatePresentation()
         }
@@ -1388,6 +1406,7 @@ final class InputController: IMKInputController {
         discardCandidateState()
         _ = inputSession.discardComposition()
         compositionBuffer.discard()
+        compositionFallbackAnchor = nil
     }
 
     private func presentCandidates(
@@ -1421,15 +1440,20 @@ final class InputController: IMKInputController {
         // A non-empty revision/phrase range is the text that must remain
         // visible. Some web-backed clients report its trailing caret on a
         // different visual line, so query the actual glyph rectangle first.
-        for anchorRange in CandidateAnchorRanges.requestedRanges(
+        let requestedAnchorRanges = CandidateAnchorRanges.requestedRanges(
             markedRange: markedRange,
             localAnchorRange: localAnchorRange
-        ) {
+        )
+        jiukongDebugLog(
+            "candidateAnchor marked=\(NSStringFromRange(markedRange)) local=\(NSStringFromRange(localAnchorRange)) selected=\(NSStringFromRange(inputClient.selectedRange()))"
+        )
+        for anchorRange in requestedAnchorRanges {
             if let anchorRect = firstValidRect(
                 for: anchorRange,
                 inputClient: inputClient
             ) {
                 lastCandidateAnchor = anchorRect
+                logCandidateAnchor(anchorRect, source: "markedRange")
                 return anchorRect
             }
         }
@@ -1441,22 +1465,54 @@ final class InputController: IMKInputController {
                inputClient: inputClient
            ) {
             lastCandidateAnchor = caretRect
+            logCandidateAnchor(caretRect, source: "selectedRange")
             return caretRect
         }
 
-        var lineRect = NSRect.zero
-        _ = inputClient.attributes(
-            forCharacterIndex: 0,
-            lineHeightRectangle: &lineRect
-        )
-        lineRect = lineRect.standardized
-        if isValidAnchor(lineRect) {
-            lastCandidateAnchor = lineRect
-            return lineRect
+        if let selectionRect = visibleSelectionAnchor(on: inputClient) {
+            lastCandidateAnchor = selectionRect
+            logCandidateAnchor(selectionRect, source: "visibleSelection")
+            return selectionRect
+        }
+
+        if let lineCharacterIndex = CandidateAnchorRanges
+            .lineHeightCharacterIndex(
+                markedRange: markedRange,
+                localAnchorRange: localAnchorRange,
+                selectedRange: selectedRange
+            ) {
+            var lineRect = NSRect.zero
+            _ = inputClient.attributes(
+                forCharacterIndex: lineCharacterIndex,
+                lineHeightRectangle: &lineRect
+            )
+            lineRect = lineRect.standardized
+            jiukongDebugLog(
+                "candidateAnchor line index=\(lineCharacterIndex) rect=\(NSStringFromRect(lineRect)) valid=\(isValidAnchor(lineRect))"
+            )
+            if isValidAnchor(lineRect) {
+                lastCandidateAnchor = lineRect
+                logCandidateAnchor(lineRect, source: "lineHeight")
+                return lineRect
+            }
         }
 
         if let lastCandidateAnchor {
+            logCandidateAnchor(lastCandidateAnchor, source: "lastValid")
             return lastCandidateAnchor
+        }
+
+        if let compositionFallbackAnchor {
+            logCandidateAnchor(
+                compositionFallbackAnchor,
+                source: "precomposition"
+            )
+            return compositionFallbackAnchor
+        }
+
+        if let lastClientClickAnchor {
+            logCandidateAnchor(lastClientClickAnchor, source: "lastClientClick")
+            return lastClientClickAnchor
         }
 
         // No client-reported rect was trustworthy (see
@@ -1466,12 +1522,61 @@ final class InputController: IMKInputController {
         // matching `LanguageModeHUD`'s handling of the same class of
         // web-backed clients.
         let mouseLocation = NSEvent.mouseLocation
-        return NSRect(
+        let mouseAnchor = NSRect(
             x: mouseLocation.x,
             y: mouseLocation.y,
             width: 1,
             height: 1
         )
+        logCandidateAnchor(mouseAnchor, source: "currentMouse")
+        return mouseAnchor
+    }
+
+    private func captureCompositionFallbackAnchorIfNeeded(
+        on inputClient: any IMKTextInput
+    ) {
+        guard compositionFallbackAnchor == nil,
+              inputClient.markedRange().location == NSNotFound else {
+            return
+        }
+
+        if let selectionRect = visibleSelectionAnchor(on: inputClient) {
+            compositionFallbackAnchor = selectionRect
+            logCandidateAnchor(selectionRect, source: "captureVisibleSelection")
+            return
+        }
+
+        let selectedRange = inputClient.selectedRange()
+        if selectedRange.location != NSNotFound,
+           let caretRect = firstValidRect(
+               for: NSRange(location: selectedRange.location, length: 0),
+               inputClient: inputClient
+           ) {
+            compositionFallbackAnchor = caretRect
+            logCandidateAnchor(caretRect, source: "captureSelectedRange")
+            return
+        }
+
+        if let lastClientClickAnchor {
+            compositionFallbackAnchor = lastClientClickAnchor
+            logCandidateAnchor(lastClientClickAnchor, source: "captureLastClick")
+        }
+    }
+
+    /// macOS 14 added a selection rectangle specifically for positioning text
+    /// accessories. Prefer it when the client exposes it; older or proxied
+    /// clients continue through the established range queries.
+    private func visibleSelectionAnchor(
+        on inputClient: any IMKTextInput
+    ) -> NSRect? {
+        guard #available(macOS 14.0, *),
+              let textInputClient = inputClient as? any NSTextInputClient,
+              let rect = textInputClient.unionRectInVisibleSelectedRange?
+                  .standardized,
+              isValidAnchor(rect) else {
+            return nil
+        }
+        return rect
     }
 
     private func firstValidRect(
@@ -1483,11 +1588,31 @@ final class InputController: IMKInputController {
             forCharacterRange: characterRange,
             actualRange: &actualRange
         ).standardized
-        return isValidAnchor(rect) ? rect : nil
+        let isValid = isValidAnchor(rect)
+        jiukongDebugLog(
+            "candidateAnchor firstRect requested=\(NSStringFromRange(characterRange)) actual=\(NSStringFromRange(actualRange)) rect=\(NSStringFromRect(rect)) valid=\(isValid)"
+        )
+        return isValid ? rect : nil
+    }
+
+    private func logCandidateAnchor(_ rect: NSRect, source: String) {
+        jiukongDebugLog(
+            "candidateAnchor chose source=\(source) rect=\(NSStringFromRect(rect)) mouse=\(NSStringFromPoint(NSEvent.mouseLocation))"
+        )
     }
 
     private func isValidAnchor(_ rect: NSRect) -> Bool {
-        CandidateAnchorValidation.isPlausibleCaretAnchor(rect)
+        // Outlook's web-backed editor can return a non-empty stub rect at the
+        // top-left of `visibleFrame` (below the menu bar), while other clients
+        // use the full-screen corner. Validate against both coordinate-space
+        // boundaries before trusting the client-provided caret rectangle.
+        let screenBoundaryFrames = NSScreen.screens.flatMap {
+            [$0.frame, $0.visibleFrame]
+        }
+        return CandidateAnchorValidation.isPlausibleCaretAnchor(
+            rect,
+            screenFrames: screenBoundaryFrames
+        )
     }
 
     private func updateMarkedComposition(

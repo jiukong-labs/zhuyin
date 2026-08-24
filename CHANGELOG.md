@@ -108,6 +108,11 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Changed
 
+- Candidate anchors reject the corner-band and far-outside-screen rectangles
+  returned by some web-backed editors. Placement also tries the modern
+  visible-selection rect, preserves a valid caret captured before marked text
+  begins, and remembers the client's last click before falling back to the
+  current mouse position.
 - Duplicate Shift-down modifier events from web-backed editors no longer
   imitate a Shift release or switch languages before the key is released.
 - Positioned Shift-arrow phrase selection now treats the caret as a true text
