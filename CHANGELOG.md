@@ -108,6 +108,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Changed
 
+- Duplicate Shift-down modifier events from web-backed editors no longer
+  imitate a Shift release or switch languages before the key is released.
 - Positioned Shift-arrow phrase selection now treats the caret as a true text
   boundary, so Shift-Left selects readings before it and Shift-Right selects
   readings after it.

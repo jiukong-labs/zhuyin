@@ -5,6 +5,19 @@ enum ShiftKeySide: Hashable {
     case left
     case right
 
+    var deviceModifierFlag: NSEvent.ModifierFlags {
+        switch self {
+        case .left:
+            return NSEvent.ModifierFlags(
+                rawValue: UInt(NX_DEVICELSHIFTKEYMASK)
+            )
+        case .right:
+            return NSEvent.ModifierFlags(
+                rawValue: UInt(NX_DEVICERSHIFTKEYMASK)
+            )
+        }
+    }
+
     init?(keyCode: UInt16) {
         switch Int(keyCode) {
         case kVK_Shift:
@@ -41,6 +54,10 @@ struct ShiftToggleController {
         .function,
         .option
     ]
+    private static let deviceShiftModifiers: NSEvent.ModifierFlags = [
+        .init(rawValue: UInt(NX_DEVICELSHIFTKEYMASK)),
+        .init(rawValue: UInt(NX_DEVICERSHIFTKEYMASK))
+    ]
 
     private var pressedShiftKeys: Set<ShiftKeySide> = []
     private var toggleCandidate: ShiftKeySide?
@@ -72,6 +89,21 @@ struct ShiftToggleController {
             .isEmpty
 
         if pressedShiftKeys.contains(side) {
+            // Some web-backed clients can deliver the same Shift-down change
+            // more than once while the key is still physically held. Do not
+            // mistake that duplicate for Shift-up and toggle before a letter
+            // arrives. Device-specific flags distinguish the two Shift keys;
+            // the generic fallback covers clients that strip those bits.
+            if isStillPressed(
+                side,
+                modifierFlags: modifierFlags
+            ) {
+                if hasDisallowedModifier {
+                    wasInterrupted = true
+                }
+                return false
+            }
+
             if hasDisallowedModifier {
                 wasInterrupted = true
             }
@@ -136,5 +168,22 @@ struct ShiftToggleController {
         toggleCandidate = nil
         wasInterrupted = false
         keyDownEventCountAtPress = nil
+    }
+
+    private func isStillPressed(
+        _ side: ShiftKeySide,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> Bool {
+        let deviceShiftFlags = modifierFlags.intersection(
+            Self.deviceShiftModifiers
+        )
+        if !deviceShiftFlags.isEmpty {
+            return deviceShiftFlags.contains(side.deviceModifierFlag)
+        }
+
+        // With only the device-independent Shift flag, a single tracked key
+        // is still down. If both sides are tracked, an event for one side can
+        // be its release while the other side keeps `.shift` set.
+        return modifierFlags.contains(.shift) && pressedShiftKeys.count == 1
     }
 }

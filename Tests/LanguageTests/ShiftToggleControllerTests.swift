@@ -25,6 +25,50 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(release(.left, on: &controller))
     }
 
+    func testDuplicateShiftDownDoesNotToggleBeforePhysicalRelease() {
+        for side: ShiftKeySide in [.left, .right] {
+            var controller = ShiftToggleController()
+
+            XCTAssertFalse(press(side, on: &controller))
+            XCTAssertFalse(press(side, on: &controller))
+            XCTAssertTrue(controller.isTrackingShift)
+            XCTAssertTrue(release(side, on: &controller))
+        }
+    }
+
+    func testDuplicateShiftDownWithoutDeviceFlagsIsAlsoIgnored() {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: .shift
+            )
+        )
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: .shift
+            )
+        )
+        XCTAssertTrue(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: []
+            )
+        )
+    }
+
+    func testDuplicateShiftDownFollowedByLetterRemainsAChord() {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(press(.left, on: &controller))
+        XCTAssertFalse(press(.left, on: &controller))
+        controller.noteKeyDown()
+
+        XCTAssertFalse(release(.left, on: &controller))
+    }
+
     func testShiftModifiedArrowDoesNotToggle() {
         var controller = ShiftToggleController()
 
@@ -293,7 +337,7 @@ final class ShiftToggleControllerTests: XCTestCase {
     ) -> Bool {
         controller.handleFlagsChanged(
             keyCode: keyCode(for: side),
-            modifierFlags: .shift
+            modifierFlags: [.shift, side.deviceModifierFlag]
         )
     }
 
@@ -303,9 +347,16 @@ final class ShiftToggleControllerTests: XCTestCase {
         preference: ShiftKeyPreference = .both,
         on controller: inout ShiftToggleController
     ) -> Bool {
-        controller.handleFlagsChanged(
+        let heldFlags: NSEvent.ModifierFlags
+        if stillHoldingShift {
+            let otherSide: ShiftKeySide = side == .left ? .right : .left
+            heldFlags = [.shift, otherSide.deviceModifierFlag]
+        } else {
+            heldFlags = []
+        }
+        return controller.handleFlagsChanged(
             keyCode: keyCode(for: side),
-            modifierFlags: stillHoldingShift ? .shift : [],
+            modifierFlags: heldFlags,
             preference: preference
         )
     }
