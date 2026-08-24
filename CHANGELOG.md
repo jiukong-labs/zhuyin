@@ -6,6 +6,10 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- User-recorded phrase candidates now show a clickable `×` that deletes that
+  exact text-and-pronunciation record and refreshes the open candidate panel.
+  The delete control is visually separated from the phrase; built-in phrases
+  and individual characters remain non-deletable there.
 - Native macOS InputMethodKit application skeleton.
 - Local build, test, install, registration, and uninstall workflow.
 - Milestone 1 architecture and installation documentation.
@@ -108,6 +112,11 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Changed
 
+- Standalone Shift updates the persistent cursor indicator without showing a
+  second short-lived boxed `中` or `A` HUD.
+- Down Arrow at a revision caret positioned before the first composition
+  character now opens candidates for that first character; other caret
+  positions continue to target the reading immediately to the left.
 - Candidate anchors reject the corner-band and far-outside-screen rectangles
   returned by some web-backed editors. Placement also tries the modern
   visible-selection rect, preserves a valid caret captured before marked text

@@ -191,7 +191,8 @@ final class CharacterCandidateProvider {
                     baseFrequency: 0,
                     userFrequency: record.selectionCount,
                     lastUsed: record.lastUsedAt,
-                    pinned: record.pinned
+                    pinned: record.pinned,
+                    isUserPhrase: true
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue

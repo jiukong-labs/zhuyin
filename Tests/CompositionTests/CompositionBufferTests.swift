@@ -511,7 +511,7 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.revisionFocus(for: second.id)?.locatingDisplayText,
-            "定位 2／2：試　ㄕˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選游標前字"
+            "定位 2／2：試　ㄕˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選字"
         )
         XCTAssertEqual(
             buffer.revisionFocus(for: second.id)?.choosingDisplayText,
@@ -664,10 +664,44 @@ final class CompositionBufferTests: XCTestCase {
             )
         )
 
+        XCTAssertEqual(
+            buffer.revisionFocusForCandidate(
+                atCaretFollowing: mirror.id
+            )?.unitID,
+            route.id
+        )
+        XCTAssertEqual(
+            buffer.revisionFocusForCandidate(
+                atCaretFollowing: nil
+            )?.unitID,
+            mirror.id
+        )
+        XCTAssertEqual(
+            buffer.revisionFocusForCandidate(
+                atCaretFollowing: route.id
+            )?.unitID,
+            route.id
+        )
+
         XCTAssertNotNil(buffer.appendPunctuation("，"))
         XCTAssertNil(
             buffer.revisionFocus(
                 immediatelyBeforeCaretAt: nil
+            )
+        )
+    }
+
+    func testRevisionCandidateDoesNotCrossPunctuationAtAnInteriorCaret() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "如", pronunciation: "ㄖㄨˊ"))
+        XCTAssertNotNil(buffer.appendPunctuation("，"))
+        let picture = try XCTUnwrap(
+            buffer.append(text: "圖", pronunciation: "ㄊㄨˊ")
+        )
+
+        XCTAssertNil(
+            buffer.revisionFocusForCandidate(
+                atCaretFollowing: picture.id
             )
         )
     }

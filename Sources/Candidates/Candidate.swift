@@ -36,6 +36,10 @@ struct Candidate: Identifiable, Equatable, Hashable {
     let userFrequency: Int64
     let lastUsed: Date?
     let pinned: Bool
+    /// True only when this exact phrase identity came from the user's phrase
+    /// store. The candidate window uses it to expose an exact delete action;
+    /// built-in phrases and character candidates are never deletable there.
+    let isUserPhrase: Bool
 
     init(
         text: String,
@@ -46,7 +50,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
         baseFrequency: Double? = nil,
         userFrequency: Int64 = 0,
         lastUsed: Date? = nil,
-        pinned: Bool = false
+        pinned: Bool = false,
+        isUserPhrase: Bool = false
     ) {
         self.init(
             text: text,
@@ -57,7 +62,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
             baseFrequency: baseFrequency,
             userFrequency: userFrequency,
             lastUsed: lastUsed,
-            pinned: pinned
+            pinned: pinned,
+            isUserPhrase: isUserPhrase
         )
     }
 
@@ -70,7 +76,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
         baseFrequency: Double? = nil,
         userFrequency: Int64 = 0,
         lastUsed: Date? = nil,
-        pinned: Bool = false
+        pinned: Bool = false,
+        isUserPhrase: Bool = false
     ) {
         self.id = CandidateID(
             text: text,
@@ -86,6 +93,7 @@ struct Candidate: Identifiable, Equatable, Hashable {
         self.userFrequency = userFrequency
         self.lastUsed = lastUsed
         self.pinned = pinned
+        self.isUserPhrase = type == .phrase && isUserPhrase
     }
 
     var pronunciation: String {

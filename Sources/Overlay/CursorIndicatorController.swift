@@ -7,9 +7,9 @@ private final class CursorIndicatorPanel: NSPanel {
 
 /// A persistent, cursor-following indicator for the current language mode.
 ///
-/// This is the counterpart of the transient `LanguageModeHUD`: the HUD answers
-/// "what did that Shift press do", while this answers "what mode am I in right
-/// now" without the user having to type anything. Only one exists per process.
+/// This answers "what mode am I in right now" without the user having to type
+/// anything, including immediately after a Shift toggle. Only one exists per
+/// process.
 /// Its visibility is driven by `SystemInputSourceObserver`, which is the
 /// process-wide source of truth for whether Jiukong is the selected system
 /// input source: the indicator shows whenever that is true, regardless of

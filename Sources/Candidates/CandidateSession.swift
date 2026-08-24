@@ -34,7 +34,7 @@ struct CandidateSession: Equatable {
     /// This ordered value snapshot deliberately does not consult the learning
     /// store again. Learning recorded while a panel is open therefore affects
     /// the next lookup without moving the choices under the user's cursor.
-    let candidates: [Candidate]
+    private(set) var candidates: [Candidate]
     private(set) var highlightedIndex = 0
     private(set) var presentationMode: CandidatePresentationMode = .compact
     private var isRevisionChoosing = false
@@ -45,10 +45,7 @@ struct CandidateSession: Equatable {
         candidates: [Candidate],
         revisionFocus: CompositionRevisionFocus? = nil
     ) {
-        var seen: Set<CandidateID> = []
-        let uniqueCandidates = candidates.filter {
-            seen.insert($0.id).inserted
-        }
+        let uniqueCandidates = Self.uniqueCandidates(candidates)
         guard !pronunciation.isEmpty, !uniqueCandidates.isEmpty else {
             return nil
         }
@@ -57,6 +54,26 @@ struct CandidateSession: Equatable {
         self.pronunciation = pronunciation
         self.candidates = uniqueCandidates
         self.revisionFocus = revisionFocus
+    }
+
+    /// Replaces a live candidate snapshot after an explicit user-phrase
+    /// deletion. The highlighted identity stays selected when it still
+    /// exists; otherwise the nearest surviving slot is used. Presentation and
+    /// revision modes are intentionally preserved.
+    @discardableResult
+    mutating func replaceCandidates(_ replacements: [Candidate]) -> Bool {
+        let uniqueReplacements = Self.uniqueCandidates(replacements)
+        guard !uniqueReplacements.isEmpty else {
+            return false
+        }
+
+        let previousHighlightedID = highlightedCandidate.id
+        let previousHighlightedIndex = highlightedIndex
+        candidates = uniqueReplacements
+        highlightedIndex = candidates.firstIndex(where: {
+            $0.id == previousHighlightedID
+        }) ?? min(previousHighlightedIndex, candidates.index(before: candidates.endIndex))
+        return true
     }
 
     var preferredCandidate: Candidate {
@@ -222,6 +239,15 @@ struct CandidateSession: Equatable {
 
     func validatedSelection(_ candidateID: CandidateID) -> Candidate? {
         candidates.first(where: { $0.id == candidateID })
+    }
+
+    private static func uniqueCandidates(
+        _ candidates: [Candidate]
+    ) -> [Candidate] {
+        var seen: Set<CandidateID> = []
+        return candidates.filter {
+            seen.insert($0.id).inserted
+        }
     }
 }
 

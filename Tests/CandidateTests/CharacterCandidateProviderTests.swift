@@ -257,12 +257,15 @@ final class CharacterCandidateProviderTests: XCTestCase {
 
         XCTAssertEqual(Array(candidates.prefix(2).map(\.text)), ["久空輸入", "輸入"])
         XCTAssertEqual(Array(candidates.prefix(2).map(\.type)), [.phrase, .phrase])
+        XCTAssertTrue(candidates.prefix(2).allSatisfy(\.isUserPhrase))
         XCTAssertEqual(candidates.first?.baseFrequency, 0)
         XCTAssertEqual(
             learning.requestedPhraseReadings,
             [longReadings, shortReadings]
         )
-        XCTAssertTrue(candidates.dropFirst(2).contains { $0.type == .character })
+        XCTAssertTrue(candidates.dropFirst(2).contains {
+            $0.type == .character && !$0.isUserPhrase
+        })
     }
 
     func testFirstPartyPhraseReplacesWrongAutomaticCharacterForTest() throws {
@@ -336,6 +339,10 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(
             Array(candidates.filter { $0.type == .phrase }.prefix(2).map(\.text)),
             ["繁體中文", "中文"]
+        )
+        XCTAssertTrue(
+            candidates.filter { $0.type == .phrase }
+                .allSatisfy { !$0.isUserPhrase }
         )
     }
 

@@ -38,6 +38,12 @@ protocol CandidateWindowPresenterDelegate: AnyObject {
 
     func candidateWindowPresenter(
         _ presenter: CandidateWindowPresenter,
+        requestsDeletionOfCandidateAt index: Int,
+        sessionID: UUID
+    )
+
+    func candidateWindowPresenter(
+        _ presenter: CandidateWindowPresenter,
         requestsDeletionOf confirmation: SavedUserPhraseConfirmation
     )
 }
@@ -79,11 +85,52 @@ private final class SavedPhraseDeleteButton: NSButton {
     }
 }
 
+private final class CandidatePhraseDeleteButton: NSButton {
+    let candidateIndex: Int
+    let sessionID: UUID
+
+    init(candidateIndex: Int, sessionID: UUID) {
+        self.candidateIndex = candidateIndex
+        self.sessionID = sessionID
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError(
+            "CandidatePhraseDeleteButton does not support NSCoder initialization."
+        )
+    }
+
+    override var acceptsFirstResponder: Bool { false }
+    override var needsPanelToBecomeKey: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+}
+
+private enum CandidateWindowPresentationText {
+    /// Nonbreaking spaces keep a visible gap between the phrase and its delete
+    /// control. The ideographic space reserves the slot occupied by the
+    /// overlaid button, keeping the complete phrase-gap-× group centered.
+    static let deletionGap = "\u{00A0}\u{00A0}"
+    static let deletionSlot = "　"
+
+    static func sizingText(for candidate: Candidate) -> String {
+        candidate.text
+            + (candidate.isUserPhrase ? deletionGap + deletionSlot : "")
+    }
+}
+
 private final class CandidateGridView: NSView {
     var onChoose: ((UUID, Int) -> Void)?
+    var onDelete: ((UUID, Int) -> Void)?
 
     private var buttons: [Int: CandidateButton] = [:]
+    private var deleteButtons: [Int: CandidatePhraseDeleteButton] = [:]
     private var representedIndices: [Int] = []
+    private var representedSizingTexts: [String] = []
     private var representedSessionID: UUID?
     private var representedMode: CandidatePresentationMode?
 
@@ -97,12 +144,19 @@ private final class CandidateGridView: NSView {
         case .expanded:
             indices = Array(session.candidates.indices)
         }
+        let sizingTexts = indices.compactMap {
+            session.candidate(at: $0).map(
+                CandidateWindowPresentationText.sizingText(for:)
+            )
+        }
 
         if representedSessionID != session.id
             || representedMode != session.presentationMode
-            || representedIndices != indices {
+            || representedIndices != indices
+            || representedSizingTexts != sizingTexts {
             rebuild(
                 indices: indices,
+                sizingTexts: sizingTexts,
                 session: session
             )
         }
@@ -118,25 +172,32 @@ private final class CandidateGridView: NSView {
 
     func clear() {
         buttons.values.forEach { $0.removeFromSuperview() }
+        deleteButtons.values.forEach { $0.removeFromSuperview() }
         buttons.removeAll()
+        deleteButtons.removeAll()
         representedIndices.removeAll()
+        representedSizingTexts.removeAll()
         representedSessionID = nil
         representedMode = nil
         setFrameSize(.zero)
     }
 
-    private func rebuild(indices: [Int], session: CandidateSession) {
+    private func rebuild(
+        indices: [Int],
+        sizingTexts: [String],
+        session: CandidateSession
+    ) {
         buttons.values.forEach { $0.removeFromSuperview() }
+        deleteButtons.values.forEach { $0.removeFromSuperview() }
         buttons.removeAll()
+        deleteButtons.removeAll()
         representedIndices = indices
+        representedSizingTexts = sizingTexts
         representedSessionID = session.id
         representedMode = session.presentationMode
 
-        let candidateTexts = indices.compactMap {
-            session.candidate(at: $0)?.text
-        }
         let metrics = CandidateWindowSizing.gridMetrics(
-            candidateTexts: candidateTexts,
+            candidateTexts: sizingTexts,
             mode: session.presentationMode
         )
         setFrameSize(metrics.documentSize)
@@ -159,6 +220,22 @@ private final class CandidateGridView: NSView {
             button.layer?.cornerRadius = 7
             addSubview(button)
             buttons[candidateIndex] = button
+
+            guard session.candidate(at: candidateIndex)?.isUserPhrase == true
+            else {
+                continue
+            }
+            let deleteButton = CandidatePhraseDeleteButton(
+                candidateIndex: candidateIndex,
+                sessionID: session.id
+            )
+            deleteButton.target = self
+            deleteButton.action = #selector(candidateDeleteClicked(_:))
+            deleteButton.isBordered = false
+            deleteButton.focusRingType = .none
+            deleteButton.alignment = .center
+            addSubview(deleteButton)
+            deleteButtons[candidateIndex] = deleteButton
         }
     }
 
@@ -178,10 +255,13 @@ private final class CandidateGridView: NSView {
             let foregroundColor: NSColor = isSelected
                 ? .alternateSelectedControlTextColor
                 : .labelColor
+            let font = NSFont.systemFont(ofSize: 18, weight: .medium)
+            let titleText = selectionKey
+                + CandidateWindowPresentationText.sizingText(for: candidate)
             button.attributedTitle = NSAttributedString(
-                string: selectionKey + candidate.text,
+                string: titleText,
                 attributes: [
-                    .font: NSFont.systemFont(ofSize: 18, weight: .medium),
+                    .font: font,
                     .foregroundColor: foregroundColor
                 ]
             )
@@ -197,6 +277,37 @@ private final class CandidateGridView: NSView {
                 "候選 \(candidateIndex + 1)／\(session.candidates.count)，\(candidate.text)"
             )
             button.setAccessibilityValue(isSelected ? "已選取" : nil)
+
+            if let deleteButton = deleteButtons[candidateIndex] {
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: font,
+                    .foregroundColor: foregroundColor
+                ]
+                deleteButton.attributedTitle = NSAttributedString(
+                    string: "×",
+                    attributes: attributes
+                )
+                let titleWidth = (titleText as NSString).size(
+                    withAttributes: attributes
+                ).width
+                let reservedWidth = (CandidateWindowPresentationText
+                    .deletionSlot as NSString).size(
+                    withAttributes: attributes
+                ).width
+                let deleteWidth = max(24, reservedWidth)
+                let titleMaxX = button.frame.midX + (titleWidth / 2)
+                deleteButton.frame = NSRect(
+                    x: titleMaxX - reservedWidth
+                        - ((deleteWidth - reservedWidth) / 2),
+                    y: button.frame.minY,
+                    width: deleteWidth,
+                    height: button.frame.height
+                )
+                deleteButton.toolTip = "刪除使用者詞「\(candidate.text)」"
+                deleteButton.setAccessibilityLabel(
+                    "刪除使用者詞「\(candidate.text)」"
+                )
+            }
         }
 
         NSAccessibility.post(
@@ -207,6 +318,12 @@ private final class CandidateGridView: NSView {
 
     @objc private func candidateClicked(_ sender: CandidateButton) {
         onChoose?(sender.sessionID, sender.candidateIndex)
+    }
+
+    @objc private func candidateDeleteClicked(
+        _ sender: CandidatePhraseDeleteButton
+    ) {
+        onDelete?(sender.sessionID, sender.candidateIndex)
     }
 }
 
@@ -315,6 +432,18 @@ final class CandidateWindowPresenter {
                 sessionID: sessionID
             )
         }
+        gridView.onDelete = { [weak self] sessionID, candidateIndex in
+            guard let self,
+                  self.presentedSessionID == sessionID else {
+                return
+            }
+
+            self.delegate?.candidateWindowPresenter(
+                self,
+                requestsDeletionOfCandidateAt: candidateIndex,
+                sessionID: sessionID
+            )
+        }
 
     }
 
@@ -354,7 +483,9 @@ final class CandidateWindowPresenter {
             visibleIndices = Array(session.candidates.indices)
         }
         let visibleCandidateTexts = visibleIndices.compactMap {
-            session.candidate(at: $0)?.text
+            session.candidate(at: $0).map(
+                CandidateWindowPresentationText.sizingText(for:)
+            )
         }
         let candidateViewportSize = CandidateWindowSizing.viewportSize(
             candidateTexts: visibleCandidateTexts,

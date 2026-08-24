@@ -65,6 +65,31 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.candidates, [character, phrase])
     }
 
+    func testReplacingCandidatesPreservesModeAndHighlightedIdentity() throws {
+        let first = makeCandidate("甲", pronunciation: "ㄐㄧㄚˇ")
+        let second = makeCandidate("假", pronunciation: "ㄐㄧㄚˇ")
+        let third = makeCandidate("賈", pronunciation: "ㄐㄧㄚˇ")
+        var session = try XCTUnwrap(
+            CandidateSession(
+                pronunciation: "ㄐㄧㄚˇ",
+                candidates: [first, second, third]
+            )
+        )
+        XCTAssertTrue(session.expand())
+        session.updateHighlightedCandidate(second.id)
+
+        XCTAssertTrue(session.replaceCandidates([second, third]))
+        XCTAssertEqual(session.highlightedCandidate, second)
+        XCTAssertEqual(session.highlightedIndex, 0)
+        XCTAssertEqual(session.presentationMode, .expanded)
+
+        XCTAssertTrue(session.replaceCandidates([third]))
+        XCTAssertEqual(session.highlightedCandidate, third)
+        XCTAssertEqual(session.highlightedIndex, 0)
+        XCTAssertFalse(session.replaceCandidates([]))
+        XCTAssertEqual(session.candidates, [third])
+    }
+
     func testRevisionSessionReportsLocatingAndChoosingModes() throws {
         let unitID = UUID()
         let focus = CompositionRevisionFocus(
@@ -88,7 +113,7 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertFalse(session.presentsCandidatePanel)
         XCTAssertEqual(
             session.revisionDisplayText,
-            "定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選游標前字"
+            "定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選字"
         )
 
         XCTAssertTrue(session.beginRevisionChoosing())

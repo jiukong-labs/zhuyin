@@ -84,8 +84,8 @@ struct CompositionPhraseSelectionStatus: Equatable {
     }
 }
 
-/// A stable, user-visible description of the reading unit immediately before
-/// the positioned caret and currently offered for candidate revision.
+/// A stable, user-visible description of the reading unit currently offered
+/// for candidate revision.
 struct CompositionRevisionFocus: Equatable {
     let unitID: UUID
     let text: String
@@ -95,7 +95,7 @@ struct CompositionRevisionFocus: Equatable {
     let readingCount: Int
 
     var locatingDisplayText: String {
-        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選游標前字"
+        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選字"
     }
 
     var choosingDisplayText: String {
@@ -275,6 +275,27 @@ struct CompositionBuffer: Equatable {
             return nil
         }
         return revisionFocus(for: unitID)
+    }
+
+    /// Resolves the reading revised by Down Arrow at a positioned caret.
+    /// Ordinarily this is the reading immediately before the caret. At the
+    /// absolute text start there is no left-hand reading, so the first reading
+    /// on the right is the only useful target.
+    func revisionFocusForCandidate(
+        atCaretFollowing followingUnitID: UUID?
+    ) -> CompositionRevisionFocus? {
+        if let precedingFocus = revisionFocus(
+            immediatelyBeforeCaretAt: followingUnitID
+        ) {
+            return precedingFocus
+        }
+
+        guard let followingUnitID,
+              units.first?.id == followingUnitID,
+              units.first?.kind == .reading else {
+            return nil
+        }
+        return revisionFocus(for: followingUnitID)
     }
 
     /// Returns the unit immediately following `unitID`, including punctuation.

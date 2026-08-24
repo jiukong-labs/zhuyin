@@ -22,7 +22,6 @@ final class InputController: IMKInputController {
 
     private let candidateProvider: CharacterCandidateProvider?
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
-    private lazy var languageModeHUD = LanguageModeHUD.shared
     private lazy var cursorIndicator = CursorIndicatorController.shared
     private let languageModeController = LanguageModeController.shared
     private let preferences = PreferencesController.shared
@@ -64,7 +63,6 @@ final class InputController: IMKInputController {
     private var lastClientClickAnchor: NSRect?
     private var phraseSelectionPresentationID: UUID?
     private var savedPhraseConfirmation: SavedUserPhraseConfirmation?
-    private var languageModeHUDToken: UUID?
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         do {
@@ -418,12 +416,6 @@ final class InputController: IMKInputController {
         // indicator preferences.
         let mode = languageModeController.toggleInternally()
         cursorIndicator.update(mode: mode)
-
-        languageModeHUDToken = languageModeHUD.show(
-            mode: mode,
-            indicator: preferences.current.cursorIndicator,
-            clientWindowLevel: inputClient.windowLevel()
-        )
         return false
     }
 
@@ -497,10 +489,6 @@ final class InputController: IMKInputController {
     private func resetTransientInputState() {
         shiftToggleController.reset()
         hideSavedPhraseConfirmation()
-        if let languageModeHUDToken {
-            languageModeHUD.hide(token: languageModeHUDToken)
-            self.languageModeHUDToken = nil
-        }
     }
 
     private func inputClient(from sender: Any?) -> (any IMKTextInput)? {
@@ -739,8 +727,8 @@ final class InputController: IMKInputController {
         isEditingRevisionPronunciation = false
         pendingInsertionAnchorUnitID = nil
         revisionCandidateUnitID = nil
-        guard let focus = compositionBuffer.revisionFocus(
-            immediatelyBeforeCaretAt: caretFollowingUnitID
+        guard let focus = compositionBuffer.revisionFocusForCandidate(
+            atCaretFollowing: caretFollowingUnitID
         ),
               let unit = compositionBuffer.unit(withID: focus.unitID),
               unit.kind == .reading else {
@@ -1519,8 +1507,7 @@ final class InputController: IMKInputController {
         // `CandidateAnchorValidation`) and there is no prior anchor to
         // reuse. Anchoring near the mouse keeps the panel close to where
         // the user is actually looking instead of a fixed screen position,
-        // matching `LanguageModeHUD`'s handling of the same class of
-        // web-backed clients.
+        // matching the cursor indicator's handling of web-backed clients.
         let mouseLocation = NSEvent.mouseLocation
         let mouseAnchor = NSRect(
             x: mouseLocation.x,
@@ -1721,6 +1708,59 @@ extension InputController: CandidateWindowPresenterDelegate {
 
         _ = acceptCandidate(candidate, reason: .mouse)
         updateMarkedComposition(on: inputClient)
+    }
+
+    func candidateWindowPresenter(
+        _ presenter: CandidateWindowPresenter,
+        requestsDeletionOfCandidateAt index: Int,
+        sessionID: UUID
+    ) {
+        guard var session = candidateSession,
+              session.id == sessionID,
+              let candidate = session.candidate(at: index),
+              candidate.isUserPhrase,
+              let candidateProvider,
+              let inputClient = inputClient(from: client()),
+              candidateProvider.deleteUserPhrase(
+                  phrase: candidate.text,
+                  pronunciationSequence: candidate.pronunciationSequence
+              ) else {
+            return
+        }
+
+        do {
+            let phraseQueries = session.revisionFocus == nil
+                ? phraseLookupQueries(appending: session.pronunciation)
+                : []
+            let refreshedCandidates = try candidateProvider.candidates(
+                for: session.pronunciation,
+                phraseQueries: phraseQueries
+            )
+            if session.replaceCandidates(refreshedCandidates) {
+                candidateSession = session
+                updateMarkedComposition(on: inputClient)
+                presentCandidates(session, inputClient: inputClient)
+                return
+            }
+        } catch {
+            NSLog(
+                "Jiukong Zhuyin could not refresh candidates after deleting a user phrase: %@",
+                error.localizedDescription
+            )
+        }
+
+        let remainingCandidates = session.candidates.filter {
+            $0.id != candidate.id
+        }
+        if session.replaceCandidates(remainingCandidates) {
+            candidateSession = session
+            updateMarkedComposition(on: inputClient)
+            presentCandidates(session, inputClient: inputClient)
+        } else {
+            let pronunciation = session.pronunciation
+            clearCandidatePresentation()
+            appendLiteralReading(pronunciation, to: inputClient)
+        }
     }
 
     func candidateWindowPresenter(
