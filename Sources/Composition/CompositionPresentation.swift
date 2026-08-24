@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 /// A pure marked-text snapshot ready for `IMKTextInput.setMarkedText`.
 ///
@@ -21,16 +22,34 @@ struct CompositionPresentation: Equatable {
     static func make(
         buffer: CompositionBuffer,
         activeSuffix: String?,
-        focusedUnitID: UUID? = nil
+        focusedUnitID: UUID? = nil,
+        insertionAnchorUnitID: UUID? = nil
     ) -> CompositionPresentation? {
         let suffix = activeSuffix ?? ""
-        let text = buffer.text + suffix
+        let anchorIndex = insertionAnchorUnitID.flatMap { anchorID in
+            buffer.units.firstIndex(where: { $0.id == anchorID })
+        }
+        let prefix: String
+        let trailingText: String
+        if let anchorIndex {
+            prefix = buffer.units[..<anchorIndex].map(\.text).joined()
+            trailingText = buffer.units[anchorIndex...].map(\.text).joined()
+        } else {
+            prefix = buffer.text
+            trailingText = ""
+        }
+        let text = prefix + suffix + trailingText
         guard !text.isEmpty else {
             return nil
         }
 
         let selectionRange: NSRange
-        if suffix.isEmpty {
+        if insertionAnchorUnitID != nil {
+            selectionRange = NSRange(
+                location: prefix.utf16.count + suffix.utf16.count,
+                length: 0
+            )
+        } else if suffix.isEmpty {
             selectionRange = buffer.markedSelectionRange(
                 focusedUnitID: focusedUnitID
             )
@@ -82,20 +101,43 @@ struct CompositionPresentation: Equatable {
     }
 }
 
-/// Builds marked text with an explicit visual cue for Left/Right revision.
-/// The selection range remains authoritative for the client, while explicit
-/// attributes provide an additional cue in clients that honor marked-text
-/// styling.
+/// Builds marked text with an explicit visual cue for phrase selection.
+/// Revision positioning requests a collapsed native selection range instead,
+/// allowing clients that honor it to draw their normal blinking text cursor
+/// without a colored fill.
 enum CompositionMarkedTextRenderer {
-    enum HighlightStyle {
-        case revisionFocus
-        case phraseSelection
+    /// Suppresses the client's default marked-text fill while a revision caret
+    /// is positioned. Clients that accept attributed marked text retain their
+    /// native insertion caret without painting the whole composition as a
+    /// selected block. The text-input client remains the final renderer.
+    static func makeUnhighlighted(
+        presentation: CompositionPresentation
+    ) -> NSAttributedString {
+        let markedText = NSMutableAttributedString(
+            string: presentation.text
+        )
+        guard markedText.length > 0 else {
+            return markedText
+        }
+        markedText.addAttributes(
+            [
+                .backgroundColor: NSColor.clear,
+                // Zero denotes an ordinary clause segment, which clients may
+                // still paint as an active marked range. Carbon's explicit
+                // no-highlight style leaves only the collapsed selection
+                // range for the client to render as its blinking caret.
+                .markedClauseSegment: Int(kTSMHiliteNoHilite),
+                .underlineColor: NSColor.clear,
+                .underlineStyle: 0,
+            ],
+            range: NSRange(location: 0, length: markedText.length)
+        )
+        return markedText
     }
 
     static func make(
         presentation: CompositionPresentation,
-        highlightedRange: NSRange?,
-        style: HighlightStyle = .revisionFocus
+        highlightedRange: NSRange?
     ) -> NSAttributedString {
         let markedText = NSMutableAttributedString(
             string: presentation.text
@@ -109,24 +151,13 @@ enum CompositionMarkedTextRenderer {
             return markedText
         }
 
-        let attributes: [NSAttributedString.Key: Any]
-        switch style {
-        case .revisionFocus:
-            attributes = [
-                .backgroundColor: NSColor.systemYellow.withAlphaComponent(0.32),
-                .underlineColor: NSColor.systemOrange,
-                .underlineStyle: NSUnderlineStyle.thick.rawValue,
-            ]
-        case .phraseSelection:
-            attributes = [
+        markedText.addAttributes(
+            [
                 .backgroundColor: NSColor.selectedTextBackgroundColor,
                 .foregroundColor: NSColor.selectedTextColor,
                 .underlineColor: NSColor.systemGreen,
                 .underlineStyle: NSUnderlineStyle.thick.rawValue,
-            ]
-        }
-        markedText.addAttributes(
-            attributes,
+            ],
             range: highlightedRange
         )
         return markedText

@@ -12,6 +12,66 @@ struct BopomofoSyllable: Equatable {
     private(set) var tone: BopomofoTone?
     private var inputOrder: [ComponentSlot] = []
 
+    init() {}
+
+    /// Reconstructs a completed syllable from the canonical pronunciation
+    /// stored on a converted composition unit. An unmarked pronunciation is
+    /// a completed first-tone syllable, so its invisible tone is restored as
+    /// the final input component and is removed by the first Backspace.
+    init?(pronunciation: String) {
+        guard !pronunciation.isEmpty else {
+            return nil
+        }
+
+        var symbols = pronunciation.map(String.init)
+        let restoredTone: BopomofoTone
+        if symbols.first == BopomofoTone.neutral.rawValue {
+            restoredTone = .neutral
+            symbols.removeFirst()
+        } else if let last = symbols.last,
+                  let explicitTone = BopomofoTone(rawValue: last),
+                  explicitTone != .first {
+            restoredTone = explicitTone
+            symbols.removeLast()
+        } else {
+            restoredTone = .first
+        }
+
+        guard !symbols.isEmpty else {
+            return nil
+        }
+
+        self.init()
+        for symbol in symbols {
+            if let initial = BopomofoInitial(rawValue: symbol) {
+                guard self.initial == nil,
+                      medial == nil,
+                      final == nil else {
+                    return nil
+                }
+                apply(.initial(initial))
+            } else if let medial = BopomofoMedial(rawValue: symbol) {
+                guard self.medial == nil,
+                      final == nil else {
+                    return nil
+                }
+                apply(.medial(medial))
+            } else if let final = BopomofoFinal(rawValue: symbol) {
+                guard self.final == nil else {
+                    return nil
+                }
+                apply(.final(final))
+            } else {
+                return nil
+            }
+        }
+        apply(.tone(restoredTone))
+
+        guard text == pronunciation else {
+            return nil
+        }
+    }
+
     var isEmpty: Bool {
         initial == nil && medial == nil && final == nil && tone == nil
     }

@@ -45,6 +45,11 @@ struct ShiftToggleController {
     private var pressedShiftKeys: Set<ShiftKeySide> = []
     private var toggleCandidate: ShiftKeySide?
     private var wasInterrupted = false
+    /// Some clients deliver a Shift release to the input method before the
+    /// key-down event for the Shift chord. Sampling WindowServer's monotonic
+    /// event counter at both edges keeps standalone-tap detection independent
+    /// of that client delivery order.
+    private var keyDownEventCountAtPress: UInt32?
 
     var isTrackingShift: Bool {
         !pressedShiftKeys.isEmpty
@@ -54,7 +59,8 @@ struct ShiftToggleController {
     mutating func handleFlagsChanged(
         keyCode: UInt16,
         modifierFlags: NSEvent.ModifierFlags,
-        preference: ShiftKeyPreference = .both
+        preference: ShiftKeyPreference = .both,
+        systemKeyDownEventCount: UInt32? = nil
     ) -> Bool {
         guard let side = ShiftKeySide(keyCode: keyCode) else {
             noteNonShiftModifierChange()
@@ -67,6 +73,11 @@ struct ShiftToggleController {
 
         if pressedShiftKeys.contains(side) {
             if hasDisallowedModifier {
+                wasInterrupted = true
+            }
+            if let keyDownEventCountAtPress,
+               let systemKeyDownEventCount,
+               systemKeyDownEventCount != keyDownEventCountAtPress {
                 wasInterrupted = true
             }
             pressedShiftKeys.remove(side)
@@ -94,6 +105,7 @@ struct ShiftToggleController {
         if pressedShiftKeys.isEmpty {
             toggleCandidate = side
             wasInterrupted = hasDisallowedModifier
+            keyDownEventCountAtPress = systemKeyDownEventCount
         } else {
             wasInterrupted = true
         }
@@ -123,5 +135,6 @@ struct ShiftToggleController {
     private mutating func clearGesture() {
         toggleCandidate = nil
         wasInterrupted = false
+        keyDownEventCountAtPress = nil
     }
 }

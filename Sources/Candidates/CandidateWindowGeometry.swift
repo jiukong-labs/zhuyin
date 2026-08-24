@@ -338,6 +338,44 @@ enum CandidateAnchorValidation {
     }
 }
 
+/// Builds the client character ranges to query for a candidate anchor.
+/// Non-empty edited text comes first so the panel protects the glyph itself;
+/// its trailing caret remains a fallback for clients that cannot resolve the
+/// glyph range.
+enum CandidateAnchorRanges {
+    static func requestedRanges(
+        markedRange: NSRange,
+        localAnchorRange: NSRange
+    ) -> [NSRange] {
+        guard markedRange.location != NSNotFound,
+              markedRange.length != NSNotFound,
+              localAnchorRange.location != NSNotFound,
+              localAnchorRange.length != NSNotFound,
+              markedRange.location <= Int.max - markedRange.length,
+              localAnchorRange.location <= markedRange.length,
+              localAnchorRange.length
+                <= markedRange.length - localAnchorRange.location else {
+            return []
+        }
+
+        let absoluteRange = NSRange(
+            location: markedRange.location + localAnchorRange.location,
+            length: localAnchorRange.length
+        )
+        guard absoluteRange.length > 0 else {
+            return [absoluteRange]
+        }
+
+        return [
+            absoluteRange,
+            NSRange(
+                location: absoluteRange.location + absoluteRange.length,
+                length: 0
+            )
+        ]
+    }
+}
+
 enum CandidateWindowPlacement {
     static func frame(
         anchor: CGRect,
@@ -357,7 +395,7 @@ enum CandidateWindowPlacement {
         let safeFrame = insetFrame.width > 0 && insetFrame.height > 0
             ? insetFrame
             : visibleFrame
-        let size = CGSize(
+        var size = CGSize(
             width: min(max(1, desiredSize.width), safeFrame.width),
             height: min(max(1, desiredSize.height), safeFrame.height)
         )
@@ -367,23 +405,40 @@ enum CandidateWindowPlacement {
             minimum: safeFrame.minX,
             maximum: safeFrame.maxX - size.width
         )
-        let belowY = anchor.minY - gap - size.height
-        let aboveY = anchor.maxY + gap
+        let belowBoundary = clamp(
+            anchor.minY - gap,
+            minimum: safeFrame.minY,
+            maximum: safeFrame.maxY
+        )
+        let aboveBoundary = clamp(
+            anchor.maxY + gap,
+            minimum: safeFrame.minY,
+            maximum: safeFrame.maxY
+        )
+        let spaceBelow = belowBoundary - safeFrame.minY
+        let spaceAbove = safeFrame.maxY - aboveBoundary
         let y: CGFloat
 
-        if belowY >= safeFrame.minY {
-            y = belowY
-        } else if aboveY + size.height <= safeFrame.maxY {
-            y = aboveY
+        if size.height <= spaceBelow {
+            y = belowBoundary - size.height
+        } else if size.height <= spaceAbove {
+            y = aboveBoundary
         } else {
-            let spaceBelow = max(0, anchor.minY - gap - safeFrame.minY)
-            let spaceAbove = max(0, safeFrame.maxY - anchor.maxY - gap)
-            let preferredY = spaceAbove > spaceBelow ? aboveY : belowY
-            y = clamp(
-                preferredY,
-                minimum: safeFrame.minY,
-                maximum: safeFrame.maxY - size.height
-            )
+            if max(spaceBelow, spaceAbove) > 0 {
+                let placeAbove = spaceAbove > spaceBelow
+                size.height = min(
+                    size.height,
+                    placeAbove ? spaceAbove : spaceBelow
+                )
+                y = placeAbove
+                    ? aboveBoundary
+                    : belowBoundary - size.height
+            } else {
+                // An anchor spanning the entire safe frame leaves no
+                // non-overlapping side. Keep the panel onscreen as the only
+                // possible fallback.
+                y = safeFrame.minY
+            }
         }
 
         return CGRect(origin: CGPoint(x: x, y: y), size: size)

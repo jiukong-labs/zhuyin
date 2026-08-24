@@ -61,6 +61,28 @@ final class CandidateWindowGeometryTests: XCTestCase {
         )
     }
 
+    func testQueriesEditedGlyphBeforeItsTrailingCaret() {
+        XCTAssertEqual(
+            CandidateAnchorRanges.requestedRanges(
+                markedRange: NSRange(location: 100, length: 11),
+                localAnchorRange: NSRange(location: 8, length: 1)
+            ),
+            [
+                NSRange(location: 108, length: 1),
+                NSRange(location: 109, length: 0)
+            ]
+        )
+    }
+
+    func testRejectsAnchorRangeOutsideMarkedComposition() {
+        XCTAssertTrue(
+            CandidateAnchorRanges.requestedRanges(
+                markedRange: NSRange(location: 100, length: 11),
+                localAnchorRange: NSRange(location: 11, length: 1)
+            ).isEmpty
+        )
+    }
+
     func testPlacesWindowBelowCaretWhenThereIsRoom() {
         let frame = CandidateWindowPlacement.frame(
             anchor: CGRect(x: 100, y: 500, width: 1, height: 20),
@@ -79,6 +101,19 @@ final class CandidateWindowGeometryTests: XCTestCase {
         )
 
         XCTAssertEqual(frame.origin.y, 46)
+    }
+
+    func testShrinksConstrainedWindowInsteadOfCoveringEditedText() {
+        let anchor = CGRect(x: 100, y: 140, width: 20, height: 20)
+        let frame = CandidateWindowPlacement.frame(
+            anchor: anchor,
+            desiredSize: CGSize(width: 300, height: 200),
+            visibleFrames: [CGRect(x: 0, y: 0, width: 1_000, height: 300)]
+        )
+
+        XCTAssertEqual(frame, CGRect(x: 100, y: 8, width: 300, height: 126))
+        XCTAssertLessThanOrEqual(frame.maxY, anchor.minY - 6)
+        XCTAssertFalse(frame.intersects(anchor))
     }
 
     func testClampsAwayFromRightAndLeftEdges() {
@@ -129,14 +164,17 @@ final class CandidateWindowGeometryTests: XCTestCase {
         XCTAssertGreaterThan(frame.minY, -160)
     }
 
-    func testCapsOversizedWindowInsideVisibleFrame() {
+    func testCapsOversizedWindowWithoutCoveringCaret() {
+        let anchor = CGRect(x: 500, y: 400, width: 1, height: 20)
         let frame = CandidateWindowPlacement.frame(
-            anchor: CGRect(x: 500, y: 400, width: 1, height: 20),
+            anchor: anchor,
             desiredSize: CGSize(width: 2_000, height: 2_000),
             visibleFrames: [CGRect(x: 0, y: 0, width: 1_000, height: 800)]
         )
 
-        XCTAssertEqual(frame, CGRect(x: 8, y: 8, width: 984, height: 784))
+        XCTAssertEqual(frame, CGRect(x: 8, y: 8, width: 984, height: 386))
+        XCTAssertLessThanOrEqual(frame.maxY, anchor.minY - 6)
+        XCTAssertFalse(frame.intersects(anchor))
     }
 
     func testChoosesNearestDisplayForOffscreenCaret() {

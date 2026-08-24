@@ -365,7 +365,7 @@ final class CompositionBufferTests: XCTestCase {
         )
     }
 
-    func testRevisionFocusUsesUTF16AndPhraseSelectionStillTakesPriority() throws {
+    func testRevisionFocusUsesUTF16CaretAndPhraseSelectionStillTakesPriority() throws {
         var buffer = CompositionBuffer()
         XCTAssertNotNil(buffer.append(text: "A", pronunciation: "a"))
         XCTAssertNotNil(buffer.append(text: "𐍈", pronunciation: "ji"))
@@ -374,7 +374,7 @@ final class CompositionBufferTests: XCTestCase {
 
         XCTAssertEqual(
             buffer.markedSelectionRange(focusedUnitID: middleID),
-            NSRange(location: 1, length: 2)
+            NSRange(location: 1, length: 0)
         )
 
         XCTAssertTrue(buffer.expandSelectionBackward())
@@ -401,6 +401,11 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertNil(buffer.readingUnitID(before: first.id))
         XCTAssertEqual(buffer.readingUnitID(after: first.id), second.id)
         XCTAssertNil(buffer.readingUnitID(after: second.id))
+        XCTAssertNil(buffer.readingUnitID(immediatelyBefore: first.id))
+        XCTAssertNil(buffer.readingUnitID(immediatelyBefore: second.id))
+        XCTAssertEqual(buffer.unitID(immediatelyAfter: first.id), buffer.units[1].id)
+        XCTAssertEqual(buffer.unitID(immediatelyAfter: buffer.units[1].id), second.id)
+        XCTAssertNil(buffer.unitID(immediatelyAfter: second.id))
     }
 
     func testRevisionFocusReportsTheVisibleReadingPosition() throws {
@@ -425,11 +430,11 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.revisionFocus(for: second.id)?.locatingDisplayText,
-            "定位 2／2：試　ㄕˋ　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字"
+            "定位 2／2：試　ㄕˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選游標前字"
         )
         XCTAssertEqual(
             buffer.revisionFocus(for: second.id)?.choosingDisplayText,
-            "選字 2／2：試　←／→ 選候選　⌫／Del 刪字　Esc 返回"
+            "選字 2／2：試　←／→ 選候選　⌫ 改左字音　Del 改右字音　↑／Esc 返回"
         )
         XCTAssertNil(buffer.revisionFocus(for: UUID()))
     }
@@ -521,55 +526,69 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertEqual(buffer.pendingCandidateSelections.map(\.candidate), [first])
     }
 
-    func testRevisionDeletionRemovesFocusAndPrefersDirectionalNeighbor() throws {
-        var backwardBuffer = bufferWithThreeUnits()
-        let backwardUnits = backwardBuffer.units
-        let backwardFocusID = backwardUnits[1].id
-
-        XCTAssertEqual(
-            backwardBuffer.deleteRevisionUnit(
-                withID: backwardFocusID,
-                direction: .backward
-            ),
-            backwardUnits[0].id
+    func testBackspaceTargetIsTheImmediatelyPrecedingReading() throws {
+        var adjacentBuffer = CompositionBuffer()
+        let route = try XCTUnwrap(
+            adjacentBuffer.append(text: "路", pronunciation: "ㄌㄨˋ")
         )
-        XCTAssertEqual(backwardBuffer.text, "輸法")
-
-        var forwardBuffer = bufferWithThreeUnits()
-        let forwardUnits = forwardBuffer.units
-        let forwardFocusID = forwardUnits[1].id
-
-        XCTAssertEqual(
-            forwardBuffer.deleteRevisionUnit(
-                withID: forwardFocusID,
-                direction: .forward
-            ),
-            forwardUnits[2].id
+        let mirror = try XCTUnwrap(
+            adjacentBuffer.append(text: "鏡", pronunciation: "ㄐㄧㄥˋ")
         )
-        XCTAssertEqual(forwardBuffer.text, "輸法")
+        XCTAssertEqual(
+            adjacentBuffer.readingUnitID(immediatelyBefore: mirror.id),
+            route.id
+        )
+        XCTAssertNil(
+            adjacentBuffer.readingUnitID(immediatelyBefore: route.id)
+        )
+        XCTAssertNil(
+            adjacentBuffer.readingUnitID(immediatelyBefore: UUID())
+        )
+
+        XCTAssertNil(adjacentBuffer.unitID(immediatelyAfter: mirror.id))
+
+        let punctuation = try XCTUnwrap(
+            adjacentBuffer.appendPunctuation("，")
+        )
+        XCTAssertEqual(
+            adjacentBuffer.unitID(immediatelyAfter: mirror.id),
+            punctuation.id
+        )
     }
 
-    func testRevisionDeletionFallsBackToTheOnlySurvivingNeighbor() {
-        var buffer = bufferWithThreeUnits()
-        let units = buffer.units
+    func testRevisionCandidateTargetsTheReadingImmediatelyBeforeTheCaret() throws {
+        var buffer = CompositionBuffer()
+        let route = try XCTUnwrap(
+            buffer.append(text: "路", pronunciation: "ㄌㄨˋ")
+        )
+        let mirror = try XCTUnwrap(
+            buffer.append(text: "鏡", pronunciation: "ㄐㄧㄥˋ")
+        )
 
         XCTAssertEqual(
-            buffer.deleteRevisionUnit(
-                withID: units[0].id,
-                direction: .backward
-            ),
-            units[1].id
+            buffer.revisionFocus(
+                immediatelyBeforeCaretAt: mirror.id
+            )?.unitID,
+            route.id
         )
-        XCTAssertEqual(buffer.text, "入法")
-
         XCTAssertEqual(
-            buffer.deleteRevisionUnit(
-                withID: units[2].id,
-                direction: .forward
-            ),
-            units[1].id
+            buffer.revisionFocus(
+                immediatelyBeforeCaretAt: nil
+            )?.unitID,
+            mirror.id
         )
-        XCTAssertEqual(buffer.text, "入")
+        XCTAssertNil(
+            buffer.revisionFocus(
+                immediatelyBeforeCaretAt: route.id
+            )
+        )
+
+        XCTAssertNotNil(buffer.appendPunctuation("，"))
+        XCTAssertNil(
+            buffer.revisionFocus(
+                immediatelyBeforeCaretAt: nil
+            )
+        )
     }
 
     func testDeleteBackwardRemovesOneUnitAndOnlyItsPendingLearning() {

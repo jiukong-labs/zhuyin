@@ -10,6 +10,7 @@ struct DictionaryBuildSummary {
     let idiomStatistics: JiukongPhraseStatistics
     let revisedDictionaryStatistics: JiukongPhraseStatistics
     let frequencyTierStatistics: JiukongFrequencyTierStatistics
+    let phraseAttestationStatistics: JiukongPhraseAttestationStatistics
 }
 
 struct JiukongCharacterEntry: Equatable {
@@ -588,6 +589,64 @@ struct JiukongPhraseDataset {
     )
 }
 
+struct JiukongPhraseAttestationStatistics: Equatable {
+    let distinctCharacterReadingCount: Int
+    let totalCharacterReadingCount: Int64
+
+    static let empty = JiukongPhraseAttestationStatistics(
+        distinctCharacterReadingCount: 0,
+        totalCharacterReadingCount: 0
+    )
+}
+
+/// Counts character-reading pairs only in Jiukong's manually maintained
+/// first-party phrase lexicon. Government-sourced phrase datasets are never
+/// included, so candidate ranking does not derive a frequency signal from an
+/// outside dictionary or corpus.
+struct FirstPartyPhraseAttestationResolver {
+    private struct Key: Hashable {
+        let character: String
+        let pronunciation: String
+    }
+
+    private let counts: [Key: Int64]
+    let statistics: JiukongPhraseAttestationStatistics
+
+    static let empty = FirstPartyPhraseAttestationResolver(
+        phraseDataset: .empty
+    )
+
+    init(phraseDataset: JiukongPhraseDataset) {
+        var counts: [Key: Int64] = [:]
+        var totalCharacterReadingCount: Int64 = 0
+        for entry in phraseDataset.entries {
+            for (character, pronunciation) in zip(
+                entry.phrase,
+                entry.pronunciationSequence
+            ) {
+                let key = Key(
+                    character: String(character),
+                    pronunciation: pronunciation
+                )
+                counts[key, default: 0] += 1
+                totalCharacterReadingCount += 1
+            }
+        }
+        self.counts = counts
+        statistics = JiukongPhraseAttestationStatistics(
+            distinctCharacterReadingCount: counts.count,
+            totalCharacterReadingCount: totalCharacterReadingCount
+        )
+    }
+
+    func count(character: String, pronunciation: String) -> Int64 {
+        counts[
+            Key(character: character, pronunciation: pronunciation),
+            default: 0
+        ]
+    }
+}
+
 enum JiukongPhraseParserError: LocalizedError, Equatable {
     case invalidTextEncoding(file: String)
     case malformedLine(line: Int)
@@ -867,6 +926,9 @@ enum DictionaryDatabaseBuilder {
         } else {
             phraseDataset = .empty
         }
+        let phraseAttestationResolver = FirstPartyPhraseAttestationResolver(
+            phraseDataset: phraseDataset
+        )
         let idiomDataset: JiukongPhraseDataset
         if let idiomSourceURL {
             idiomDataset = try JiukongPhraseParser.parse(
@@ -909,7 +971,8 @@ enum DictionaryDatabaseBuilder {
                 phraseStatistics: phraseDataset.statistics,
                 idiomStatistics: idiomDataset.statistics,
                 revisedDictionaryStatistics: revisedDictionaryDataset.statistics,
-                frequencyTierResolver: frequencyTierResolver
+                frequencyTierResolver: frequencyTierResolver,
+                phraseAttestationResolver: phraseAttestationResolver
             )
             guard Darwin.rename(temporaryURL.path, outputURL.path) == 0 else {
                 throw DictionaryDatabaseBuilderError.outputReplacementFailed(
@@ -929,7 +992,8 @@ enum DictionaryDatabaseBuilder {
             phraseStatistics: phraseDataset.statistics,
             idiomStatistics: idiomDataset.statistics,
             revisedDictionaryStatistics: revisedDictionaryDataset.statistics,
-            frequencyTierStatistics: frequencyTierResolver.statistics
+            frequencyTierStatistics: frequencyTierResolver.statistics,
+            phraseAttestationStatistics: phraseAttestationResolver.statistics
         )
     }
 
@@ -942,7 +1006,8 @@ enum DictionaryDatabaseBuilder {
         phraseStatistics: JiukongPhraseStatistics,
         idiomStatistics: JiukongPhraseStatistics,
         revisedDictionaryStatistics: JiukongPhraseStatistics,
-        frequencyTierResolver: FrequencyTierResolver
+        frequencyTierResolver: FrequencyTierResolver,
+        phraseAttestationResolver: FirstPartyPhraseAttestationResolver
     ) throws {
         let fileDescriptor = Darwin.open(
             outputURL.path,
@@ -989,6 +1054,8 @@ enum DictionaryDatabaseBuilder {
                 source_order INTEGER NOT NULL CHECK(source_order >= 0),
                 cns_code TEXT NOT NULL,
                 usage_tier INTEGER NOT NULL CHECK(usage_tier IN (0, 1, 2)),
+                first_party_phrase_count INTEGER NOT NULL
+                    CHECK(first_party_phrase_count >= 0),
                 PRIMARY KEY (pronunciation, character)
             ) WITHOUT ROWID;
 
@@ -1010,8 +1077,9 @@ enum DictionaryDatabaseBuilder {
                     character,
                     source_order,
                     cns_code,
-                    usage_tier
-                ) VALUES (?, ?, ?, ?, ?)
+                    usage_tier,
+                    first_party_phrase_count
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 """
             )
             for entry in dataset.entries {
@@ -1025,6 +1093,13 @@ enum DictionaryDatabaseBuilder {
                         pronunciation: entry.pronunciation
                     )),
                     at: 5
+                )
+                try insertEntry.bind(
+                    phraseAttestationResolver.count(
+                        character: entry.character,
+                        pronunciation: entry.pronunciation
+                    ),
+                    at: 6
                 )
                 guard try insertEntry.step() == .done else {
                     throw SQLiteDatabaseError.operation(
@@ -1067,7 +1142,8 @@ enum DictionaryDatabaseBuilder {
                 phraseStatistics: phraseStatistics,
                 idiomStatistics: idiomStatistics,
                 revisedDictionaryStatistics: revisedDictionaryStatistics,
-                frequencyTierStatistics: frequencyTierResolver.statistics
+                frequencyTierStatistics: frequencyTierResolver.statistics,
+                phraseAttestationStatistics: phraseAttestationResolver.statistics
             ).sorted(by: { $0.key < $1.key }) {
                 try insertMetadata.bind(key, at: 1)
                 try insertMetadata.bind(value, at: 2)
@@ -1119,7 +1195,8 @@ enum DictionaryDatabaseBuilder {
         phraseStatistics: JiukongPhraseStatistics,
         idiomStatistics: JiukongPhraseStatistics,
         revisedDictionaryStatistics: JiukongPhraseStatistics,
-        frequencyTierStatistics: JiukongFrequencyTierStatistics
+        frequencyTierStatistics: JiukongFrequencyTierStatistics,
+        phraseAttestationStatistics: JiukongPhraseAttestationStatistics
     ) -> [String: String] {
         var values: [String: String] = [
             "dataset_name": manifest.datasetName,
@@ -1149,6 +1226,13 @@ enum DictionaryDatabaseBuilder {
             ),
             "phrase_transformation": "Validated original TSV rows; encoded exact pronunciation sequences; preserved repository source order; no imported frequency data.",
             "unique_phrases": String(phraseStatistics.uniquePhraseCount),
+            "first_party_attested_character_readings": String(
+                phraseAttestationStatistics.distinctCharacterReadingCount
+            ),
+            "first_party_character_reading_attestations": String(
+                phraseAttestationStatistics.totalCharacterReadingCount
+            ),
+            "first_party_attestation_transformation": "Counted exact (character, reading) occurrences only in Jiukong's manually authored phrase TSV; excluded both government-sourced phrase datasets. Used only as a within-tier candidate-order signal, not represented as corpus frequency.",
             "idiom_dataset_name": "MOE 《成語典》 government-sourced idiom lexicon (1,642 主條 four-character entries)",
             "idiom_entries": String(idiomStatistics.entryCount),
             "idiom_pronunciation_sequences": String(

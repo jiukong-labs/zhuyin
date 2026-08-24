@@ -44,6 +44,45 @@ enum CompositionCursorCommand: Equatable {
     case nextReading
 }
 
+enum CompositionRevisionCandidateCommand: Equatable {
+    case openCandidates
+    case returnToPositioning
+}
+
+/// Down opens candidates only after a revision caret has been positioned.
+/// While those candidates are open, Up returns to text positioning. Keeping
+/// this route ahead of ordinary candidate navigation gives the two modes an
+/// explicit, reversible boundary.
+enum CompositionRevisionCandidateCommandRouter {
+    private static let rejectedModifiers: NSEvent.ModifierFlags = [
+        .command,
+        .control,
+        .option,
+        .shift
+    ]
+
+    static func command(
+        keyCode: UInt16,
+        modifierFlags: NSEvent.ModifierFlags,
+        hasRevisionCaret: Bool,
+        isChoosingCandidates: Bool
+    ) -> CompositionRevisionCandidateCommand? {
+        let modifiers = modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifiers.intersection(rejectedModifiers).isEmpty else {
+            return nil
+        }
+
+        switch Int(keyCode) {
+        case kVK_DownArrow where hasRevisionCaret && !isChoosingCandidates:
+            return .openCandidates
+        case kVK_UpArrow where isChoosingCandidates:
+            return .returnToPositioning
+        default:
+            return nil
+        }
+    }
+}
+
 /// Plain left/right arrows move through uncommitted reading units. Function,
 /// numeric-pad, and Caps Lock flags are inherent/non-semantic; actual shortcut
 /// modifiers remain available to the client application.

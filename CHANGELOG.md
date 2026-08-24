@@ -69,16 +69,25 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Original exact phrases for `測試中請稍後` and its useful suffixes, plus
   installed acceptance coverage for uninterrupted six-syllable conversion.
 - Text-aware candidate cells that keep long phrase candidates fully visible.
-- Explicit Left/Right revision feedback: the focused unit is styled inline and
-  identified by position, character, and reading in a candidate-panel header.
-- Two-stage revision controls: Left/Right first locate the reading unit, Down
-  enters candidate choosing, Left/Right then move the candidate highlight, and
-  Escape returns to locating without losing the text focus.
+- Explicit Left/Right revision feedback through a collapsed text caret; the
+  positioning stage is windowless and sends transparent marked-text styling.
+- Two-stage revision controls: Left/Right first position a persistent caret,
+  Down opens candidates for the character immediately before it, Left/Right
+  then move the candidate highlight, and Up or Escape returns without moving
+  or expanding that caret into a text selection.
 - A character selected and committed once now becomes the first same-reading
   character candidate on the next lookup; the latest choice wins while manual
   pins retain their explicit highest priority.
-- Revision candidate numbers 1-9 are now always explicit selections, so a
-  number-row Bopomofo key cannot escape the panel and start a stray syllable.
+- Revision candidate numbers 1-9 become explicit selections only after Down
+  opens the panel, so hidden positioning never selects an unseen candidate.
+- Revision Backspace now restores the character immediately before the focus
+  and deletes its tone, final, medial, and initial components one press at a
+  time; forward Delete does the same to the character immediately after the
+  caret. Revision focus now uses the client's blinking caret without a colored
+  character background or underline.
+- Standalone Shift detection now also checks WindowServer's key-down counter,
+  so clients that deliver Shift-up before the modified key cannot turn
+  `Shift+9` into a language toggle and Chinese full-width parenthesis.
 - Ordinary conversion now previews the first candidate inline without opening
   a window. Down explicitly opens the expanded chooser; only then do 1-9 and
   navigation keys select candidates, removing the number/Bopomofo ambiguity.
@@ -93,11 +102,18 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - A persistent, nonactivating phrase-range status now shows the exact selected
   text and length after every Shift-arrow, including in clients that ignore
   marked-text colors entirely.
-- Backspace and forward Delete now remove the explicitly located revision
-  character or the active phrase range before candidate-window routing.
+- Backspace and forward Delete now edit the readings on the left and right of
+  the explicitly located revision caret, or remove an active phrase range,
+  before candidate-window routing.
 
 ### Changed
 
+- Default character candidates now use exact character-reading attestations
+  from Jiukong's manually authored phrase lexicon within each commonness tier;
+  government-sourced phrase data is excluded and CNS order remains the final
+  fallback.
+- Rare `食／ㄧˋ` and `射／ㄧˋ` readings are reviewed per-reading overrides,
+  without changing their everyday pronunciations.
 - Standalone Shift now changes language inside Jiukong and presents its own
   cursor-matched red `中`／blue `A` HUD beside the pointer, avoiding both
   macOS's fixed `ABC` overlay and invalid client coordinates at screen edges.

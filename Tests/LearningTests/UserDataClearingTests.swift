@@ -112,9 +112,14 @@ final class UserDataClearingTests: XCTestCase {
         let expectedOrder = try dictionary.candidateEntries(for: "ㄐㄧㄢˋ")
             .filter(\.isInGeneralCandidateRepertoire)
             .sorted { lhs, rhs in
-                lhs.usageTier != rhs.usageTier
-                    ? lhs.usageTier < rhs.usageTier
-                    : lhs.sourceOrder < rhs.sourceOrder
+                if lhs.usageTier != rhs.usageTier {
+                    return lhs.usageTier < rhs.usageTier
+                }
+                if lhs.firstPartyPhraseCount != rhs.firstPartyPhraseCount {
+                    return lhs.firstPartyPhraseCount
+                        > rhs.firstPartyPhraseCount
+                }
+                return lhs.sourceOrder < rhs.sourceOrder
             }
             .map(\.text)
         XCTAssertEqual(

@@ -189,9 +189,10 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試中請稍後"
     ),
-    // Revision is intentionally two-stage. Left/Right first locate a reading,
-    // Down enters candidate choosing, arrows then move the candidate highlight,
-    // and Escape returns to locating while restoring the current character.
+    // Revision is intentionally two-stage. Left/Right first position the caret,
+    // Down opens candidates for the reading immediately before that caret,
+    // arrows then move the candidate highlight, and Up or Escape returns to
+    // windowless text positioning without moving the caret.
     "revision-arrows": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -199,17 +200,17 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_4),
             Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
             Keystroke(kVK_Space),
-            Keystroke(kVK_LeftArrow), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_LeftArrow),
             Keystroke(kVK_DownArrow), Keystroke(kVK_RightArrow),
-            Keystroke(kVK_Escape), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_UpArrow), Keystroke(kVK_RightArrow),
             Keystroke(kVK_DownArrow), Keystroke(kVK_LeftArrow),
-            Keystroke(kVK_Escape), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_Escape), Keystroke(kVK_LeftArrow),
             Keystroke(kVK_Return),
         ],
         expectation: "測試"
     ),
-    // Backspace deletes the reading currently selected by revision focus,
-    // instead of merely dismissing the candidate panel.
+    // With 試 focused, Backspace restores the preceding 測 reading ㄘㄜˋ and
+    // removes its tone. Return commits the remaining raw ㄘㄜ before 試.
     "revision-backspace": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -220,10 +221,10 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_LeftArrow), Keystroke(kVK_Delete),
             Keystroke(kVK_Return),
         ],
-        expectation: "測"
+        expectation: "ㄘㄜ試"
     ),
-    // Forward Delete owns the same focused character. Locating the first
-    // reading and deleting it leaves only the second reading in the buffer.
+    // With 試 on the right of the caret, Forward Delete restores ㄕˋ and
+    // removes its tone. Return commits the raw ㄕ after the unchanged 測.
     "revision-forward-delete": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -231,10 +232,10 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_4),
             Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
             Keystroke(kVK_Space),
-            Keystroke(kVK_LeftArrow), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_LeftArrow),
             Keystroke(kVK_ForwardDelete), Keystroke(kVK_Return),
         ],
-        expectation: "試"
+        expectation: "測ㄕ"
     ),
     "escape": AcceptanceScript(
         probe: standardProbe,

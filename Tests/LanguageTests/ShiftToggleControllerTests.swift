@@ -41,6 +41,47 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(release(.left, on: &controller))
     }
 
+    func testSystemKeyDownCounterRejectsAChordDeliveredAfterShiftRelease() {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: .shift,
+                systemKeyDownEventCount: 40
+            )
+        )
+        // Microsoft Word can expose this ordering to the input method: the
+        // WindowServer has already seen Shift+9, but the controller receives
+        // Shift-up before the 9 key-down callback. It is still a chord.
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: [],
+                systemKeyDownEventCount: 41
+            )
+        )
+    }
+
+    func testUnchangedSystemKeyDownCounterStillAllowsStandaloneShift() {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: .shift,
+                systemKeyDownEventCount: 80
+            )
+        )
+        XCTAssertTrue(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: [],
+                systemKeyDownEventCount: 80
+            )
+        )
+    }
+
     func testAnotherModifierInterruptsStandaloneShift() {
         var controller = ShiftToggleController()
 

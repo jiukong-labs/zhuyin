@@ -15,7 +15,7 @@ jobs:
     name: Build and test
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Show toolchain
         run: |
@@ -75,7 +75,7 @@ jobs:
     name: Dictionary reproducibility
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The runtime dictionary is checked in. Rebuilding it from the pinned,
       # hash-validated CNS11643 snapshot must reproduce it byte for byte.
@@ -94,7 +94,7 @@ jobs:
     # drift without gating the build-and-test job above.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install XcodeGen
         run: brew install xcodegen

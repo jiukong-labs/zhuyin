@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A94BC65A64E43169E6F3A01 /* JiukongChineseColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 0C2DFB6B56F3484EAC582A01 /* JiukongChineseColor.tiff */; };
-		0B76EAE473934181B1824C02 /* JiukongEnglishAColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 0D6EDC31A610474AB9062B02 /* JiukongEnglishAColor.tiff */; };
 		02E7FB9F1FFB463D76068A0A /* CandidateWindowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */; };
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		062DE77B1B3A7186707494E8 /* CharacterCandidateProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A684017D608CC4FA5BF19D4 /* CharacterCandidateProviderTests.swift */; };
@@ -27,6 +25,7 @@
 		1B8AB2057B43870E1380A411 /* CNS11643Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE4D0FD6DBF128C8A6E0E95 /* CNS11643Parser.swift */; };
 		1D378560EA1F2C421C82DEEA /* InputMethodBundleMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */; };
 		1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0748FDE71A052EB86AE9FC0B /* InputController.swift */; };
+		1F94381C74A7CB144051FCEF /* SystemInputSourceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18908D66BF59A103E6375944 /* SystemInputSourceObserver.swift */; };
 		221A51110211C7971ECB3808 /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
 		24AB213BDD66DFC7BFAF095A /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
 		2538A2B3C7B9A89AE53CC398 /* DictionaryDatabaseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */; };
@@ -47,6 +46,7 @@
 		4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
 		4DE5097304E0676C4EDECE03 /* CompositionSelectionCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66A01410C21B39C42BD6E35 /* CompositionSelectionCommandRouter.swift */; };
 		4E179BBFE7B49DD47A04264B /* CompositionPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14C51C5EA239A803E995F77 /* CompositionPresentationTests.swift */; };
+		4E27FB179E3297E5BCDA4255 /* JiukongDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */; };
 		4EE56011674AE8700780FC80 /* ShiftToggleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E03D98756138B225E54A9B /* ShiftToggleController.swift */; };
 		52262D0D1FE7C1B84A323476 /* CompositionPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8118F46308D10E62E4662D8 /* CompositionPresentation.swift */; };
 		541310968ECA585A33D08250 /* CNS11643Manifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9502DD5E44CA13CFA608D85 /* CNS11643Manifest.swift */; };
@@ -78,6 +78,7 @@
 		7A1349070DEC486C81212436 /* CursorIndicatorGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4497D9BCA68975759C628228 /* CursorIndicatorGeometryTests.swift */; };
 		7CC53D7DA8D6E018675A5127 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32EFC11EAB2C94A893A2CB57 /* main.swift */; };
 		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
+		8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */; };
 		80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */; };
 		82C7B20D1A38E5D3A6F84893 /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
 		83C3DE679188B0C162D3459E /* CursorIndicatorSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D12FCF239B86FEA58145D48 /* CursorIndicatorSettings.swift */; };
@@ -106,6 +107,7 @@
 		A26F4F32F9F39B2A4A7087DB /* BopomofoInputSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */; };
 		A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
 		A8D5A9719E6F91407BCE6469 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
+		A983D01C34A682BE5E9A5CB5 /* JiukongEnglishAColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 89A231FF829D0C1175F3EBAE /* JiukongEnglishAColor.tiff */; };
 		AECF58023168697EB29690B7 /* ShiftToggleControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15074F31AE6BAC12F61FA8C2 /* ShiftToggleControllerTests.swift */; };
 		AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */; };
 		B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
@@ -141,7 +143,6 @@
 		DE83BDCA385BDE0B8EC5C726 /* CharacterDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */; };
 		DFAB5EC9BDD65F6D06466116 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
 		E0A46594541AEC11CB5E0A3F /* CursorIndicatorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */; };
-		A279E5BDD67F41A69B28EAE9 /* JiukongDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC5BD0E219545EB92CDECA8 /* JiukongDebugLog.swift */; };
 		E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		E0E3E8A547EFCC37BACA41EA /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		E28F248C99C7DF51EDAF39E1 /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
@@ -156,12 +157,9 @@
 		FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */; };
 		FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */; };
 		FBAF5AFE01B9D5EE4BDAFFF3 /* CursorIndicatorAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */; };
-		5939FCBE4868CF9DA9A4701C /* SystemInputSourceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB3B72214D99EBFEC7B1CC62 /* SystemInputSourceObserver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0C2DFB6B56F3484EAC582A01 /* JiukongChineseColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongChineseColor.tiff; sourceTree = "<group>"; };
-		0D6EDC31A610474AB9062B02 /* JiukongEnglishAColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongEnglishAColor.tiff; sourceTree = "<group>"; };
 		03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Acceptance Harness"; sourceTree = BUILT_PRODUCTS_DIR; };
 		03517B2F1F6C10948547B0A2 /* PreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesStoreTests.swift; sourceTree = "<group>"; };
 		0748FDE71A052EB86AE9FC0B /* InputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputController.swift; sourceTree = "<group>"; };
@@ -169,6 +167,7 @@
 		119722559BC5DEFC2BB0D86C /* PreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesTests.swift; sourceTree = "<group>"; };
 		1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataLocation.swift; sourceTree = "<group>"; };
 		15074F31AE6BAC12F61FA8C2 /* ShiftToggleControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftToggleControllerTests.swift; sourceTree = "<group>"; };
+		18908D66BF59A103E6375944 /* SystemInputSourceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInputSourceObserver.swift; sourceTree = "<group>"; };
 		2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoParser.swift; sourceTree = "<group>"; };
 		2E6CBF81B08691090230C695 /* CursorIndicatorAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorAppearanceTests.swift; sourceTree = "<group>"; };
 		2EE5DFE6245A13D720524505 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -182,6 +181,7 @@
 		419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSession.swift; sourceTree = "<group>"; };
 		41AD9FD532E11E8C8224086E /* UserDataManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataManagementTests.swift; sourceTree = "<group>"; };
 		4497D9BCA68975759C628228 /* CursorIndicatorGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorGeometryTests.swift; sourceTree = "<group>"; };
+		4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongChineseColor.tiff; sourceTree = "<group>"; };
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
 		4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuffer.swift; sourceTree = "<group>"; };
@@ -202,6 +202,7 @@
 		6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodBundleMetadataTests.swift; sourceTree = "<group>"; };
 		6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodConfiguration.swift; sourceTree = "<group>"; };
 		6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometryTests.swift; sourceTree = "<group>"; };
+		70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiukongDebugLog.swift; sourceTree = "<group>"; };
 		715321CFA6F26EE6DA16640F /* Jiukong Dictionary Builder */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Dictionary Builder"; sourceTree = BUILT_PRODUCTS_DIR; };
 		75066D454F50C29C343823FA /* CandidateRankerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateRankerTests.swift; sourceTree = "<group>"; };
 		7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceRegistrar.swift; sourceTree = "<group>"; };
@@ -211,6 +212,7 @@
 		8310435AE00955EBEFC673B6 /* CandidateSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSession.swift; sourceTree = "<group>"; };
 		864E157C1B491375C06D884F /* ZhuyinKeyboardArrangement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhuyinKeyboardArrangement.swift; sourceTree = "<group>"; };
 		8896906B6EED89C1949CC6BF /* Candidate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Candidate.swift; sourceTree = "<group>"; };
+		89A231FF829D0C1175F3EBAE /* JiukongEnglishAColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongEnglishAColor.tiff; sourceTree = "<group>"; };
 		8B7F381FE59E194327DB4A8C /* UserPhraseRecordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPhraseRecordTests.swift; sourceTree = "<group>"; };
 		8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterLearningRecord.swift; sourceTree = "<group>"; };
 		8E8A97993E9F64F784A88C56 /* SettingsPaneBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPaneBuilder.swift; sourceTree = "<group>"; };
@@ -243,7 +245,6 @@
 		D01F60E94243161D89FAC2DA /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowPresenter.swift; sourceTree = "<group>"; };
 		D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorController.swift; sourceTree = "<group>"; };
-		1CC5BD0E219545EB92CDECA8 /* JiukongDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiukongDebugLog.swift; sourceTree = "<group>"; };
 		D54FE3D81889F06781B4BBD5 /* CNS11643ParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643ParserTests.swift; sourceTree = "<group>"; };
 		DB6A7847C769C7EBFA02807B /* UserLearningServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningServiceTests.swift; sourceTree = "<group>"; };
 		DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CNS11643_NOTICE.txt; sourceTree = "<group>"; };
@@ -265,7 +266,6 @@
 		FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesController.swift; sourceTree = "<group>"; };
 		FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchive.swift; sourceTree = "<group>"; };
 		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		EB3B72214D99EBFEC7B1CC62 /* SystemInputSourceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInputSourceObserver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -367,8 +367,8 @@
 		32605061876F4DEB36D9D8D0 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
-				0C2DFB6B56F3484EAC582A01 /* JiukongChineseColor.tiff */,
-				0D6EDC31A610474AB9062B02 /* JiukongEnglishAColor.tiff */,
+				4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */,
+				89A231FF829D0C1175F3EBAE /* JiukongEnglishAColor.tiff */,
 				6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */,
 				4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */,
 			);
@@ -553,7 +553,7 @@
 				6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */,
 				7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */,
 				C30667214FEE41C9496CF28D /* main.swift */,
-				EB3B72214D99EBFEC7B1CC62 /* SystemInputSourceObserver.swift */,
+				18908D66BF59A103E6375944 /* SystemInputSourceObserver.swift */,
 			);
 			path = InputMethod;
 			sourceTree = "<group>";
@@ -660,7 +660,7 @@
 				CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */,
 				D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */,
 				7D12FCF239B86FEA58145D48 /* CursorIndicatorSettings.swift */,
-				1CC5BD0E219545EB92CDECA8 /* JiukongDebugLog.swift */,
+				70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */,
 			);
 			path = Overlay;
 			sourceTree = "<group>";
@@ -813,11 +813,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A94BC65A64E43169E6F3A01 /* JiukongChineseColor.tiff in Resources */,
-				0B76EAE473934181B1824C02 /* JiukongEnglishAColor.tiff in Resources */,
 				174786A95696AC964BBB4E9C /* CNS11643_NOTICE.txt in Resources */,
 				B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */,
 				7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */,
+				8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */,
+				A983D01C34A682BE5E9A5CB5 /* JiukongEnglishAColor.tiff in Resources */,
 				80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */,
 				28AB81FC9394CA3AC7667269 /* JiukongZhuyin.sqlite3 in Resources */,
 				FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */,
@@ -873,11 +873,11 @@
 				542B8FDDC49A9321AEAD8936 /* CursorIndicatorAppearance.swift in Sources */,
 				E0A46594541AEC11CB5E0A3F /* CursorIndicatorController.swift in Sources */,
 				B45DB918B600DC2BB2A429FC /* CursorIndicatorSettings.swift in Sources */,
-				A279E5BDD67F41A69B28EAE9 /* JiukongDebugLog.swift in Sources */,
 				D3809C7726558145797A7920 /* CursorIndicatorSettingsController.swift in Sources */,
 				1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */,
 				E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */,
 				8E799509AF0265E9ABF7D848 /* InputSourceRegistrar.swift in Sources */,
+				4E27FB179E3297E5BCDA4255 /* JiukongDebugLog.swift in Sources */,
 				4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */,
 				BECDFB34AA2E5BF67DD334EB /* KeyboardLayout.swift in Sources */,
 				BCCCAB446FCD3FF1FCEC7ABB /* LanguageMode.swift in Sources */,
@@ -892,6 +892,7 @@
 				5A34442CA12BB28D8BDD49D4 /* SettingsWindowController.swift in Sources */,
 				4EE56011674AE8700780FC80 /* ShiftToggleController.swift in Sources */,
 				AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */,
+				1F94381C74A7CB144051FCEF /* SystemInputSourceObserver.swift in Sources */,
 				EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */,
 				7554A9A75EB55F73616FD4E3 /* UserDataListController.swift in Sources */,
 				1456C798D4B7A0C1F6ED8AEE /* UserDataLocation.swift in Sources */,
@@ -900,7 +901,6 @@
 				DE72C8816E0AB3015D3E6A41 /* UserPhraseRecord.swift in Sources */,
 				D242D1A724515FE9CBB3864F /* ZhuyinKeyboardArrangement.swift in Sources */,
 				F32A31CF08E28712EA537A8F /* main.swift in Sources */,
-				5939FCBE4868CF9DA9A4701C /* SystemInputSourceObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

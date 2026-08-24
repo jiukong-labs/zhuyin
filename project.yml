@@ -99,8 +99,6 @@ targets:
         ComponentInputModeDict: &inputModeDictionary
           tsInputModeListKey:
             tw.idv.jiukong.inputmethod.zhuyin.Chinese:
-              TISIconLabels:
-                Primary: 中
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.Chinese
               TISIntendedLanguage: zh-Hant
               tsInputModeDefaultStateKey: true
@@ -110,8 +108,6 @@ targets:
               tsInputModePrimaryInScriptKey: true
               tsInputModeScriptKey: smUnicodeScript
             tw.idv.jiukong.inputmethod.zhuyin.English:
-              TISIconLabels:
-                Primary: A
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.English
               TISIntendedLanguage: en
               tsInputModeDefaultStateKey: true

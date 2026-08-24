@@ -10,11 +10,13 @@ derived from another input method, dictionary, or corpus.
 semi-common, or neither — it has no concept of "this character's reading."
 A 破音字/heteronym can be a common character overall while one specific
 reading of it is archaic, dialectal, or otherwise rare (疋 is a common
-character read ㄆㄧˇ, but its ㄕㄨ reading is not). When that happens, the
+character read ㄆㄧˇ, but its ㄕㄨ reading is not; 食 and 射 are common
+characters, but their ㄧˋ readings have narrowly restricted uses). When that happens, the
 character-level MOE tier ties the rare reading with every other everyday
-character sharing that reading, and the tie falls back to CNS source order —
-which reflects standard code-table position, not modern usage — so the rare
-reading can still rank first. This file is the one place a specific reading
+character sharing that reading. First-party phrase evidence improves many
+ties, but an unattested rare reading can still fall back to an early CNS source
+position, which reflects a standard code table rather than modern usage. This
+file is the one place a specific reading
 can be pushed below (or, if a genuine case turns up, above) its character's
 default MOE tier.
 
@@ -41,7 +43,8 @@ Every row must be:
    source_order"`) before and after adding the row.
 3. **Additive, not comprehensive** — this file is expected to grow one
    verified case at a time as they're found (starting with the ㄕㄨ/疋 case
-   that motivated it), the same way `Data/JiukongCharacters` grows. It is
+   that motivated it and adding individually verified cases), the same way
+   `Data/JiukongCharacters` grows. It is
    deliberately not an attempt to hand-classify every multi-reading
    character in the dictionary; most heteronyms already rank fine and don't
    need a row here.

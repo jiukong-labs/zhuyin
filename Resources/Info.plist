@@ -30,11 +30,6 @@
 		<dict>
 			<key>tw.idv.jiukong.inputmethod.zhuyin.Chinese</key>
 			<dict>
-				<key>TISIconLabels</key>
-				<dict>
-					<key>Primary</key>
-					<string>中</string>
-				</dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.Chinese</string>
 				<key>TISIntendedLanguage</key>
@@ -54,11 +49,6 @@
 			</dict>
 			<key>tw.idv.jiukong.inputmethod.zhuyin.English</key>
 			<dict>
-				<key>TISIconLabels</key>
-				<dict>
-					<key>Primary</key>
-					<string>A</string>
-				</dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.English</string>
 				<key>TISIntendedLanguage</key>
@@ -89,11 +79,6 @@
 		<dict>
 			<key>tw.idv.jiukong.inputmethod.zhuyin.Chinese</key>
 			<dict>
-				<key>TISIconLabels</key>
-				<dict>
-					<key>Primary</key>
-					<string>中</string>
-				</dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.Chinese</string>
 				<key>TISIntendedLanguage</key>
@@ -113,11 +98,6 @@
 			</dict>
 			<key>tw.idv.jiukong.inputmethod.zhuyin.English</key>
 			<dict>
-				<key>TISIconLabels</key>
-				<dict>
-					<key>Primary</key>
-					<string>A</string>
-				</dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.English</string>
 				<key>TISIntendedLanguage</key>

@@ -35,13 +35,25 @@ final class InputController: IMKInputController {
     private var shiftToggleController = ShiftToggleController()
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
+    /// Whether Left/Right has entered explicit text-caret positioning. The
+    /// following unit is optional because an active caret at the text end has
+    /// no unit on its right.
+    private var isRevisionCaretActive = false
     private var revisingUnitID: UUID?
+    /// The reading replaced by the currently open revision chooser. This is
+    /// intentionally independent from `revisingUnitID`: candidates target the
+    /// character before the caret while the latter remains the unit after it.
+    private var revisionCandidateUnitID: UUID?
     /// The existing unit a not-yet-accepted candidate should be inserted
-    /// after, captured when a new reading is typed while the caret is
+    /// before, captured when a new reading is typed while the caret is
     /// positioned via revision-focus navigation (rather than appended at the
     /// end of the buffer as usual). Cleared whenever the candidate it belongs
     /// to is accepted or abandoned.
     private var pendingInsertionAnchorUnitID: UUID?
+    /// Distinguishes pronunciation revision from ordinary new input and
+    /// prevents an extra Backspace after the final component from leaking into
+    /// unrelated text.
+    private var isEditingRevisionPronunciation = false
     private var lastCandidateAnchor: NSRect?
     private var phraseSelectionPresentationID: UUID?
     private var savedPhraseConfirmation: SavedUserPhraseConfirmation?
@@ -149,6 +161,19 @@ final class InputController: IMKInputController {
             return true
         }
 
+        if let command = CompositionRevisionCandidateCommandRouter.command(
+            keyCode: event.keyCode,
+            modifierFlags: event.modifierFlags,
+            hasRevisionCaret: isRevisionCaretActive,
+            isChoosingCandidates:
+                candidateSession?.revisionMode == .choosing
+        ), handleCompositionRevisionCandidateCommand(
+            command,
+            inputClient: inputClient
+        ) {
+            return true
+        }
+
         if !compositionBuffer.isEmpty,
            CandidateRevisionInteractionPolicy.routesCompositionCursor(
                candidateSession: candidateSession
@@ -229,9 +254,10 @@ final class InputController: IMKInputController {
         // inserted, rather than at the buffer's end. Left untouched (not
         // cleared) on every later keystroke of the same syllable, so a
         // backspace-and-retype mid-syllable does not lose the anchor.
-        if let revisingUnitID {
+        if isRevisionCaretActive, let revisingUnitID {
             pendingInsertionAnchorUnitID = revisingUnitID
         }
+        isRevisionCaretActive = false
         revisingUnitID = nil
         let result = inputSession.handle(key)
         return apply(result, to: inputClient)
@@ -359,7 +385,11 @@ final class InputController: IMKInputController {
         let shouldToggle = shiftToggleController.handleFlagsChanged(
             keyCode: event.keyCode,
             modifierFlags: event.modifierFlags,
-            preference: preferences.current.shiftKeyPreference
+            preference: preferences.current.shiftKeyPreference,
+            systemKeyDownEventCount: CGEventSource.counterForEventType(
+                .combinedSessionState,
+                eventType: .keyDown
+            )
         )
         guard shouldToggle else {
             return false
@@ -507,10 +537,7 @@ final class InputController: IMKInputController {
             beginCandidateSelection(for: syllable, inputClient: inputClient)
         case let .commitText(text):
             compositionBuffer.clearSelection()
-            _ = compositionBuffer.append(
-                text: text,
-                pronunciation: text
-            )
+            _ = storeLiteralReading(text)
             flushComposition(
                 reason: result.handled ? .returnKey : .implicitPassThrough,
                 to: inputClient
@@ -524,7 +551,9 @@ final class InputController: IMKInputController {
         inputClient: any IMKTextInput
     ) {
         let pronunciation = syllable.text
+        isRevisionCaretActive = false
         revisingUnitID = nil
+        revisionCandidateUnitID = nil
         guard let candidateProvider else {
             NSLog("Jiukong Zhuyin character conversion is unavailable.")
             appendLiteralReading(pronunciation, to: inputClient)
@@ -564,6 +593,11 @@ final class InputController: IMKInputController {
     private func phraseLookupQueries(
         appending pronunciation: String
     ) -> [CompositionPhraseQuery] {
+        // Pronunciation revision replaces one removed character. It must not
+        // absorb preceding readings into a phrase candidate while doing so.
+        if isEditingRevisionPronunciation {
+            return []
+        }
         if let pendingInsertionAnchorUnitID {
             return compositionBuffer.phraseLookupQueries(
                 appending: pronunciation,
@@ -579,7 +613,7 @@ final class InputController: IMKInputController {
     ) {
         let targetUnitID: UUID?
 
-        if candidateSession != nil, revisingUnitID == nil {
+        if candidateSession != nil, !isRevisionCaretActive {
             // Finish the active final reading before moving inside the buffer.
             _ = acceptPreferredCandidate(reason: .implicitPassThrough)
             if let revisingUnitID {
@@ -625,31 +659,78 @@ final class InputController: IMKInputController {
             }
         }
 
-        guard let targetUnitID else {
-            revisingUnitID = nil
-            updateMarkedComposition(on: inputClient)
-            return
-        }
-        beginRevisionCandidateSelection(
+        beginRevisionPositioning(
             for: targetUnitID,
             inputClient: inputClient
         )
     }
 
-    private func beginRevisionCandidateSelection(
-        for unitID: UUID,
+    private func beginRevisionPositioning(
+        for unitID: UUID?,
         inputClient: any IMKTextInput
     ) {
-        guard let focus = compositionBuffer.revisionFocus(for: unitID),
-              let unit = compositionBuffer.unit(withID: unitID),
-              unit.kind == .reading else {
+        isEditingRevisionPronunciation = false
+        pendingInsertionAnchorUnitID = nil
+        if candidateSession != nil {
+            clearCandidatePresentation()
+        }
+        if let unitID,
+           compositionBuffer.revisionFocus(for: unitID) == nil {
+            isRevisionCaretActive = false
             revisingUnitID = nil
             updateMarkedComposition(on: inputClient)
             return
         }
 
         compositionBuffer.clearSelection()
+        isRevisionCaretActive = true
         revisingUnitID = unitID
+        candidateSyllable = nil
+        updateMarkedComposition(on: inputClient)
+    }
+
+    private func handleCompositionRevisionCandidateCommand(
+        _ command: CompositionRevisionCandidateCommand,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        switch command {
+        case .openCandidates:
+            guard !inputSession.hasComposition,
+                  candidateSession == nil,
+                  isRevisionCaretActive else {
+                return false
+            }
+            beginRevisionCandidateSelection(
+                before: revisingUnitID,
+                inputClient: inputClient
+            )
+            return true
+        case .returnToPositioning:
+            guard candidateSession?.revisionMode == .choosing else {
+                return false
+            }
+            returnToRevisionPositioning(inputClient: inputClient)
+            return true
+        }
+    }
+
+    private func beginRevisionCandidateSelection(
+        before caretFollowingUnitID: UUID?,
+        inputClient: any IMKTextInput
+    ) {
+        isEditingRevisionPronunciation = false
+        pendingInsertionAnchorUnitID = nil
+        revisionCandidateUnitID = nil
+        guard let focus = compositionBuffer.revisionFocus(
+            immediatelyBeforeCaretAt: caretFollowingUnitID
+        ),
+              let unit = compositionBuffer.unit(withID: focus.unitID),
+              unit.kind == .reading else {
+            updateMarkedComposition(on: inputClient)
+            return
+        }
+
+        compositionBuffer.clearSelection()
         candidateSyllable = nil
         guard let candidateProvider else {
             updateMarkedComposition(on: inputClient)
@@ -673,8 +754,10 @@ final class InputController: IMKInputController {
             }) {
                 session.updateHighlightedCandidate(currentCandidate.id)
             }
+            _ = session.beginRevisionChoosing()
 
             lastCandidateAnchor = nil
+            revisionCandidateUnitID = unit.id
             candidateSession = session
             updateMarkedComposition(on: inputClient)
             presentCandidates(session, inputClient: inputClient)
@@ -692,8 +775,9 @@ final class InputController: IMKInputController {
         inputClient: any IMKTextInput
     ) -> Bool {
         // A raw syllable and an expanded candidate list still own their
-        // arrows. A revision locator, however, is a valid phrase-selection
-        // starting point: close its panel and extend from the focused unit.
+        // arrows. A revision caret, however, is a valid phrase-selection
+        // starting point; a compact chooser is closed before extending from
+        // that focused unit.
         guard !inputSession.hasComposition else {
             return true
         }
@@ -701,16 +785,22 @@ final class InputController: IMKInputController {
             return false
         }
 
+        if isEditingRevisionPronunciation {
+            isEditingRevisionPronunciation = false
+            pendingInsertionAnchorUnitID = nil
+        }
+
         let startingUnitID = revisingUnitID
         if let candidateSession {
             guard candidateSession.revisionFocus != nil,
                   !candidateSession.isExpanded,
-                  startingUnitID != nil else {
+                  isRevisionCaretActive else {
                 return true
             }
             clearCandidatePresentation()
         }
 
+        isRevisionCaretActive = false
         revisingUnitID = nil
         switch command {
         case .extendLeft:
@@ -723,42 +813,58 @@ final class InputController: IMKInputController {
         return true
     }
 
-    /// An explicit inline focus or phrase range owns both physical deletion
-    /// keys before candidate routing. This prevents revision Backspace from
-    /// merely dismissing the candidate panel and gives forward Delete the same
-    /// focused-unit behavior.
+    /// An explicit inline cursor or phrase range owns both physical deletion
+    /// keys before candidate routing. Backspace reopens the reading immediately
+    /// left of the cursor; forward Delete reopens the reading immediately to
+    /// its right. Both remove one Bopomofo component per key press.
     private func handleCompositionDeletionCommand(
         _ command: CompositionDeletionCommand,
         inputClient: any IMKTextInput
     ) -> Bool {
+        if isEditingRevisionPronunciation {
+            if inputSession.hasComposition {
+                _ = apply(
+                    inputSession.handle(.deleteBackward),
+                    to: inputClient
+                )
+            }
+            // Once the chosen character has become a raw reading, either
+            // physical deletion key continues removing its components. After
+            // the initial is gone, keep consuming repeats so they cannot reach
+            // an unrelated marked unit or client character.
+            return true
+        }
+
         guard !inputSession.hasComposition,
               !compositionBuffer.isEmpty,
-              revisingUnitID != nil || compositionBuffer.hasSelection else {
+              isRevisionCaretActive || compositionBuffer.hasSelection else {
             return false
         }
 
-        if candidateSession != nil {
-            clearCandidatePresentation()
-        }
-
-        if let revisingUnitID {
-            let direction: CompositionRevisionDeletionDirection
+        if isRevisionCaretActive {
             switch command {
             case .deleteBackward:
-                direction = .backward
+                resumeEditingPreviousRevisionUnitAfterBackspace(
+                    before: revisingUnitID,
+                    inputClient: inputClient
+                )
             case .deleteForward:
-                direction = .forward
+                if let revisingUnitID {
+                    resumeEditingFocusedRevisionUnitAfterForwardDelete(
+                        at: revisingUnitID,
+                        inputClient: inputClient
+                    )
+                }
             }
-            self.revisingUnitID = compositionBuffer.deleteRevisionUnit(
-                withID: revisingUnitID,
-                direction: direction
-            )
         } else {
+            if candidateSession != nil {
+                clearCandidatePresentation()
+            }
             _ = compositionBuffer.deleteBackward()
+            isRevisionCaretActive = false
             revisingUnitID = nil
+            updateMarkedComposition(on: inputClient)
         }
-
-        updateMarkedComposition(on: inputClient)
         return true
     }
 
@@ -768,7 +874,8 @@ final class InputController: IMKInputController {
     ) -> Bool {
         guard candidateSession == nil,
               !inputSession.hasComposition,
-              !compositionBuffer.isEmpty else {
+              !compositionBuffer.isEmpty
+                || isEditingRevisionPronunciation else {
             return false
         }
 
@@ -796,7 +903,14 @@ final class InputController: IMKInputController {
             }
             return true
         case .escape:
-            if revisingUnitID != nil {
+            if isEditingRevisionPronunciation {
+                isEditingRevisionPronunciation = false
+                pendingInsertionAnchorUnitID = nil
+                updateMarkedComposition(on: inputClient)
+                return true
+            }
+            if isRevisionCaretActive {
+                isRevisionCaretActive = false
                 revisingUnitID = nil
                 updateMarkedComposition(on: inputClient)
                 return true
@@ -807,15 +921,15 @@ final class InputController: IMKInputController {
             updateMarkedComposition(on: inputClient)
             return true
         case .deleteBackward:
-            if let revisingUnitID {
-                self.revisingUnitID = compositionBuffer.deleteRevisionUnit(
-                    withID: revisingUnitID,
-                    direction: .backward
+            if isRevisionCaretActive {
+                resumeEditingPreviousRevisionUnitAfterBackspace(
+                    before: revisingUnitID,
+                    inputClient: inputClient
                 )
             } else {
                 compositionBuffer.deleteBackward()
+                updateMarkedComposition(on: inputClient)
             }
-            updateMarkedComposition(on: inputClient)
             return true
         default:
             return false
@@ -859,7 +973,6 @@ final class InputController: IMKInputController {
         case .cancel:
             if session.revisionMode == .choosing {
                 returnToRevisionPositioning(
-                    session,
                     inputClient: inputClient
                 )
             } else if session.isExpanded {
@@ -878,24 +991,14 @@ final class InputController: IMKInputController {
     }
 
     private func returnToRevisionPositioning(
-        _ session: CandidateSession,
         inputClient: any IMKTextInput
     ) {
-        guard let focus = session.revisionFocus else {
+        guard candidateSession?.revisionFocus != nil else {
             cancelActiveCandidate(to: inputClient)
             return
         }
-
-        var updatedSession = session
-        _ = updatedSession.collapse()
-        if let currentCandidate = updatedSession.candidates.first(where: {
-            $0.type == .character && $0.text == focus.text
-        }) {
-            updatedSession.updateHighlightedCandidate(currentCandidate.id)
-        }
-        candidateSession = updatedSession
+        clearCandidatePresentation()
         updateMarkedComposition(on: inputClient)
-        presentCandidates(updatedSession, inputClient: inputClient)
     }
 
     private func returnToInlineCandidatePreview(
@@ -916,18 +1019,29 @@ final class InputController: IMKInputController {
         _ punctuation: String,
         inputClient: any IMKTextInput
     ) -> Bool {
+        let insertionAnchorUnitID = pendingInsertionAnchorUnitID
         _ = acceptPreferredCandidate(reason: .punctuation)
+        isRevisionCaretActive = false
         revisingUnitID = nil
 
         if let rawText = inputSession.takeRawComposition() {
-            _ = compositionBuffer.append(
-                text: rawText,
-                pronunciation: rawText
-            )
+            _ = storeLiteralReading(rawText)
         }
+        isEditingRevisionPronunciation = false
+        pendingInsertionAnchorUnitID = nil
 
         compositionBuffer.clearSelection()
-        _ = compositionBuffer.appendPunctuation(punctuation)
+        if let insertionAnchorUnitID,
+           compositionBuffer.insert(
+               text: punctuation,
+               pronunciation: punctuation,
+               before: insertionAnchorUnitID,
+               kind: .punctuation
+           ) == nil {
+            _ = compositionBuffer.appendPunctuation(punctuation)
+        } else if insertionAnchorUnitID == nil {
+            _ = compositionBuffer.appendPunctuation(punctuation)
+        }
         updateMarkedComposition(on: inputClient)
         return true
     }
@@ -952,7 +1066,7 @@ final class InputController: IMKInputController {
         reason: CandidateCommitReason
     ) -> Bool {
         let fallbackReading = candidateSession?.pronunciation
-        let revisionUnitID = revisingUnitID
+        let revisionUnitID = revisionCandidateUnitID
         let insertionAnchorUnitID = pendingInsertionAnchorUnitID
         clearCandidatePresentation()
 
@@ -988,6 +1102,7 @@ final class InputController: IMKInputController {
             // sitting right before it: each further reading keeps landing at
             // the same spot, so consecutively typed syllables accumulate to
             // its left in the order they were typed.
+            isRevisionCaretActive = true
             revisingUnitID = insertionAnchorUnitID
             return true
         }
@@ -1009,7 +1124,7 @@ final class InputController: IMKInputController {
     }
 
     private func cancelActiveCandidate(to inputClient: any IMKTextInput) {
-        if revisingUnitID != nil {
+        if isRevisionCaretActive {
             clearCandidatePresentation()
         } else {
             discardCandidateState()
@@ -1020,9 +1135,11 @@ final class InputController: IMKInputController {
     private func resumeEditingAfterCandidateBackspace(
         to inputClient: any IMKTextInput
     ) {
-        if revisingUnitID != nil {
-            clearCandidatePresentation()
-            updateMarkedComposition(on: inputClient)
+        if isRevisionCaretActive {
+            resumeEditingPreviousRevisionUnitAfterBackspace(
+                before: revisingUnitID,
+                inputClient: inputClient
+            )
             return
         }
         guard let completedSyllable = candidateSyllable else {
@@ -1033,16 +1150,89 @@ final class InputController: IMKInputController {
         // Backspacing into the same syllable's partial composition continues
         // the same pending insertion, so its anchor must survive the reset.
         let insertionAnchorUnitID = pendingInsertionAnchorUnitID
+        let wasEditingRevisionPronunciation = isEditingRevisionPronunciation
         discardCandidateState()
         pendingInsertionAnchorUnitID = insertionAnchorUnitID
+        isEditingRevisionPronunciation = wasEditingRevisionPronunciation
         _ = apply(
             inputSession.resumeEditingAndDeleteBackward(completedSyllable),
             to: inputClient
         )
     }
 
+    /// Removes the reading immediately before the revision caret, restores its
+    /// exact stored pronunciation to the parser, and applies one Backspace.
+    /// The following unit remains the insertion anchor, so the partial reading
+    /// and its eventual replacement stay directly before it.
+    private func resumeEditingPreviousRevisionUnitAfterBackspace(
+        before focusedUnitID: UUID?,
+        inputClient: any IMKTextInput
+    ) {
+        guard let unitID = compositionBuffer.readingUnitID(
+            immediatelyBeforeCaretAt: focusedUnitID
+        ) else {
+            return
+        }
+        resumeEditingRevisionUnitPronunciation(
+            unitID,
+            insertionAnchorUnitID: focusedUnitID,
+            inputClient: inputClient
+        )
+    }
+
+    /// Restores the reading on the right side of the revision caret and uses
+    /// the following surviving unit as its insertion anchor. A final focused
+    /// unit has no anchor and naturally remains at the buffer end.
+    private func resumeEditingFocusedRevisionUnitAfterForwardDelete(
+        at focusedUnitID: UUID,
+        inputClient: any IMKTextInput
+    ) {
+        resumeEditingRevisionUnitPronunciation(
+            focusedUnitID,
+            insertionAnchorUnitID: compositionBuffer.unitID(
+                immediatelyAfter: focusedUnitID
+            ),
+            inputClient: inputClient
+        )
+    }
+
+    /// Removes one converted reading, restores its exact pronunciation to the
+    /// parser, and immediately deletes the tone component. `insertionAnchor`
+    /// preserves the removed unit's original position while it is raw.
+    private func resumeEditingRevisionUnitPronunciation(
+        _ unitID: UUID,
+        insertionAnchorUnitID: UUID?,
+        inputClient: any IMKTextInput
+    ) {
+        guard let unit = compositionBuffer.unit(withID: unitID),
+              unit.kind == .reading,
+              let syllable = BopomofoSyllable(
+                  pronunciation: unit.pronunciation
+              ) else {
+            clearCandidatePresentation()
+            updateMarkedComposition(on: inputClient)
+            return
+        }
+
+        clearCandidatePresentation()
+        guard compositionBuffer.deleteUnit(withID: unitID) != nil else {
+            updateMarkedComposition(on: inputClient)
+            return
+        }
+
+        isRevisionCaretActive = false
+        revisingUnitID = nil
+        pendingInsertionAnchorUnitID = insertionAnchorUnitID
+        isEditingRevisionPronunciation = true
+        _ = apply(
+            inputSession.resumeEditingAndDeleteBackward(syllable),
+            to: inputClient
+        )
+    }
+
     private func discardCandidateState() {
         clearCandidatePresentation()
+        isRevisionCaretActive = false
         revisingUnitID = nil
     }
 
@@ -1050,8 +1240,10 @@ final class InputController: IMKInputController {
         let sessionID = candidateSession?.id
         candidateSession = nil
         candidateSyllable = nil
+        revisionCandidateUnitID = nil
         lastCandidateAnchor = nil
         pendingInsertionAnchorUnitID = nil
+        isEditingRevisionPronunciation = false
         if let sessionID {
             candidatePresenter.hide(sessionID: sessionID)
         }
@@ -1112,6 +1304,23 @@ final class InputController: IMKInputController {
         _ pronunciation: String,
         to inputClient: any IMKTextInput
     ) {
+        if let anchorUnitID = storeLiteralReading(pronunciation),
+           compositionBuffer.revisionFocus(for: anchorUnitID) != nil {
+            // The anchor keeps the caret; see the matching comment in
+            // `acceptCandidate`.
+            isRevisionCaretActive = true
+            revisingUnitID = anchorUnitID
+        }
+        updateMarkedComposition(on: inputClient)
+    }
+
+    /// Stores a raw reading at the positioned caret when one exists, or at
+    /// the buffer end otherwise. Returning the surviving anchor lets an
+    /// interactive caller keep the revision caret there; final commit callers can
+    /// ignore it.
+    @discardableResult
+    private func storeLiteralReading(_ pronunciation: String) -> UUID? {
+        isEditingRevisionPronunciation = false
         if let anchorUnitID = pendingInsertionAnchorUnitID {
             pendingInsertionAnchorUnitID = nil
             if compositionBuffer.insert(
@@ -1119,19 +1328,16 @@ final class InputController: IMKInputController {
                 pronunciation: pronunciation,
                 before: anchorUnitID
             ) != nil {
-                // The anchor keeps the caret; see the matching comment in
-                // `acceptCandidate`.
-                revisingUnitID = anchorUnitID
-                updateMarkedComposition(on: inputClient)
-                return
+                return anchorUnitID
             }
         }
 
+        pendingInsertionAnchorUnitID = nil
         _ = compositionBuffer.append(
             text: pronunciation,
             pronunciation: pronunciation
         )
-        updateMarkedComposition(on: inputClient)
+        return nil
     }
 
     /// Detaches every mutable input state before calling into the client. This
@@ -1142,14 +1348,14 @@ final class InputController: IMKInputController {
     ) {
         hidePhraseSelectionPresentation()
         _ = acceptPreferredCandidate(reason: reason)
+        isRevisionCaretActive = false
         revisingUnitID = nil
 
         if let rawText = inputSession.takeRawComposition() {
-            _ = compositionBuffer.append(
-                text: rawText,
-                pronunciation: rawText
-            )
+            _ = storeLiteralReading(rawText)
         }
+        isEditingRevisionPronunciation = false
+        pendingInsertionAnchorUnitID = nil
 
         guard let snapshot = compositionBuffer.takeCommitSnapshot() else {
             return
@@ -1185,31 +1391,33 @@ final class InputController: IMKInputController {
 
     private func candidateAnchor(on inputClient: any IMKTextInput) -> NSRect {
         let markedRange = inputClient.markedRange()
-        if markedRange.location != NSNotFound,
-           markedRange.length != NSNotFound,
-           markedRange.location <= Int.max - markedRange.length {
-            let localOffset: Int
-            if let revisingUnitID {
-                let localRange = compositionBuffer.markedSelectionRange(
-                    focusedUnitID: revisingUnitID
-                )
-                localOffset = localRange.location + localRange.length
-            } else if compositionBuffer.hasSelection {
-                let localRange = compositionBuffer.markedSelectionRange
-                localOffset = localRange.location + localRange.length
-            } else {
-                localOffset = markedRange.length
-            }
-            let caretRange = NSRange(
-                location: markedRange.location + localOffset,
+        let localAnchorRange: NSRange
+        if isRevisionCaretActive {
+            localAnchorRange = compositionBuffer.markedSelectionRange(
+                focusedUnitID: revisingUnitID
+            )
+        } else if compositionBuffer.hasSelection {
+            localAnchorRange = compositionBuffer.markedSelectionRange
+        } else {
+            localAnchorRange = NSRange(
+                location: markedRange.length,
                 length: 0
             )
-            if let caretRect = firstValidRect(
-                for: caretRange,
+        }
+
+        // A non-empty revision/phrase range is the text that must remain
+        // visible. Some web-backed clients report its trailing caret on a
+        // different visual line, so query the actual glyph rectangle first.
+        for anchorRange in CandidateAnchorRanges.requestedRanges(
+            markedRange: markedRange,
+            localAnchorRange: localAnchorRange
+        ) {
+            if let anchorRect = firstValidRect(
+                for: anchorRange,
                 inputClient: inputClient
             ) {
-                lastCandidateAnchor = caretRect
-                return caretRect
+                lastCandidateAnchor = anchorRect
+                return anchorRect
             }
         }
 
@@ -1276,7 +1484,7 @@ final class InputController: IMKInputController {
             hidePhraseSelectionPresentation()
         }
         let presentation: CompositionPresentation?
-        if revisingUnitID == nil,
+        if !isRevisionCaretActive,
            let candidateSession,
            candidateSession.revisionFocus == nil {
             presentation = CompositionPresentation.make(
@@ -1291,7 +1499,8 @@ final class InputController: IMKInputController {
             presentation = CompositionPresentation.make(
                 buffer: compositionBuffer,
                 activeSuffix: inputSession.markedText,
-                focusedUnitID: revisingUnitID
+                focusedUnitID: revisingUnitID,
+                insertionAnchorUnitID: pendingInsertionAnchorUnitID
             )
         }
         guard let presentation else {
@@ -1299,23 +1508,18 @@ final class InputController: IMKInputController {
             return
         }
 
-        let focusedRange = revisingUnitID.map {
-            compositionBuffer.markedSelectionRange(focusedUnitID: $0)
-        }
         let phraseRange = compositionBuffer.hasSelection
             ? presentation.selectionRange
             : nil
         let markedText: Any
-        if let focusedRange {
+        if let phraseRange {
             markedText = CompositionMarkedTextRenderer.make(
                 presentation: presentation,
-                highlightedRange: focusedRange
+                highlightedRange: phraseRange
             )
-        } else if let phraseRange {
-            markedText = CompositionMarkedTextRenderer.make(
-                presentation: presentation,
-                highlightedRange: phraseRange,
-                style: .phraseSelection
+        } else if isRevisionCaretActive {
+            markedText = CompositionMarkedTextRenderer.makeUnhighlighted(
+                presentation: presentation
             )
         } else {
             markedText = presentation.text as NSString

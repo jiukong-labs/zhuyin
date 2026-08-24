@@ -94,6 +94,8 @@ private func run() throws {
     print("  MOE common characters: \(summary.frequencyTierStatistics.commonCharacterCount)")
     print("  MOE semi-common characters: \(summary.frequencyTierStatistics.semiCommonCharacterCount)")
     print("  First-party heteronym tier overrides: \(summary.frequencyTierStatistics.heteronymOverrideCount)")
+    print("  First-party attested character readings: \(summary.phraseAttestationStatistics.distinctCharacterReadingCount)")
+    print("  First-party character-reading attestations: \(summary.phraseAttestationStatistics.totalCharacterReadingCount)")
 }
 
 do {

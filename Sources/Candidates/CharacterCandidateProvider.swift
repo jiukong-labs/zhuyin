@@ -41,12 +41,20 @@ final class CharacterCandidateProvider {
             .enumerated()
             .map { baseRank, entry in
                 let learningRecord = learningRecords[entry.text]
+                let phraseCount = max(0, entry.firstPartyPhraseCount)
+                // Keep the three usage tiers strict while ranking entries
+                // within a tier by evidence from Jiukong's own reviewed
+                // phrase lexicon. count / (count + 1) stays below one, so it
+                // can never cross a tier boundary.
+                let firstPartyPhraseBonus = Double(phraseCount)
+                    / (Double(phraseCount) + 1)
                 return Candidate(
                     text: entry.text,
                     pronunciation: pronunciation,
                     baseRank: baseRank,
                     sourceOrder: entry.sourceOrder,
-                    baseFrequency: Double(2 - entry.usageTier),
+                    baseFrequency: Double(2 - entry.usageTier)
+                        + firstPartyPhraseBonus,
                     userFrequency: learningRecord?.selectionCount ?? 0,
                     lastUsed: learningRecord?.lastSelectedAt,
                     pinned: learningRecord?.pinned ?? false

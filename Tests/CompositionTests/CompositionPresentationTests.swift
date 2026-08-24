@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import XCTest
 
 final class CompositionPresentationTests: XCTestCase {
@@ -62,7 +63,45 @@ final class CompositionPresentationTests: XCTestCase {
         )
     }
 
-    func testRevisionFocusSelectsOneExistingUnit() throws {
+    func testActiveReadingStaysBeforeItsOriginalInsertionAnchor() throws {
+        var buffer = CompositionBuffer()
+        let anchor = try XCTUnwrap(
+            buffer.append(text: "鏡", pronunciation: "ㄐㄧㄥˋ")
+        )
+
+        XCTAssertEqual(
+            CompositionPresentation.make(
+                buffer: buffer,
+                activeSuffix: "ㄌㄨ",
+                insertionAnchorUnitID: anchor.id
+            ),
+            CompositionPresentation(
+                text: "ㄌㄨ鏡",
+                selectionRange: NSRange(location: 2, length: 0)
+            )
+        )
+    }
+
+    func testEmptyEditedReadingKeepsCaretAtItsOriginalAnchor() throws {
+        var buffer = CompositionBuffer()
+        let anchor = try XCTUnwrap(
+            buffer.append(text: "鏡", pronunciation: "ㄐㄧㄥˋ")
+        )
+
+        XCTAssertEqual(
+            CompositionPresentation.make(
+                buffer: buffer,
+                activeSuffix: nil,
+                insertionAnchorUnitID: anchor.id
+            ),
+            CompositionPresentation(
+                text: "鏡",
+                selectionRange: NSRange(location: 0, length: 0)
+            )
+        )
+    }
+
+    func testRevisionFocusPlacesCaretBeforeExistingUnit() throws {
         var buffer = CompositionBuffer()
         buffer.append(text: "測", pronunciation: "ㄘㄜˋ")
         buffer.append(text: "𐍈", pronunciation: "ㄐㄧˊ")
@@ -76,7 +115,7 @@ final class CompositionPresentationTests: XCTestCase {
             ),
             CompositionPresentation(
                 text: "測𐍈",
-                selectionRange: NSRange(location: 1, length: 2)
+                selectionRange: NSRange(location: 1, length: 0)
             )
         )
     }
@@ -152,7 +191,7 @@ final class CompositionPresentationTests: XCTestCase {
         XCTAssertEqual(buffer.text, "冊")
     }
 
-    func testMarkedTextRendererStylesOnlyTheFocusedUTF16Range() throws {
+    func testMarkedTextRendererStylesOnlyThePhraseUTF16Range() throws {
         let presentation = CompositionPresentation(
             text: "A𐍈測",
             selectionRange: NSRange(location: 1, length: 2)
@@ -170,6 +209,48 @@ final class CompositionPresentationTests: XCTestCase {
             NSUnderlineStyle.thick.rawValue
         )
         XCTAssertNil(rendered.attribute(.backgroundColor, at: 3, effectiveRange: nil))
+    }
+
+    func testRevisionMarkedTextSuppressesDefaultFillAndUnderline() {
+        let presentation = CompositionPresentation(
+            text: "路鏡",
+            selectionRange: NSRange(location: 1, length: 0)
+        )
+
+        let rendered = CompositionMarkedTextRenderer.makeUnhighlighted(
+            presentation: presentation
+        )
+
+        for index in 0 ..< rendered.length {
+            XCTAssertEqual(
+                rendered.attribute(
+                    .backgroundColor,
+                    at: index,
+                    effectiveRange: nil
+                ) as? NSColor,
+                NSColor.clear
+            )
+            XCTAssertEqual(
+                rendered.attribute(
+                    .underlineStyle,
+                    at: index,
+                    effectiveRange: nil
+                ) as? Int,
+                0
+            )
+            XCTAssertEqual(
+                rendered.attribute(
+                    .markedClauseSegment,
+                    at: index,
+                    effectiveRange: nil
+                ) as? Int,
+                Int(kTSMHiliteNoHilite)
+            )
+        }
+        XCTAssertEqual(
+            presentation.selectionRange,
+            NSRange(location: 1, length: 0)
+        )
     }
 
     func testMarkedTextRendererIgnoresInvalidOrMissingFocus() {
@@ -201,8 +282,7 @@ final class CompositionPresentationTests: XCTestCase {
 
         let rendered = CompositionMarkedTextRenderer.make(
             presentation: presentation,
-            highlightedRange: presentation.selectionRange,
-            style: .phraseSelection
+            highlightedRange: presentation.selectionRange
         )
 
         XCTAssertNil(

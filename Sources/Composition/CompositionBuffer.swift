@@ -84,8 +84,8 @@ struct CompositionPhraseSelectionStatus: Equatable {
     }
 }
 
-/// A stable, user-visible description of the reading unit currently targeted
-/// by plain Left/Right revision.
+/// A stable, user-visible description of the reading unit immediately before
+/// the positioned caret and currently offered for candidate revision.
 struct CompositionRevisionFocus: Equatable {
     let unitID: UUID
     let text: String
@@ -95,17 +95,12 @@ struct CompositionRevisionFocus: Equatable {
     let readingCount: Int
 
     var locatingDisplayText: String {
-        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字"
+        "定位 \(readingPosition)／\(readingCount)：\(text)　\(pronunciation)　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選游標前字"
     }
 
     var choosingDisplayText: String {
-        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　⌫／Del 刪字　Esc 返回"
+        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　⌫ 改左字音　Del 改右字音　↑／Esc 返回"
     }
-}
-
-enum CompositionRevisionDeletionDirection: Equatable {
-    case backward
-    case forward
 }
 
 /// A detached, immutable value passed to the real client-commit path.
@@ -161,8 +156,9 @@ struct CompositionBuffer: Equatable {
         markedSelectionRange(focusedUnitID: nil)
     }
 
-    /// The AppKit range for phrase selection, a focused revision unit, or the
-    /// caret at the end. A phrase selection remains the highest-priority view.
+    /// The AppKit range for phrase selection, a revision caret immediately
+    /// before the focused unit, or the caret at the end. A phrase selection
+    /// remains the highest-priority view.
     func markedSelectionRange(focusedUnitID: UUID?) -> NSRange {
         guard let selectedUnitRange else {
             if let focusedUnitID,
@@ -172,7 +168,7 @@ struct CompositionBuffer: Equatable {
                 let prefix = units[..<focusedIndex].map(\.text).joined()
                 return NSRange(
                     location: prefix.utf16.count,
-                    length: units[focusedIndex].text.utf16.count
+                    length: 0
                 )
             }
             return NSRange(location: text.utf16.count, length: 0)
@@ -234,6 +230,53 @@ struct CompositionBuffer: Equatable {
 
         return units[units.index(after: index)...]
             .first(where: { $0.kind == .reading })?.id
+    }
+
+    /// Returns the reading unit immediately before `unitID`. Unlike revision
+    /// arrow navigation, this deliberately does not skip punctuation because
+    /// Backspace must never reach across a punctuation boundary.
+    func readingUnitID(immediatelyBefore unitID: UUID) -> UUID? {
+        guard let index = units.firstIndex(where: { $0.id == unitID }),
+              index > units.startIndex else {
+            return nil
+        }
+        let previousUnit = units[units.index(before: index)]
+        return previousUnit.kind == .reading ? previousUnit.id : nil
+    }
+
+    /// Returns the reading immediately before a revision caret. A `nil`
+    /// following unit represents an active caret at the text end. This lookup
+    /// is deliberately adjacency-based, so candidate revision never jumps
+    /// backward across punctuation.
+    func readingUnitID(immediatelyBeforeCaretAt followingUnitID: UUID?) -> UUID? {
+        guard let followingUnitID else {
+            return units.last?.kind == .reading ? units.last?.id : nil
+        }
+        return readingUnitID(immediatelyBefore: followingUnitID)
+    }
+
+    /// Candidate revision always targets the reading immediately before the
+    /// insertion caret, while the caret itself keeps its independent anchor.
+    func revisionFocus(immediatelyBeforeCaretAt followingUnitID: UUID?)
+        -> CompositionRevisionFocus? {
+        guard let unitID = readingUnitID(
+            immediatelyBeforeCaretAt: followingUnitID
+        ) else {
+            return nil
+        }
+        return revisionFocus(for: unitID)
+    }
+
+    /// Returns the unit immediately following `unitID`, including punctuation.
+    /// A forward pronunciation edit removes the focused reading and uses this
+    /// surviving unit as its insertion anchor so the raw reading stays at the
+    /// original cursor position.
+    func unitID(immediatelyAfter unitID: UUID) -> UUID? {
+        guard let index = units.firstIndex(where: { $0.id == unitID }),
+              index < units.index(before: units.endIndex) else {
+            return nil
+        }
+        return units[units.index(after: index)].id
     }
 
     /// Returns a phrase only when at least two composition units are selected
@@ -421,28 +464,6 @@ struct CompositionBuffer: Equatable {
         return deletedUnit
     }
 
-    /// Deletes the explicitly focused reading unit and returns the closest
-    /// surviving reading that should receive focus. Backspace prefers the
-    /// preceding reading; forward Delete prefers the following reading.
-    @discardableResult
-    mutating func deleteRevisionUnit(
-        withID unitID: UUID,
-        direction: CompositionRevisionDeletionDirection
-    ) -> UUID? {
-        let previousUnitID = readingUnitID(before: unitID)
-        let nextUnitID = readingUnitID(after: unitID)
-        guard deleteUnit(withID: unitID) != nil else {
-            return nil
-        }
-
-        switch direction {
-        case .backward:
-            return previousUnitID ?? nextUnitID
-        case .forward:
-            return nextUnitID ?? previousUnitID
-        }
-    }
-
     /// Produces every exact suffix lookup ending in `pronunciation`, ordered
     /// from the longest useful phrase to the shortest (which is two units).
     func phraseLookupQueries(
@@ -576,10 +597,10 @@ struct CompositionBuffer: Equatable {
 
     /// Extends a phrase selection toward the preceding reading unit.
     ///
-    /// A revision focus is already a visible one-character selection, so the
-    /// first Shift-Left includes both that unit and its left neighbor. Without
-    /// a focus, selection starts at the final reading and subsequent presses
-    /// continue toward the beginning.
+    /// With a positioned caret, the first Shift-Left includes the following
+    /// reading and its left neighbor. Without an interior anchor, selection
+    /// starts at the final reading and subsequent presses continue toward the
+    /// beginning.
     @discardableResult
     mutating func extendSelectionLeft(startingAt unitID: UUID?) -> Bool {
         if let selectedUnitRange {
@@ -611,9 +632,10 @@ struct CompositionBuffer: Equatable {
 
     /// Extends a phrase selection toward the following reading unit.
     ///
-    /// With a revision focus, the first Shift-Right includes the focused unit
-    /// and its right neighbor. Without a focus, selection starts at the first
-    /// reading so a prefix can be learned using Shift-Right alone.
+    /// With a positioned caret, the first Shift-Right includes the following
+    /// reading and its right neighbor. Without an interior anchor, selection
+    /// starts at the first reading so a prefix can be learned using
+    /// Shift-Right alone.
     @discardableResult
     mutating func extendSelectionRight(startingAt unitID: UUID?) -> Bool {
         if let selectedUnitRange {

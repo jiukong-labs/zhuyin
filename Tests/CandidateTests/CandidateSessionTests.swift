@@ -85,21 +85,27 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.revisionFocus, focus)
         XCTAssertEqual(session.revisionMode, .locating)
         XCTAssertFalse(session.isInlinePreview)
-        XCTAssertTrue(session.presentsCandidatePanel)
+        XCTAssertFalse(session.presentsCandidatePanel)
         XCTAssertEqual(
             session.revisionDisplayText,
-            "定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字"
+            "定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選游標前字"
         )
+
+        XCTAssertTrue(session.beginRevisionChoosing())
+        XCTAssertEqual(session.revisionMode, .choosing)
+        XCTAssertEqual(session.presentationMode, .compact)
+        XCTAssertEqual(
+            session.revisionDisplayText,
+            "選字 1／3：測　←／→ 選候選　⌫ 改左字音　Del 改右字音　↑／Esc 返回"
+        )
+        XCTAssertTrue(session.presentsCandidatePanel)
 
         XCTAssertTrue(session.expand())
+        XCTAssertEqual(session.presentationMode, .expanded)
         XCTAssertEqual(session.revisionMode, .choosing)
-        XCTAssertEqual(
-            session.revisionDisplayText,
-            "選字 1／3：測　←／→ 選候選　⌫／Del 刪字　Esc 返回"
-        )
 
         XCTAssertTrue(session.collapse())
-        XCTAssertEqual(session.revisionMode, .locating)
+        XCTAssertEqual(session.revisionMode, .choosing)
         XCTAssertFalse(session.collapse())
     }
 
@@ -140,7 +146,7 @@ final class CandidateSessionTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(session.expand())
+        XCTAssertTrue(session.beginRevisionChoosing())
         XCTAssertFalse(
             CandidateRevisionInteractionPolicy.routesCompositionCursor(
                 candidateSession: session

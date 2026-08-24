@@ -37,6 +37,7 @@ struct CandidateSession: Equatable {
     let candidates: [Candidate]
     private(set) var highlightedIndex = 0
     private(set) var presentationMode: CandidatePresentationMode = .compact
+    private var isRevisionChoosing = false
 
     init?(
         id: UUID = UUID(),
@@ -70,10 +71,11 @@ struct CandidateSession: Equatable {
         presentationMode == .expanded
     }
 
-    /// Ordinary conversion starts as an inline preview without a window.
-    /// Revision locating remains visible even though it uses compact layout.
+    /// Ordinary compact conversion is windowless. Revision choosing may use a
+    /// compact, visible nine-candidate row after its first Down Arrow and only
+    /// expands to the full grid after a second Down Arrow.
     var presentsCandidatePanel: Bool {
-        revisionFocus != nil || isExpanded
+        isExpanded || revisionMode == .choosing
     }
 
     var isInlinePreview: Bool {
@@ -84,7 +86,7 @@ struct CandidateSession: Equatable {
         guard revisionFocus != nil else {
             return nil
         }
-        return isExpanded ? .choosing : .locating
+        return isRevisionChoosing ? .choosing : .locating
     }
 
     var revisionDisplayText: String? {
@@ -126,6 +128,18 @@ struct CandidateSession: Equatable {
         }
 
         presentationMode = .expanded
+        if revisionFocus != nil {
+            isRevisionChoosing = true
+        }
+        return true
+    }
+
+    @discardableResult
+    mutating func beginRevisionChoosing() -> Bool {
+        guard revisionFocus != nil, !isRevisionChoosing else {
+            return false
+        }
+        isRevisionChoosing = true
         return true
     }
 
@@ -218,8 +232,9 @@ enum CandidateRevisionInteractionPolicy {
         candidateSession?.revisionMode != .choosing
     }
 
-    /// Candidate navigation is deliberately dormant during text positioning.
-    /// Down's `.expand` command is still accepted and enters choosing mode.
+    /// Candidate navigation is deliberately dormant in a locating snapshot.
+    /// Runtime text positioning normally has no candidate session; its first
+    /// Down creates a separate choosing snapshot.
     static func allowsCandidateCommand(
         _ command: CandidateCommand,
         session: CandidateSession
