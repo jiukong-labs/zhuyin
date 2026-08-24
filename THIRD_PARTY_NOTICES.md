@@ -69,6 +69,32 @@ The license's full usage note is retained verbatim in
 the first-party lexicon; like the CNS11643 and MOE character-table data
 above, this idiom data itself is not covered by Jiukong Zhuyin's MIT License.
 
+## MOE revised dictionary phrases
+
+Jiukong Zhuyin's phrase candidates also contain data derived from:
+
+- Provider: 教育部 (Ministry of Education, Taiwan) / 國家教育研究院
+- Dataset: 《重編國語辭典修訂本》 (Revised Mandarin Chinese Dictionary)
+- Source file: `dict_revised_2015_20260625.xlsx`, downloaded from
+  https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/dict_reviseddict_download.html
+- Retrieved: 2026-08-23
+- License: 創用CC－姓名標示－禁止改作 臺灣3.0版 (CC BY-ND 3.0 TW), the same
+  license family as the 《成語典》 data above, not the Article 9
+  public-domain basis the CNS11643 and MOE character-table data rely on. See
+  `Data/MOERevisedDictionary/README.md` for the full provenance, scope
+  (four-character entries only, out of a 163,920-entry general dictionary),
+  and what was excluded and why.
+
+Attribution, as required by the license:
+
+> 中華民國教育部（Ministry of Education, R.O.C.）。《重編國語辭典修訂
+> 本》（版本編號：dict_revised_2015_20260625）網址：http://dict.revised.moe.edu.tw/
+
+The license's full usage note is retained verbatim in
+`Data/MOERevisedDictionary/reviseddict_usage_note.txt` per its own retention
+requirement. Like the 《成語典》 data above, this data itself is not covered
+by Jiukong Zhuyin's MIT License.
+
 ## Development-only tooling
 
 The checked-in Xcode project was generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen), copyright Yonatan Karp-Rudin and contributors, licensed under the MIT License. XcodeGen is a development tool and is not copied into or distributed with Jiukong Zhuyin.

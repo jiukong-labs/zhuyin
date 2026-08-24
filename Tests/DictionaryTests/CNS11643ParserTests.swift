@@ -187,6 +187,115 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(mismatches, [])
     }
 
+    func testPinnedMOERevisedDictionaryPhraseLexiconStatistics() throws {
+        let sourceURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOERevisedDictionary", isDirectory: true)
+            .appendingPathComponent("four-character-phrases.tsv")
+
+        let dataset = try JiukongPhraseParser.parse(sourceURL: sourceURL)
+
+        XCTAssertEqual(
+            dataset.statistics,
+            JiukongPhraseStatistics(
+                entryCount: 33_295,
+                uniquePhraseCount: 33_295,
+                pronunciationSequenceCount: 32_768
+            )
+        )
+        XCTAssertEqual(dataset.entries.first?.phrase, "八百羅漢")
+        XCTAssertEqual(
+            dataset.entries.first?.pronunciationSequence,
+            ["ㄅㄚ", "ㄅㄞˇ", "ㄌㄨㄛˊ", "ㄏㄢˋ"]
+        )
+    }
+
+    func testMOERevisedDictionaryReadingsMatchPinnedOfficialCharacterData() throws {
+        let revisedURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOERevisedDictionary", isDirectory: true)
+            .appendingPathComponent("four-character-phrases.tsv")
+        let revised = try JiukongPhraseParser.parse(sourceURL: revisedURL)
+        let sourceDirectory = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("CNS11643", isDirectory: true)
+            .appendingPathComponent("20260805", isDirectory: true)
+        let manifest = try CNS11643Manifest.load(from: sourceDirectory)
+        let official = try CNS11643Parser.parse(
+            sourceDirectory: sourceDirectory,
+            manifest: manifest
+        )
+        // Reading validation must allow the first-party character supplement
+        // too (e.g. 框's colloquial ㄎㄨㄤ in 條條框框), because that is
+        // exactly what the runtime `dictionary_entries` table this data was
+        // validated against actually contains — see
+        // `Data/MOERevisedDictionary/README.md`'s extraction note.
+        let characterSourceURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongCharacters", isDirectory: true)
+            .appendingPathComponent("characters.tsv")
+        let characterSupplement = try JiukongCharacterParser.parse(
+            sourceURL: characterSourceURL
+        )
+        var officialPairs = Set(official.entries.map {
+            $0.character + "\u{1F}" + $0.pronunciation
+        })
+        officialPairs.formUnion(characterSupplement.entries.map {
+            $0.character + "\u{1F}" + $0.pronunciation
+        })
+
+        var mismatches: [String] = []
+        for entry in revised.entries {
+            for (character, pronunciation) in zip(
+                entry.phrase.map(String.init),
+                entry.pronunciationSequence
+            ) where !officialPairs.contains(
+                character + "\u{1F}" + pronunciation
+            ) {
+                mismatches.append("\(entry.phrase): \(character) \(pronunciation)")
+            }
+        }
+
+        XCTAssertEqual(mismatches, [])
+    }
+
+    func testMOERevisedDictionaryDoesNotDuplicateEarlierPhraseSources() throws {
+        let phraseURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongPhrases", isDirectory: true)
+            .appendingPathComponent("phrases.tsv")
+        let idiomURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOEIdioms", isDirectory: true)
+            .appendingPathComponent("idioms.tsv")
+        let revisedURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("MOERevisedDictionary", isDirectory: true)
+            .appendingPathComponent("four-character-phrases.tsv")
+        let phrases = try JiukongPhraseParser.parse(sourceURL: phraseURL)
+        let idioms = try JiukongPhraseParser.parse(sourceURL: idiomURL)
+        let revised = try JiukongPhraseParser.parse(sourceURL: revisedURL)
+
+        let merged = try JiukongPhraseDataset.merged(
+            firstParty: JiukongPhraseDataset.merged(
+                firstParty: phrases,
+                governmentSourced: idioms
+            ),
+            governmentSourced: revised
+        )
+
+        XCTAssertEqual(
+            merged.statistics.entryCount,
+            phrases.statistics.entryCount
+                + idioms.statistics.entryCount
+                + revised.statistics.entryCount
+        )
+        XCTAssertEqual(
+            merged.entries.suffix(revised.entries.count).map(\.phrase),
+            revised.entries.map(\.phrase)
+        )
+    }
+
     func testMOEIdiomLexiconDoesNotDuplicateFirstPartyPhrases() throws {
         let phraseURL = repositoryRoot
             .appendingPathComponent("Data", isDirectory: true)

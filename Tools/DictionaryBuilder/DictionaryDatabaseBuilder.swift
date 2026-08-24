@@ -8,6 +8,7 @@ struct DictionaryBuildSummary {
     let characterStatistics: JiukongCharacterStatistics
     let phraseStatistics: JiukongPhraseStatistics
     let idiomStatistics: JiukongPhraseStatistics
+    let revisedDictionaryStatistics: JiukongPhraseStatistics
     let frequencyTierStatistics: JiukongFrequencyTierStatistics
 }
 
@@ -801,6 +802,7 @@ enum DictionaryDatabaseBuilder {
         characterSourceURL: URL? = nil,
         phraseSourceURL: URL? = nil,
         idiomSourceURL: URL? = nil,
+        revisedDictionarySourceURL: URL? = nil,
         commonCharacterTierURL: URL? = nil,
         semiCommonCharacterTierURL: URL? = nil,
         heteronymTierURL: URL? = nil,
@@ -811,7 +813,8 @@ enum DictionaryDatabaseBuilder {
             sourceDirectory: sourceDirectory,
             characterSourceURL: characterSourceURL,
             phraseSourceURL: phraseSourceURL,
-            idiomSourceURL: idiomSourceURL
+            idiomSourceURL: idiomSourceURL,
+            revisedDictionarySourceURL: revisedDictionarySourceURL
         )
         let manifest = try CNS11643Manifest.load(from: sourceDirectory)
         let dataset = try CNS11643Parser.parse(
@@ -872,9 +875,20 @@ enum DictionaryDatabaseBuilder {
         } else {
             idiomDataset = .empty
         }
+        let revisedDictionaryDataset: JiukongPhraseDataset
+        if let revisedDictionarySourceURL {
+            revisedDictionaryDataset = try JiukongPhraseParser.parse(
+                sourceURL: revisedDictionarySourceURL
+            )
+        } else {
+            revisedDictionaryDataset = .empty
+        }
         let combinedPhraseDataset = try JiukongPhraseDataset.merged(
-            firstParty: phraseDataset,
-            governmentSourced: idiomDataset
+            firstParty: JiukongPhraseDataset.merged(
+                firstParty: phraseDataset,
+                governmentSourced: idiomDataset
+            ),
+            governmentSourced: revisedDictionaryDataset
         )
 
         let fileManager = FileManager.default
@@ -894,6 +908,7 @@ enum DictionaryDatabaseBuilder {
                 phraseDataset: combinedPhraseDataset,
                 phraseStatistics: phraseDataset.statistics,
                 idiomStatistics: idiomDataset.statistics,
+                revisedDictionaryStatistics: revisedDictionaryDataset.statistics,
                 frequencyTierResolver: frequencyTierResolver
             )
             guard Darwin.rename(temporaryURL.path, outputURL.path) == 0 else {
@@ -913,6 +928,7 @@ enum DictionaryDatabaseBuilder {
             characterStatistics: characterDataset.statistics,
             phraseStatistics: phraseDataset.statistics,
             idiomStatistics: idiomDataset.statistics,
+            revisedDictionaryStatistics: revisedDictionaryDataset.statistics,
             frequencyTierStatistics: frequencyTierResolver.statistics
         )
     }
@@ -925,6 +941,7 @@ enum DictionaryDatabaseBuilder {
         phraseDataset: JiukongPhraseDataset,
         phraseStatistics: JiukongPhraseStatistics,
         idiomStatistics: JiukongPhraseStatistics,
+        revisedDictionaryStatistics: JiukongPhraseStatistics,
         frequencyTierResolver: FrequencyTierResolver
     ) throws {
         let fileDescriptor = Darwin.open(
@@ -1049,6 +1066,7 @@ enum DictionaryDatabaseBuilder {
                 characterStatistics: characterDataset.statistics,
                 phraseStatistics: phraseStatistics,
                 idiomStatistics: idiomStatistics,
+                revisedDictionaryStatistics: revisedDictionaryStatistics,
                 frequencyTierStatistics: frequencyTierResolver.statistics
             ).sorted(by: { $0.key < $1.key }) {
                 try insertMetadata.bind(key, at: 1)
@@ -1100,6 +1118,7 @@ enum DictionaryDatabaseBuilder {
         characterStatistics: JiukongCharacterStatistics,
         phraseStatistics: JiukongPhraseStatistics,
         idiomStatistics: JiukongPhraseStatistics,
+        revisedDictionaryStatistics: JiukongPhraseStatistics,
         frequencyTierStatistics: JiukongFrequencyTierStatistics
     ) -> [String: String] {
         var values: [String: String] = [
@@ -1137,6 +1156,13 @@ enum DictionaryDatabaseBuilder {
             ),
             "unique_idioms": String(idiomStatistics.uniquePhraseCount),
             "idiom_transformation": "Headword and reading fields only, copied verbatim from the Ministry's 《成語典》 2020 database; every other column discarded; tone-sandhi （變） variant readings dropped in favor of the primary reading; every syllable cross-checked against this dictionary's own CNS11643-backed character readings. CC BY-ND 3.0 TW, not first-party; see Data/MOEIdioms/README.md.",
+            "revised_dictionary_dataset_name": "MOE 《重編國語辭典修訂本》 government-sourced four-character phrase lexicon",
+            "revised_dictionary_entries": String(revisedDictionaryStatistics.entryCount),
+            "revised_dictionary_pronunciation_sequences": String(
+                revisedDictionaryStatistics.pronunciationSequenceCount
+            ),
+            "unique_revised_dictionary_phrases": String(revisedDictionaryStatistics.uniquePhraseCount),
+            "revised_dictionary_transformation": "Headword and reading fields only, copied verbatim from the Ministry's 《重編國語辭典修訂本》 database; every other column discarded; four-character entries only; a poly-pronunciation entry keeps only its primary (多音排序 = 1) reading; every syllable cross-checked against this dictionary's own CNS11643-backed character readings, so erhua-fused and neutral-tone colloquial readings not already attested there are excluded rather than invented. CC BY-ND 3.0 TW, not first-party; see Data/MOERevisedDictionary/README.md.",
             "frequency_tier_dataset_name": "MOE 常用/次常用國字標準字體表 + Jiukong first-party heteronym overrides",
             "frequency_tier_common_characters": String(frequencyTierStatistics.commonCharacterCount),
             "frequency_tier_semi_common_characters": String(frequencyTierStatistics.semiCommonCharacterCount),
@@ -1157,7 +1183,8 @@ enum DictionaryDatabaseBuilder {
         sourceDirectory: URL,
         characterSourceURL: URL?,
         phraseSourceURL: URL?,
-        idiomSourceURL: URL?
+        idiomSourceURL: URL?,
+        revisedDictionarySourceURL: URL?
     ) throws {
         let sourcePath = sourceDirectory.standardizedFileURL
             .resolvingSymlinksInPath()
@@ -1208,6 +1235,19 @@ enum DictionaryDatabaseBuilder {
                 throw DictionaryDatabaseBuilderError.unsafeOutput(
                     path: outputURL.path,
                     reason: "the output is the idiom source file"
+                )
+            }
+        }
+
+        if let revisedDictionarySourceURL {
+            let revisedDictionarySourcePath = revisedDictionarySourceURL
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+                .path
+            if outputPath == revisedDictionarySourcePath {
+                throw DictionaryDatabaseBuilderError.unsafeOutput(
+                    path: outputURL.path,
+                    reason: "the output is the revised dictionary source file"
                 )
             }
         }

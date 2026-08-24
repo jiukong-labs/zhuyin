@@ -78,6 +78,10 @@ MOE 《成語典》 government-sourced idiom TSV (all 1,642 主條 four-characte
   → same strict phrase/readings/duplicate validation
   → merged with the first-party phrase TSV; rejects a cross-source duplicate
                                            ↗
+MOE 《重編國語辭典修訂本》 four-character phrase TSV (33,295 entries)
+  → same strict phrase/readings/duplicate validation
+  → merged in turn; rejects a cross-source duplicate against either source above
+                                           ↗
 MOE common/semi-common standard character tables
   → strict one-character-per-line parsing; reject cross-table duplicates
                                            ↘
@@ -89,7 +93,7 @@ Jiukong first-party heteronym tier overrides
   → read-only CharacterDictionary queries at runtime
 ```
 
-The generated artifact is byte-for-byte reproducible from the pinned character snapshot and checked-in first-party character, phrase, idiom, and frequency-tier files, so continuous integration rebuilds it on every change and fails if the checked-in database no longer matches its sources. The character and phrase files are manually authored for Jiukong with no imported corpus; the MOE tables are verbatim government standard-table promulgations (not a private corpus or another input method's lexicon); the heteronym override file is manually authored for Jiukong. The idiom TSV is the one exception to "no imported corpus": it holds all 1,642 主條 (main-entry) four-character idioms from the Ministry of Education's copyrighted (CC BY-ND) 《成語典》, keeping only the headword and reading fields verbatim and discarding every other field — see `Data/MOEIdioms/README.md` for the license reasoning, its one open judgment call, and the idioms and idiom lengths it deliberately does not yet cover. All are governed by the repository's original-implementation policy, which forbids importing another input method's or a private corpus's frequency data but does not forbid a government-published national standard table, used for what it actually classifies.
+The generated artifact is byte-for-byte reproducible from the pinned character snapshot and checked-in first-party character, phrase, idiom, revised-dictionary, and frequency-tier files, so continuous integration rebuilds it on every change and fails if the checked-in database no longer matches its sources. The character and phrase files are manually authored for Jiukong with no imported corpus; the MOE tables are verbatim government standard-table promulgations (not a private corpus or another input method's lexicon); the heteronym override file is manually authored for Jiukong. The idiom and revised-dictionary TSVs are the exception to "no imported corpus": the idiom TSV holds all 1,642 主條 (main-entry) four-character idioms from the Ministry of Education's copyrighted (CC BY-ND) 《成語典》, and the revised-dictionary TSV holds 33,295 four-character entries from the same Ministry's separate, general-purpose (not idiom-curated) 《重編國語辭典修訂本》; both keep only the headword and reading fields verbatim and discard every other field — see `Data/MOEIdioms/README.md` and `Data/MOERevisedDictionary/README.md` for the license reasoning, the shared open judgment call, and what each deliberately does not yet cover. All are governed by the repository's original-implementation policy, which forbids importing another input method's or a private corpus's frequency data but does not forbid a government-published national standard table, used for what it actually classifies.
 
 The normal app build never downloads data and never parses raw TSV files. `JiukongDictionaryBuilder` is a separate command-line target. It records the upstream version, source archive hashes, transformation, license, and exact row statistics in the generated database. The runtime validates SQLite `application_id` and `user_version`, opens one full-mutex read-only connection per input controller, and enables `query_only`.
 

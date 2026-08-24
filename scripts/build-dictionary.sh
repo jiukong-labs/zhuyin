@@ -9,6 +9,7 @@ source_directory="${repository_root}/Data/CNS11643/20260805"
 character_source="${repository_root}/Data/JiukongCharacters/characters.tsv"
 phrase_source="${repository_root}/Data/JiukongPhrases/phrases.tsv"
 idiom_source="${repository_root}/Data/MOEIdioms/idioms.tsv"
+revised_dictionary_source="${repository_root}/Data/MOERevisedDictionary/four-character-phrases.tsv"
 frequency_common_source="${repository_root}/Data/MOEStandardCharacterTables/common-4808.txt"
 frequency_semi_common_source="${repository_root}/Data/MOEStandardCharacterTables/semi-common-6343.txt"
 heteronym_tier_source="${repository_root}/Data/JiukongHeteronyms/heteronym-tiers.tsv"
@@ -33,6 +34,7 @@ fi
   --characters "${character_source}" \
   --phrases "${phrase_source}" \
   --idioms "${idiom_source}" \
+  --revised-dictionary "${revised_dictionary_source}" \
   --frequency-common "${frequency_common_source}" \
   --frequency-semi-common "${frequency_semi_common_source}" \
   --heteronym-tiers "${heteronym_tier_source}" \

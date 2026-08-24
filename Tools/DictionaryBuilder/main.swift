@@ -8,6 +8,7 @@ private enum DictionaryBuilderCommandError: LocalizedError {
         Usage: JiukongDictionaryBuilder --source <CNS snapshot directory> \
         --characters <Jiukong character TSV> --phrases <Jiukong phrase TSV> \
         [--idioms <MOE idiom TSV>] \
+        [--revised-dictionary <MOE revised dictionary four-character TSV>] \
         [--frequency-common <MOE common character list>] \
         [--frequency-semi-common <MOE semi-common character list>] \
         [--heteronym-tiers <Jiukong heteronym tier TSV>] \
@@ -46,6 +47,7 @@ private func run() throws {
     let requiredFlags = ["--source", "--characters", "--phrases", "--output"]
     let optionalFlags = [
         "--idioms",
+        "--revised-dictionary",
         "--frequency-common",
         "--frequency-semi-common",
         "--heteronym-tiers",
@@ -67,6 +69,7 @@ private func run() throws {
         characterSourceURL: url("--characters"),
         phraseSourceURL: url("--phrases"),
         idiomSourceURL: url("--idioms"),
+        revisedDictionarySourceURL: url("--revised-dictionary"),
         commonCharacterTierURL: url("--frequency-common"),
         semiCommonCharacterTierURL: url("--frequency-semi-common"),
         heteronymTierURL: url("--heteronym-tiers"),
@@ -86,6 +89,8 @@ private func run() throws {
     print("  First-party unique phrases: \(summary.phraseStatistics.uniquePhraseCount)")
     print("  MOE idiom entries: \(summary.idiomStatistics.entryCount)")
     print("  MOE unique idioms: \(summary.idiomStatistics.uniquePhraseCount)")
+    print("  MOE revised dictionary entries: \(summary.revisedDictionaryStatistics.entryCount)")
+    print("  MOE revised dictionary unique phrases: \(summary.revisedDictionaryStatistics.uniquePhraseCount)")
     print("  MOE common characters: \(summary.frequencyTierStatistics.commonCharacterCount)")
     print("  MOE semi-common characters: \(summary.frequencyTierStatistics.semiCommonCharacterCount)")
     print("  First-party heteronym tier overrides: \(summary.frequencyTierStatistics.heteronymOverrideCount)")
