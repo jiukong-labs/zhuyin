@@ -267,8 +267,9 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "「我」、／"
     ),
-    // Locates the final reading, then extends left from that focus. Creating a
-    // user phrase writes to the local learning database.
+    // Positions the caret after the final reading, then selects the two
+    // readings immediately to its left. Creating a user phrase writes to the
+    // local learning database.
     "phrase": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -279,6 +280,7 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_Slash), Keystroke(kVK_Space),
             Keystroke(kVK_Space),
             Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_RightArrow),
             Keystroke(kVK_LeftArrow, .maskShift),
             Keystroke(kVK_Return),
         ],

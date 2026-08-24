@@ -77,10 +77,10 @@ struct CompositionPhraseSelectionStatus: Equatable {
     let unitCount: Int
 
     var displayText: String {
-        let action = unitCount >= CompositionBuffer.minimumPhraseUnitCount
-            ? "Return 記錄"
-            : "至少選 2 字"
-        return "造詞範圍 \(unitCount) 字：【\(text)】　⇧←／→ 擴張　\(action)　Esc 取消"
+        let minimumHint = unitCount >= CompositionBuffer.minimumPhraseUnitCount
+            ? ""
+            : "　至少選 2 字"
+        return "造詞範圍 \(unitCount) 字：【\(text)】　⇧←／→ 擴張\(minimumHint)"
     }
 }
 
@@ -115,6 +115,16 @@ struct CompositionCommitSnapshot: Equatable {
     var pronunciationSequence: [String] {
         units.map(\.pronunciation)
     }
+}
+
+/// The boundary used when the first Shift-arrow creates a phrase range.
+///
+/// A positioned caret stores the unit immediately following it; `nil` means
+/// the caret is explicitly at the text end. Without positioning, buffer-edge
+/// selection starts with one unit and lets later presses expand it.
+enum CompositionPhraseSelectionAnchor: Equatable {
+    case bufferEdge
+    case caret(followingUnitID: UUID?)
 }
 
 /// Owns all converted text that has not yet been inserted into the client.
@@ -597,12 +607,14 @@ struct CompositionBuffer: Equatable {
 
     /// Extends a phrase selection toward the preceding reading unit.
     ///
-    /// With a positioned caret, the first Shift-Left includes the following
-    /// reading and its left neighbor. Without an interior anchor, selection
-    /// starts at the final reading and subsequent presses continue toward the
-    /// beginning.
+    /// With a positioned caret, the first Shift-Left selects up to two
+    /// readings immediately before the caret. Without a positioned caret,
+    /// selection starts at the final reading and subsequent presses continue
+    /// toward the beginning.
     @discardableResult
-    mutating func extendSelectionLeft(startingAt unitID: UUID?) -> Bool {
+    mutating func extendSelectionLeft(
+        from anchor: CompositionPhraseSelectionAnchor
+    ) -> Bool {
         if let selectedUnitRange {
             guard selectedUnitRange.count < Self.maximumPhraseUnitCount,
                   selectedUnitRange.lowerBound > units.startIndex else {
@@ -617,27 +629,46 @@ struct CompositionBuffer: Equatable {
             return true
         }
 
-        guard let start = selectionStart(
-            for: unitID,
-            fallback: .last
-        ) else {
-            return false
+        switch anchor {
+        case .bufferEdge:
+            guard let lastReadingIndex = units.lastIndex(where: {
+                $0.kind == .reading
+            }) else {
+                return false
+            }
+            return beginDirectionalSelection(
+                at: lastReadingIndex,
+                offset: -1,
+                includeAdjacent: false
+            )
+        case let .caret(followingUnitID):
+            guard let boundaryIndex = caretBoundaryIndex(
+                followingUnitID: followingUnitID
+            ), boundaryIndex > units.startIndex else {
+                return false
+            }
+            let precedingIndex = boundaryIndex - 1
+            guard units[precedingIndex].kind == .reading else {
+                return false
+            }
+            return beginDirectionalSelection(
+                at: precedingIndex,
+                offset: -1,
+                includeAdjacent: true
+            )
         }
-        return beginDirectionalSelection(
-            at: start.index,
-            offset: -1,
-            includeAdjacent: start.isRevisionFocus
-        )
     }
 
     /// Extends a phrase selection toward the following reading unit.
     ///
-    /// With a positioned caret, the first Shift-Right includes the following
-    /// reading and its right neighbor. Without an interior anchor, selection
-    /// starts at the first reading so a prefix can be learned using
+    /// With a positioned caret, the first Shift-Right selects up to two
+    /// readings immediately after the caret. Without a positioned caret,
+    /// selection starts at the first reading so a prefix can be learned using
     /// Shift-Right alone.
     @discardableResult
-    mutating func extendSelectionRight(startingAt unitID: UUID?) -> Bool {
+    mutating func extendSelectionRight(
+        from anchor: CompositionPhraseSelectionAnchor
+    ) -> Bool {
         if let selectedUnitRange {
             guard selectedUnitRange.count < Self.maximumPhraseUnitCount,
                   selectedUnitRange.upperBound < units.endIndex else {
@@ -653,17 +684,31 @@ struct CompositionBuffer: Equatable {
             return true
         }
 
-        guard let start = selectionStart(
-            for: unitID,
-            fallback: .first
-        ) else {
-            return false
+        switch anchor {
+        case .bufferEdge:
+            guard let firstReadingIndex = units.firstIndex(where: {
+                $0.kind == .reading
+            }) else {
+                return false
+            }
+            return beginDirectionalSelection(
+                at: firstReadingIndex,
+                offset: 1,
+                includeAdjacent: false
+            )
+        case let .caret(followingUnitID):
+            guard let followingUnitID,
+                  let followingIndex = units.firstIndex(where: {
+                      $0.id == followingUnitID
+                  }), units[followingIndex].kind == .reading else {
+                return false
+            }
+            return beginDirectionalSelection(
+                at: followingIndex,
+                offset: 1,
+                includeAdjacent: true
+            )
         }
-        return beginDirectionalSelection(
-            at: start.index,
-            offset: 1,
-            includeAdjacent: start.isRevisionFocus
-        )
     }
 
     @discardableResult
@@ -862,36 +907,11 @@ struct CompositionBuffer: Equatable {
         !unit.text.isEmpty && !unit.pronunciation.isEmpty
     }
 
-    private enum SelectionFallback {
-        case first
-        case last
-    }
-
-    private struct SelectionStart {
-        let index: Int
-        let isRevisionFocus: Bool
-    }
-
-    private func selectionStart(
-        for unitID: UUID?,
-        fallback: SelectionFallback
-    ) -> SelectionStart? {
-        if let unitID,
-           let index = units.firstIndex(where: { $0.id == unitID }),
-           units[index].kind == .reading {
-            return SelectionStart(index: index, isRevisionFocus: true)
+    private func caretBoundaryIndex(followingUnitID: UUID?) -> Int? {
+        guard let followingUnitID else {
+            return units.endIndex
         }
-
-        let fallbackIndex: Int?
-        switch fallback {
-        case .first:
-            fallbackIndex = units.firstIndex(where: { $0.kind == .reading })
-        case .last:
-            fallbackIndex = units.lastIndex(where: { $0.kind == .reading })
-        }
-        return fallbackIndex.map {
-            SelectionStart(index: $0, isRevisionFocus: false)
-        }
+        return units.firstIndex(where: { $0.id == followingUnitID })
     }
 
     private mutating func beginDirectionalSelection(

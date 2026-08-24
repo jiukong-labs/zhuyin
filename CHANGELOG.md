@@ -108,6 +108,9 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Changed
 
+- Positioned Shift-arrow phrase selection now treats the caret as a true text
+  boundary, so Shift-Left selects readings before it and Shift-Right selects
+  readings after it.
 - Default character candidates now use exact character-reading attestations
   from Jiukong's manually authored phrase lexicon within each commonness tier;
   government-sourced phrase data is excluded and CNS order remains the final

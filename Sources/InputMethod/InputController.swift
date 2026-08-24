@@ -790,7 +790,10 @@ final class InputController: IMKInputController {
             pendingInsertionAnchorUnitID = nil
         }
 
-        let startingUnitID = revisingUnitID
+        let selectionAnchor: CompositionPhraseSelectionAnchor =
+            isRevisionCaretActive
+                ? .caret(followingUnitID: revisingUnitID)
+                : .bufferEdge
         if let candidateSession {
             guard candidateSession.revisionFocus != nil,
                   !candidateSession.isExpanded,
@@ -800,14 +803,24 @@ final class InputController: IMKInputController {
             clearCandidatePresentation()
         }
 
-        isRevisionCaretActive = false
-        revisingUnitID = nil
+        let didExtendSelection: Bool
         switch command {
         case .extendLeft:
-            compositionBuffer.extendSelectionLeft(startingAt: startingUnitID)
+            didExtendSelection = compositionBuffer.extendSelectionLeft(
+                from: selectionAnchor
+            )
         case .extendRight:
-            compositionBuffer.extendSelectionRight(startingAt: startingUnitID)
+            didExtendSelection = compositionBuffer.extendSelectionRight(
+                from: selectionAnchor
+            )
         }
+        guard didExtendSelection else {
+            updateMarkedComposition(on: inputClient)
+            return true
+        }
+
+        isRevisionCaretActive = false
+        revisingUnitID = nil
         updateMarkedComposition(on: inputClient)
         presentPhraseSelection(on: inputClient)
         return true

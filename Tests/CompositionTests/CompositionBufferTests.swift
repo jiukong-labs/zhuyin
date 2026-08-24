@@ -259,19 +259,57 @@ final class CompositionBufferTests: XCTestCase {
     func testDirectionalSelectionExtendsFromRevisionFocusOnBothSides() throws {
         var buffer = bufferWithThreeUnits()
         let middleUnitID = try XCTUnwrap(buffer.units.dropFirst().first?.id)
+        let lastUnitID = try XCTUnwrap(buffer.units.last?.id)
 
-        XCTAssertTrue(buffer.extendSelectionLeft(startingAt: middleUnitID))
+        XCTAssertTrue(
+            buffer.extendSelectionLeft(
+                from: .caret(followingUnitID: lastUnitID)
+            )
+        )
         XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 2)
         XCTAssertEqual(buffer.selectedPhrase?.text, "輸入")
 
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: nil))
+        XCTAssertTrue(buffer.extendSelectionRight(from: .bufferEdge))
         XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 3)
         XCTAssertEqual(buffer.selectedPhrase?.text, "輸入法")
 
         buffer.clearSelection()
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: middleUnitID))
+        XCTAssertTrue(
+            buffer.extendSelectionRight(
+                from: .caret(followingUnitID: middleUnitID)
+            )
+        )
         XCTAssertEqual(buffer.selectedUnitRange, 1 ..< 3)
         XCTAssertEqual(buffer.selectedPhrase?.text, "入法")
+    }
+
+    func testShiftLeftSelectsTheTwoReadingsBeforeThePositionedCaret() throws {
+        var buffer = CompositionBuffer()
+        for (text, pronunciation) in [
+            ("合", "ㄏㄜˊ"),
+            ("併", "ㄅㄧㄥˋ"),
+            ("成", "ㄔㄥˊ"),
+            ("一", "ㄧ"),
+            ("行", "ㄏㄤˊ"),
+        ] {
+            XCTAssertNotNil(
+                buffer.append(text: text, pronunciation: pronunciation)
+            )
+        }
+        let unitAfterCaret = try XCTUnwrap(buffer.units.dropFirst(2).first)
+
+        XCTAssertTrue(
+            buffer.extendSelectionLeft(
+                from: .caret(followingUnitID: unitAfterCaret.id)
+            )
+        )
+
+        XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 2)
+        XCTAssertEqual(buffer.selectedPhrase?.text, "合併")
+        XCTAssertEqual(
+            buffer.markedSelectionRange,
+            NSRange(location: 0, length: 2)
+        )
     }
 
     func testPhraseSelectionStatusReportsOneAndMultipleCharacterRanges() throws {
@@ -279,37 +317,74 @@ final class CompositionBufferTests: XCTestCase {
         let middleUnitID = try XCTUnwrap(buffer.units.dropFirst().first?.id)
 
         XCTAssertNil(buffer.phraseSelectionStatus)
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: nil))
+        XCTAssertTrue(buffer.extendSelectionRight(from: .bufferEdge))
         XCTAssertEqual(
             buffer.phraseSelectionStatus,
             CompositionPhraseSelectionStatus(text: "輸", unitCount: 1)
         )
         XCTAssertEqual(
             buffer.phraseSelectionStatus?.displayText,
-            "造詞範圍 1 字：【輸】　⇧←／→ 擴張　至少選 2 字　Esc 取消"
+            "造詞範圍 1 字：【輸】　⇧←／→ 擴張　至少選 2 字"
         )
 
         buffer.clearSelection()
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: middleUnitID))
+        XCTAssertTrue(
+            buffer.extendSelectionRight(
+                from: .caret(followingUnitID: middleUnitID)
+            )
+        )
         XCTAssertEqual(
             buffer.phraseSelectionStatus?.displayText,
-            "造詞範圍 2 字：【入法】　⇧←／→ 擴張　Return 記錄　Esc 取消"
+            "造詞範圍 2 字：【入法】　⇧←／→ 擴張"
         )
     }
 
     func testDirectionalSelectionCanStartAtEitherCompositionEnd() {
         var buffer = bufferWithThreeUnits()
 
-        XCTAssertTrue(buffer.extendSelectionLeft(startingAt: nil))
+        XCTAssertTrue(buffer.extendSelectionLeft(from: .bufferEdge))
         XCTAssertEqual(buffer.selectedUnitRange, 2 ..< 3)
-        XCTAssertTrue(buffer.extendSelectionLeft(startingAt: nil))
+        XCTAssertTrue(buffer.extendSelectionLeft(from: .bufferEdge))
         XCTAssertEqual(buffer.selectedPhrase?.text, "入法")
 
         buffer.clearSelection()
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: nil))
+        XCTAssertTrue(buffer.extendSelectionRight(from: .bufferEdge))
         XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 1)
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: nil))
+        XCTAssertTrue(buffer.extendSelectionRight(from: .bufferEdge))
         XCTAssertEqual(buffer.selectedPhrase?.text, "輸入")
+    }
+
+    func testPositionedCaretAtTextEdgesSelectsOnlyTheAvailableSide() throws {
+        var buffer = bufferWithThreeUnits()
+        let firstUnitID = try XCTUnwrap(buffer.units.first?.id)
+
+        XCTAssertTrue(
+            buffer.extendSelectionLeft(
+                from: .caret(followingUnitID: nil)
+            )
+        )
+        XCTAssertEqual(buffer.selectedPhrase?.text, "入法")
+
+        buffer.clearSelection()
+        XCTAssertTrue(
+            buffer.extendSelectionRight(
+                from: .caret(followingUnitID: firstUnitID)
+            )
+        )
+        XCTAssertEqual(buffer.selectedPhrase?.text, "輸入")
+
+        buffer.clearSelection()
+        XCTAssertFalse(
+            buffer.extendSelectionLeft(
+                from: .caret(followingUnitID: firstUnitID)
+            )
+        )
+        XCTAssertFalse(
+            buffer.extendSelectionRight(
+                from: .caret(followingUnitID: nil)
+            )
+        )
+        XCTAssertFalse(buffer.hasSelection)
     }
 
     func testDirectionalPhraseSelectionDoesNotCrossPunctuation() throws {
@@ -318,18 +393,24 @@ final class CompositionBufferTests: XCTestCase {
             buffer.append(text: "測", pronunciation: "ㄘㄜˋ")
         )
         XCTAssertNotNil(buffer.appendPunctuation("，"))
-        let last = try XCTUnwrap(
-            buffer.append(text: "試", pronunciation: "ㄕˋ")
-        )
+        XCTAssertNotNil(buffer.append(text: "試", pronunciation: "ㄕˋ"))
 
-        XCTAssertTrue(buffer.extendSelectionRight(startingAt: first.id))
+        XCTAssertTrue(
+            buffer.extendSelectionRight(
+                from: .caret(followingUnitID: first.id)
+            )
+        )
         XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 1)
-        XCTAssertFalse(buffer.extendSelectionRight(startingAt: nil))
+        XCTAssertFalse(buffer.extendSelectionRight(from: .bufferEdge))
 
         buffer.clearSelection()
-        XCTAssertTrue(buffer.extendSelectionLeft(startingAt: last.id))
+        XCTAssertTrue(
+            buffer.extendSelectionLeft(
+                from: .caret(followingUnitID: nil)
+            )
+        )
         XCTAssertEqual(buffer.selectedUnitRange, 2 ..< 3)
-        XCTAssertFalse(buffer.extendSelectionLeft(startingAt: nil))
+        XCTAssertFalse(buffer.extendSelectionLeft(from: .bufferEdge))
     }
 
     func testMarkedSelectionRangeUsesUTF16RatherThanCharacterOffsets() {
@@ -783,7 +864,7 @@ final class CompositionBufferTests: XCTestCase {
     }
 
     func testPhraseLookupQueriesBeforeAnchorIgnoreTheAnchorAndWhatFollowsIt() throws {
-        var buffer = bufferWithThreeUnits()
+        let buffer = bufferWithThreeUnits()
         let anchorID = try XCTUnwrap(buffer.units.dropFirst().first?.id)
         let firstID = try XCTUnwrap(buffer.units.first?.id)
 
