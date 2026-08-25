@@ -18,9 +18,15 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(
             entries.prefix(3),
             [
-                DictionaryCharacter(text: "我", sourceOrder: 827, cnsPlane: 1),
-                DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1),
-                DictionaryCharacter(text: "婑", sourceOrder: 9_357, cnsPlane: 2),
+                DictionaryCharacter(
+                    text: "我",
+                    sourceOrder: 827,
+                    cnsPlane: 1,
+                    usageTier: 0,
+                    firstPartyPhraseCount: 35
+                ),
+                DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1, usageTier: 0),
+                DictionaryCharacter(text: "婑", sourceOrder: 9_357, cnsPlane: 2, usageTier: 1),
             ]
         )
         XCTAssertTrue(entries[0].isInGeneralCandidateRepertoire)
@@ -40,6 +46,15 @@ final class CharacterDictionaryTests: XCTestCase {
         for expected in ["件", "見", "建", "健", "薦", "鍵"] {
             XCTAssertTrue(candidates.contains(expected), "Missing \(expected)")
         }
+    }
+
+    func testNeutralMoOffersMeAsTheFirstCandidate() throws {
+        let dictionary = try makeDictionary()
+
+        XCTAssertEqual(try dictionary.candidates(for: "˙ㄇㄛ").first, "麼")
+        XCTAssertTrue(
+            try dictionary.pronunciations(for: "麼").contains("˙ㄇㄛ")
+        )
     }
 
     func testReverseLookupPreservesMultiplePronunciations() throws {
@@ -102,13 +117,41 @@ final class CharacterDictionaryTests: XCTestCase {
         let dictionary = try makeDictionary()
 
         XCTAssertEqual(try dictionary.metadataValue(for: "source_version"), "20260805")
-        XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94708")
+        XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94711")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_characters"), "76373")
-        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "815")
-        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "814")
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "first_party_character_entries"),
+            "3"
+        )
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "1965")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "1964")
+        XCTAssertEqual(
+            try dictionary.metadataValue(
+                for: "first_party_attested_character_readings"
+            ),
+            "1202"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(
+                for: "first_party_character_reading_attestations"
+            ),
+            "4817"
+        )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "phrase_dataset_name"),
             "Jiukong first-party phrase lexicon"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "frequency_tier_plane_1_characters"),
+            "5403"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "frequency_tier_plane_2_characters"),
+            "7651"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "frequency_tier_heteronym_overrides"),
+            "3"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "sha256_Properties.zip"),
@@ -122,6 +165,35 @@ final class CharacterDictionaryTests: XCTestCase {
         let statement = try database.prepare("PRAGMA quick_check")
         XCTAssertEqual(try statement.step(), .row)
         XCTAssertEqual(try statement.text(at: 0), "ok")
+    }
+
+    func testNarrowYiHeteronymsAreRareWithoutChangingTheirEverydayReadings() throws {
+        let dictionary = try makeDictionary()
+
+        func tier(_ character: String, reading: String) throws -> Int? {
+            try dictionary.candidateEntries(for: reading)
+                .first(where: { $0.text == character })?.usageTier
+        }
+
+        XCTAssertEqual(try tier("食", reading: "ㄧˋ"), 2)
+        XCTAssertEqual(try tier("射", reading: "ㄧˋ"), 2)
+        XCTAssertEqual(try tier("食", reading: "ㄕˊ"), 0)
+        XCTAssertEqual(try tier("射", reading: "ㄕㄜˋ"), 0)
+    }
+
+    func testFirstPartyPhraseCountsAreSpecificToEachReading() throws {
+        let dictionary = try makeDictionary()
+
+        func count(_ character: String, reading: String) throws -> Int64? {
+            try dictionary.candidateEntries(for: reading)
+                .first(where: { $0.text == character })?
+                .firstPartyPhraseCount
+        }
+
+        XCTAssertEqual(try count("意", reading: "ㄧˋ"), 10)
+        XCTAssertEqual(try count("食", reading: "ㄕˊ"), 4)
+        XCTAssertEqual(try count("食", reading: "ㄧˋ"), 0)
+        XCTAssertEqual(try count("射", reading: "ㄧˋ"), 0)
     }
 
     func testBundledLexiconCoversReviewedEverydayCategories() throws {

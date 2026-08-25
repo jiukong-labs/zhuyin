@@ -3,6 +3,66 @@ import Foundation
 import XCTest
 
 final class CNS11643ParserTests: XCTestCase {
+    func testPinnedFirstPartyCharacterSupplement() throws {
+        let sourceURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongCharacters", isDirectory: true)
+            .appendingPathComponent("characters.tsv")
+
+        let dataset = try JiukongCharacterParser.parse(sourceURL: sourceURL)
+
+        XCTAssertEqual(
+            dataset.statistics,
+            JiukongCharacterStatistics(
+                entryCount: 3,
+                uniqueCharacterCount: 3
+            )
+        )
+        XCTAssertEqual(
+            dataset.entries,
+            [
+                JiukongCharacterEntry(
+                    character: "麼",
+                    pronunciation: "˙ㄇㄛ"
+                ),
+                JiukongCharacterEntry(
+                    character: "嗎",
+                    pronunciation: "ㄇㄚ"
+                ),
+                JiukongCharacterEntry(
+                    character: "框",
+                    pronunciation: "ㄎㄨㄤ"
+                ),
+            ]
+        )
+    }
+
+    func testFirstPartyCharacterParserRejectsInvalidRows() throws {
+        let invalidSources = [
+            "麼 ˙ㄇㄛ\n",
+            "什麼\t˙ㄇㄛ\n",
+            "麼\tASCII\n",
+            "麼\t˙ㄇㄛ\n麼\t˙ㄇㄛ\n",
+        ]
+
+        for source in invalidSources {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let sourceURL = directory.appendingPathComponent("characters.tsv")
+            try Data(source.utf8).write(to: sourceURL)
+
+            XCTAssertThrowsError(
+                try JiukongCharacterParser.parse(sourceURL: sourceURL),
+                "Unexpectedly accepted: \(source)"
+            )
+        }
+    }
+
     func testPinnedFirstPartyPhraseLexiconStatistics() throws {
         let sourceURL = repositoryRoot
             .appendingPathComponent("Data", isDirectory: true)
@@ -14,9 +74,9 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(
             dataset.statistics,
             JiukongPhraseStatistics(
-                entryCount: 815,
-                uniquePhraseCount: 814,
-                pronunciationSequenceCount: 809
+                entryCount: 1_965,
+                uniquePhraseCount: 1_964,
+                pronunciationSequenceCount: 1_957
             )
         )
         XCTAssertEqual(dataset.entries.first?.phrase, "測試")
@@ -69,6 +129,7 @@ final class CNS11643ParserTests: XCTestCase {
 
         XCTAssertEqual(mismatches, [])
     }
+
 
     func testFirstPartyPhraseParserRejectsMalformedAndDuplicateRows() throws {
         let invalidSources = [

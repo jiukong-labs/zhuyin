@@ -2,22 +2,34 @@ import Foundation
 import XCTest
 
 final class CharacterCandidateProviderTests: XCTestCase {
-    func testProviderWithoutLearningPreservesBundledDictionaryOrder() throws {
+    func testProviderWithoutLearningUsesTierPhraseEvidenceThenDictionaryOrder() throws {
         let dictionary = try makeDictionary()
         let provider = CharacterCandidateProvider(dictionary: dictionary)
 
         let candidates = try provider.candidates(for: "ㄨㄛˇ")
 
-        XCTAssertEqual(
-            candidates.map(\.text),
-            try dictionary.candidateEntries(for: "ㄨㄛˇ")
-                .filter(\.isInGeneralCandidateRepertoire)
-                .map(\.text)
-        )
+        // No learning history yet, so ranking falls back to the CNS plane
+        // tier (0 = common … 2 = other), Jiukong's own phrase attestations
+        // within a tier, then CNS source order. This is neither raw CNS order
+        // nor an imported corpus frequency.
+        let expectedOrder = try dictionary.candidateEntries(for: "ㄨㄛˇ")
+            .filter(\.isInGeneralCandidateRepertoire)
+            .sorted { lhs, rhs in
+                if lhs.usageTier != rhs.usageTier {
+                    return lhs.usageTier < rhs.usageTier
+                }
+                if lhs.firstPartyPhraseCount != rhs.firstPartyPhraseCount {
+                    return lhs.firstPartyPhraseCount
+                        > rhs.firstPartyPhraseCount
+                }
+                return lhs.sourceOrder < rhs.sourceOrder
+            }
+            .map(\.text)
+        XCTAssertEqual(candidates.map(\.text), expectedOrder)
         XCTAssertEqual(candidates.first?.text, "我")
         XCTAssertTrue(candidates.allSatisfy { candidate in
             candidate.type == .character
-                && candidate.baseFrequency == nil
+                && candidate.baseFrequency != nil
                 && candidate.userFrequency == 0
                 && candidate.lastUsed == nil
                 && !candidate.pinned
@@ -141,12 +153,38 @@ final class CharacterCandidateProviderTests: XCTestCase {
 
         XCTAssertEqual(
             try provider.candidates(for: "ㄇㄚ").map(\.text),
-            ["媽", "摩", "螞", "嬤"]
+            ["媽", "嗎", "摩", "螞", "嬤"]
         )
         XCTAssertTrue(
             try rareProvider.candidates(for: "ㄇㄚ").contains {
                 $0.text == "嬷"
             }
+        )
+    }
+
+    func testNarrowYiHeteronymsFollowEverydayYiCandidates() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+        let texts = try provider.candidates(for: "ㄧˋ").map(\.text)
+
+        for everydayCharacter in ["易", "益", "異", "意", "義", "譯"] {
+            let everydayIndex = try XCTUnwrap(texts.firstIndex(of: everydayCharacter))
+            let foodIndex = try XCTUnwrap(texts.firstIndex(of: "食"))
+            let shootIndex = try XCTUnwrap(texts.firstIndex(of: "射"))
+            XCTAssertLessThan(everydayIndex, foodIndex)
+            XCTAssertLessThan(everydayIndex, shootIndex)
+        }
+    }
+
+    func testYiDefaultsUseReviewedFirstPartyPhraseEvidence() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+        let texts = try provider.candidates(for: "ㄧˋ").map(\.text)
+
+        XCTAssertEqual(
+            Array(texts.prefix(16)),
+            [
+                "意", "議", "異", "義", "憶", "易", "疫", "益",
+                "翌", "逸", "溢", "億", "毅", "誼", "藝", "譯",
+            ]
         )
     }
 

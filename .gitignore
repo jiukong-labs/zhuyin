@@ -31,6 +31,11 @@ playground.xcworkspace
 
 .build/
 
+# External language datasets are not part of this first-party project.
+Data/MOEIdioms/
+Data/MOERevisedDictionary/
+Data/MOEStandardCharacterTables/
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However

@@ -25,15 +25,21 @@ struct DictionaryCharacter: Equatable {
     let text: String
     let sourceOrder: Int64
     let cnsPlane: Int
+    let usageTier: Int
+    let firstPartyPhraseCount: Int64
 
     init(
         text: String,
         sourceOrder: Int64,
-        cnsPlane: Int = 1
+        cnsPlane: Int = 1,
+        usageTier: Int = 2,
+        firstPartyPhraseCount: Int64 = 0
     ) {
         self.text = text
         self.sourceOrder = sourceOrder
         self.cnsPlane = cnsPlane
+        self.usageTier = usageTier
+        self.firstPartyPhraseCount = firstPartyPhraseCount
     }
 
     var character: String {
@@ -130,7 +136,7 @@ final class CharacterDictionary {
     static let resourceName = "JiukongZhuyin"
     static let resourceExtension = "sqlite3"
     static let applicationID: Int64 = 0x4A4B5A59
-    static let schemaVersion = 2
+    static let schemaVersion = 4
 
     private let database: SQLiteDatabase
 
@@ -169,7 +175,7 @@ final class CharacterDictionary {
 
         do {
             _ = try database.prepare(
-                "SELECT character, source_order, cns_code FROM dictionary_entries LIMIT 0"
+                "SELECT character, source_order, cns_code, usage_tier, first_party_phrase_count FROM dictionary_entries LIMIT 0"
             )
             _ = try database.prepare(
                 "SELECT pronunciation, source_order FROM dictionary_entries LIMIT 0"
@@ -196,7 +202,8 @@ final class CharacterDictionary {
     ) throws -> [DictionaryCharacter] {
         let statement = try database.prepare(
             """
-            SELECT character, source_order, cns_code
+            SELECT character, source_order, cns_code, usage_tier,
+                   first_party_phrase_count
             FROM dictionary_entries
             WHERE pronunciation = ?
             ORDER BY source_order, character
@@ -211,7 +218,9 @@ final class CharacterDictionary {
                 DictionaryCharacter(
                     text: try statement.text(at: 0),
                     sourceOrder: statement.integer(at: 1),
-                    cnsPlane: try cnsPlane(from: cnsCode)
+                    cnsPlane: try cnsPlane(from: cnsCode),
+                    usageTier: Int(statement.integer(at: 3)),
+                    firstPartyPhraseCount: statement.integer(at: 4)
                 )
             )
         }

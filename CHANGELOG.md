@@ -6,6 +6,10 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- Private CloudKit snapshot sync for learned characters and exact user phrases, with automatic reinstall restoration.
+- iCloud sync preference, live status, manual synchronization, account-change handling, and conflict retry.
+- Apple Development signing, CloudKit container entitlements, and CI-safe ad-hoc signing overrides.
+
 - Native macOS InputMethodKit application skeleton.
 - Local build, test, install, registration, and uninstall workflow.
 - Milestone 1 architecture and installation documentation.
@@ -16,11 +20,6 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Milestone 2 architecture, usage, and verification documentation.
 - Reproducible CNS11643 DictionaryBuilder with pinned source hashes and provenance.
 - Versioned read-only SQLite dictionary with pronunciation and reverse-character indexes.
-- Strict first-party phrase TSV validation and exact pronunciation-sequence index.
-- Original starter phrase lexicon, including continuous conversion of `ㄘㄜˋ ㄕˋ` to「測試」.
-- A manually authored 815-entry everyday phrase foundation covering
-  conversation, time, people, daily life, travel, work, learning, computing,
-  descriptions, health, and weather, with pinned CNS character-reading checks.
 - Base single-character candidates through the native InputMethodKit candidate panel.
 - Candidate selection, cancellation, lifecycle finalization, and raw-Bopomofo fallback.
 - Milestone 3 dictionary, licensing, architecture, and verification documentation.
@@ -61,50 +60,3 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Repeatable installed-acceptance harness that drives the installed bundle and proves which input method composed the text.
 - Optional cursor-following mode indicator with placement, tracking, size, Caps Lock badge, and per-mode text and color, ported from the lang-cursor utility.
 - Milestone 11 cursor-indicator and verification documentation.
-- Permanent original-implementation policy for product code, algorithms, UI,
-  database formats, and the built-in phrase lexicon, with only the documented
-  platform, tooling, and official CNS11643 standard-data exceptions.
-- Plain Left/Right revision across uncommitted reading units, with exact
-  same-reading character replacement and UTF-16-safe inline focus.
-- Original exact phrases for `測試中請稍後` and its useful suffixes, plus
-  installed acceptance coverage for uninterrupted six-syllable conversion.
-- Text-aware candidate cells that keep long phrase candidates fully visible.
-- Explicit Left/Right revision feedback: the focused unit is styled inline and
-  identified by position, character, and reading in a candidate-panel header.
-- Two-stage revision controls: Left/Right first locate the reading unit, Down
-  enters candidate choosing, Left/Right then move the candidate highlight, and
-  Escape returns to locating without losing the text focus.
-- A character selected and committed once now becomes the first same-reading
-  character candidate on the next lookup; the latest choice wins while manual
-  pins retain their explicit highest priority.
-- Revision candidate numbers 1-9 are now always explicit selections, so a
-  number-row Bopomofo key cannot escape the panel and start a stray syllable.
-- Ordinary conversion now previews the first candidate inline without opening
-  a window. Down explicitly opens the expanded chooser; only then do 1-9 and
-  navigation keys select candidates, removing the number/Bopomofo ambiguity.
-- Chinese and English are first-class macOS input modes with original color
-  icons showing red `中` and blue `A` when selected from the input menu.
-- Shift-Left and Shift-Right can now start phrase selection from the currently
-  located reading and extend the matching left or right edge; revision locating
-  no longer consumes those gestures without feedback.
-- Phrase selection now draws its exact range itself and gives clients a
-  collapsed marked-text caret, preventing web-backed fields from displaying a
-  two-character phrase range as a full-composition selection.
-- A persistent, nonactivating phrase-range status now shows the exact selected
-  text and length after every Shift-arrow, including in clients that ignore
-  marked-text colors entirely.
-- Backspace and forward Delete now remove the explicitly located revision
-  character or the active phrase range before candidate-window routing.
-
-### Changed
-
-- Standalone Shift now changes language inside Jiukong and presents its own
-  cursor-matched red `中`／blue `A` HUD beside the pointer, avoiding both
-  macOS's fixed `ABC` overlay and invalid client coordinates at screen edges.
-- Windowless candidate preview yields the number row to the next syllable,
-  allowing uninterrupted composition across readings that begin on a number
-  key; pressing Down makes all displayed `1`–`9` slots explicit selections.
-- Return accepts a windowless preview and submits the whole composition in one
-  keystroke; Space accepts the first candidate without submitting the buffer.
-- Runtime dictionary schema 2 adds first-party exact phrase entries without an
-  imported corpus or frequency score.

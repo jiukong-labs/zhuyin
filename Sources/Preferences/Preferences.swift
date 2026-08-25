@@ -5,11 +5,12 @@ import Foundation
 /// The type is a plain value so that decoding, normalization, and defaults can
 /// be tested without touching `UserDefaults` or the settings window.
 struct Preferences: Equatable {
-    static let currentVersion = 1
+    static let currentVersion = 3
     static let `default` = Preferences()
 
     var shiftKeyPreference: ShiftKeyPreference
     var automaticLearningEnabled: Bool
+    var cloudSyncEnabled: Bool
     var showsRareCandidates: Bool
     var keyboardArrangement: ZhuyinKeyboardArrangement
     var cursorIndicator: CursorIndicatorPreferences
@@ -17,12 +18,14 @@ struct Preferences: Equatable {
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
         automaticLearningEnabled: Bool = true,
+        cloudSyncEnabled: Bool = false,
         showsRareCandidates: Bool = false,
         keyboardArrangement: ZhuyinKeyboardArrangement = .standard,
         cursorIndicator: CursorIndicatorPreferences = CursorIndicatorPreferences()
     ) {
         self.shiftKeyPreference = shiftKeyPreference
         self.automaticLearningEnabled = automaticLearningEnabled
+        self.cloudSyncEnabled = cloudSyncEnabled
         self.showsRareCandidates = showsRareCandidates
         self.keyboardArrangement = keyboardArrangement
         self.cursorIndicator = cursorIndicator
@@ -67,6 +70,7 @@ enum PreferenceKey: String, CaseIterable {
     case version = "JiukongPreferencesVersion"
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
+    case cloudSyncEnabled = "JiukongCloudSyncEnabled"
     case showsRareCandidates = "JiukongShowsRareCandidates"
     case keyboardArrangement = "JiukongKeyboardArrangement"
     case cursorIndicatorEnabled = "JiukongCursorIndicatorEnabled"
@@ -96,7 +100,13 @@ extension Preferences {
         guard version >= 1, version <= currentVersion else {
             return .default
         }
-        return decodedFields(from: values)
+        var preferences = decodedFields(from: values)
+        if version < 3 {
+            // Earlier releases enabled CloudKit by default, so a stored true
+            // value is not proof that the user affirmatively opted in.
+            preferences.cloudSyncEnabled = false
+        }
+        return preferences
     }
 
     func encoded() -> [String: Any] {
@@ -106,6 +116,7 @@ extension Preferences {
                 shiftKeyPreference.rawValue,
             PreferenceKey.automaticLearningEnabled.rawValue:
                 automaticLearningEnabled,
+            PreferenceKey.cloudSyncEnabled.rawValue: cloudSyncEnabled,
             PreferenceKey.showsRareCandidates.rawValue:
                 showsRareCandidates,
             PreferenceKey.keyboardArrangement.rawValue:
@@ -146,6 +157,12 @@ extension Preferences {
             from: values[PreferenceKey.automaticLearningEnabled.rawValue]
         ) {
             preferences.automaticLearningEnabled = enabled
+        }
+
+        if let enabled = boolean(
+            from: values[PreferenceKey.cloudSyncEnabled.rawValue]
+        ) {
+            preferences.cloudSyncEnabled = enabled
         }
 
         if let enabled = boolean(

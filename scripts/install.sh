@@ -8,7 +8,10 @@ project_path="$repository_root/Jiukong Zhuyin.xcodeproj"
 scheme_name="Jiukong Zhuyin"
 build_configuration="${CONFIGURATION:-Release}"
 build_architecture="$(uname -m)"
-signing_identity="${SIGNING_IDENTITY:--}"
+signing_identity="${SIGNING_IDENTITY:-}"
+signing_style="${CODE_SIGN_STYLE:-}"
+development_team="${DEVELOPMENT_TEAM:-}"
+code_sign_entitlements="${CODE_SIGN_ENTITLEMENTS:-}"
 bundle_identifier="tw.idv.jiukong.inputmethod.zhuyin"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/jiukong-zhuyin-install.XXXXXX")"
 # A cloud-synced repository can attach Finder metadata to products under its
@@ -25,6 +28,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+build_settings=()
+if [[ -n "$signing_identity" ]]; then
+    build_settings+=("CODE_SIGN_IDENTITY=$signing_identity")
+fi
+if [[ -n "$signing_style" ]]; then
+    build_settings+=("CODE_SIGN_STYLE=$signing_style")
+fi
+if [[ -n "$development_team" ]]; then
+    build_settings+=("DEVELOPMENT_TEAM=$development_team")
+fi
+if [[ -n "$code_sign_entitlements" ]]; then
+    build_settings+=("CODE_SIGN_ENTITLEMENTS=$code_sign_entitlements")
+fi
+
 xcodebuild \
     -quiet \
     -project "$project_path" \
@@ -32,7 +49,7 @@ xcodebuild \
     -configuration "$build_configuration" \
     -destination "platform=macOS,arch=$build_architecture" \
     -derivedDataPath "$derived_data_path" \
-    CODE_SIGN_IDENTITY="$signing_identity" \
+    "${build_settings[@]}" \
     build
 
 if [[ ! -d "$built_application" ]]; then

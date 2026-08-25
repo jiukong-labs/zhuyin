@@ -304,6 +304,144 @@ enum CandidateWindowSizing {
 
 }
 
+/// Validates a caret rectangle reported by the text client before it is
+/// trusted as a candidate-window anchor.
+///
+/// Some web-backed clients (Electron/Chromium apps, canvas-rendered
+/// terminals) cannot determine a real caret position and report a rect
+/// pinned to the screen's own coordinate origin instead of failing
+/// outright. That rect is otherwise finite and non-empty, so a naive
+/// finiteness check accepts it — pinning the candidate window to the
+/// screen's lower-left corner no matter where the user is actually typing.
+/// A genuine caret is never rendered at that exact corner (window chrome,
+/// insets, and the menu bar all keep real text away from it), so a rect
+/// sitting within `originEpsilon` of `(0, 0)` is rejected as that known
+/// stub value rather than trusted.
+enum CandidateAnchorValidation {
+    static let originEpsilon: CGFloat = 2
+    static let cornerEpsilon: CGFloat = 32
+    static let screenTolerance: CGFloat = 64
+
+    static func isPlausibleCaretAnchor(
+        _ rect: CGRect,
+        screenFrames: [CGRect] = []
+    ) -> Bool {
+        guard rect.origin.x.isFinite,
+              rect.origin.y.isFinite,
+              rect.size.width.isFinite,
+              rect.size.height.isFinite,
+              rect.size.height > 0 else {
+            return false
+        }
+
+        guard !isPinnedToScreenOrigin(rect) else {
+            return false
+        }
+        guard !screenFrames.isEmpty else {
+            return true
+        }
+
+        let nearbyScreen = screenFrames.contains { frame in
+            frame.insetBy(
+                dx: -screenTolerance,
+                dy: -screenTolerance
+            ).contains(CGPoint(x: rect.midX, y: rect.midY))
+        }
+        guard nearbyScreen else {
+            return false
+        }
+
+        return !screenFrames.contains { isPinnedToTopCorner(rect, of: $0) }
+    }
+
+    private static func isPinnedToScreenOrigin(_ rect: CGRect) -> Bool {
+        abs(rect.origin.x) <= originEpsilon
+            && abs(rect.origin.y) <= originEpsilon
+    }
+
+    private static func isPinnedToTopCorner(
+        _ rect: CGRect,
+        of screenFrame: CGRect
+    ) -> Bool {
+        let touchesHorizontalCorner = min(
+            abs(rect.minX - screenFrame.minX),
+            abs(rect.maxX - screenFrame.maxX)
+        ) <= cornerEpsilon
+        let touchesTopBoundary = min(
+            abs(rect.minY - screenFrame.maxY),
+            abs(rect.maxY - screenFrame.maxY)
+        ) <= cornerEpsilon
+        return touchesHorizontalCorner && touchesTopBoundary
+    }
+}
+
+/// Converts composition-local focus ranges into the document ranges queried
+/// from `IMKTextInput` for candidate-window placement.
+enum CandidateAnchorRanges {
+    static func requestedRanges(
+        markedRange: NSRange,
+        localAnchorRange: NSRange
+    ) -> [NSRange] {
+        guard isUsable(markedRange),
+              localAnchorRange.location != NSNotFound,
+              localAnchorRange.length != NSNotFound,
+              localAnchorRange.location <= markedRange.length,
+              localAnchorRange.length
+                <= markedRange.length - localAnchorRange.location,
+              markedRange.location <= Int.max - localAnchorRange.location else {
+            return []
+        }
+
+        let documentLocation = markedRange.location
+            + localAnchorRange.location
+        if localAnchorRange.length == 0 {
+            return [NSRange(location: documentLocation, length: 0)]
+        }
+        guard documentLocation <= Int.max - localAnchorRange.length else {
+            return []
+        }
+        return [
+            NSRange(
+                location: documentLocation,
+                length: localAnchorRange.length
+            ),
+            NSRange(
+                location: documentLocation + localAnchorRange.length,
+                length: 0
+            ),
+        ]
+    }
+
+    static func lineHeightCharacterIndex(
+        markedRange: NSRange,
+        localAnchorRange: NSRange,
+        selectedRange: NSRange
+    ) -> Int? {
+        if isUsable(markedRange),
+           localAnchorRange.location != NSNotFound,
+           localAnchorRange.location <= markedRange.length {
+            let localIndex = localAnchorRange.length > 0
+                ? localAnchorRange.location
+                : max(0, localAnchorRange.location - 1)
+            guard markedRange.location <= Int.max - localIndex else {
+                return nil
+            }
+            return markedRange.location + localIndex
+        }
+
+        guard selectedRange.location != NSNotFound else {
+            return nil
+        }
+        return max(0, selectedRange.location - 1)
+    }
+
+    private static func isUsable(_ range: NSRange) -> Bool {
+        range.location != NSNotFound
+            && range.length != NSNotFound
+            && range.location <= Int.max - range.length
+    }
+}
+
 enum CandidateWindowPlacement {
     static func frame(
         anchor: CGRect,
@@ -323,9 +461,9 @@ enum CandidateWindowPlacement {
         let safeFrame = insetFrame.width > 0 && insetFrame.height > 0
             ? insetFrame
             : visibleFrame
-        let size = CGSize(
+        var size = CGSize(
             width: min(max(1, desiredSize.width), safeFrame.width),
-            height: min(max(1, desiredSize.height), safeFrame.height)
+            height: max(1, desiredSize.height)
         )
 
         let x = clamp(
@@ -333,23 +471,20 @@ enum CandidateWindowPlacement {
             minimum: safeFrame.minX,
             maximum: safeFrame.maxX - size.width
         )
+        let spaceBelow = max(0, anchor.minY - gap - safeFrame.minY)
+        let spaceAbove = max(0, safeFrame.maxY - anchor.maxY - gap)
         let belowY = anchor.minY - gap - size.height
         let aboveY = anchor.maxY + gap
         let y: CGFloat
 
-        if belowY >= safeFrame.minY {
+        if size.height <= spaceBelow {
             y = belowY
-        } else if aboveY + size.height <= safeFrame.maxY {
+        } else if size.height <= spaceAbove {
             y = aboveY
         } else {
-            let spaceBelow = max(0, anchor.minY - gap - safeFrame.minY)
-            let spaceAbove = max(0, safeFrame.maxY - anchor.maxY - gap)
-            let preferredY = spaceAbove > spaceBelow ? aboveY : belowY
-            y = clamp(
-                preferredY,
-                minimum: safeFrame.minY,
-                maximum: safeFrame.maxY - size.height
-            )
+            let placeAbove = spaceAbove > spaceBelow
+            size.height = max(1, min(size.height, max(spaceBelow, spaceAbove)))
+            y = placeAbove ? aboveY : anchor.minY - gap - size.height
         }
 
         return CGRect(origin: CGPoint(x: x, y: y), size: size)

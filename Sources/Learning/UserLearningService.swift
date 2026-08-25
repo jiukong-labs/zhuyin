@@ -1,7 +1,32 @@
 import Foundation
 import os
 
+enum UserLearningMutation: String, Equatable {
+    case mergeable
+    case replacement
+
+    var requiresReplacement: Bool {
+        self == .replacement
+    }
+
+    init(notification: Notification) {
+        guard let rawValue = notification.userInfo?[
+            UserLearningService.mutationUserInfoKey
+        ] as? String,
+              let mutation = UserLearningMutation(rawValue: rawValue) else {
+            self = .mergeable
+            return
+        }
+        self = mutation
+    }
+}
+
 final class UserLearningService: UserLearningProviding {
+    static let didChangeNotification = Notification.Name(
+        "tw.idv.jiukong.UserLearningDidChange"
+    )
+    static let mutationUserInfoKey = "mutation"
+
     static let shared = UserLearningService()
 
     private static let logger = Logger(
@@ -12,6 +37,7 @@ final class UserLearningService: UserLearningProviding {
     private let queue: DispatchQueue
     private let store: UserLearningStoring?
     private let now: () -> Date
+    private let notificationCenter: NotificationCenter
 
     private convenience init() {
         let store: UserLearningStoring?
@@ -30,10 +56,12 @@ final class UserLearningService: UserLearningProviding {
     init(
         store: UserLearningStoring?,
         now: @escaping () -> Date = Date.init,
+        notificationCenter: NotificationCenter = .default,
         queueLabel: String = "tw.idv.jiukong.user-learning"
     ) {
         self.store = store
         self.now = now
+        self.notificationCenter = notificationCenter
         queue = DispatchQueue(label: queueLabel, qos: .userInitiated)
     }
 
@@ -56,9 +84,9 @@ final class UserLearningService: UserLearningProviding {
     }
 
     func recordSelection(character: String, pronunciation: String) {
-        queue.sync {
+        let changed: Bool = queue.sync {
             guard let store else {
-                return
+                return false
             }
             do {
                 try store.recordSelection(
@@ -66,11 +94,16 @@ final class UserLearningService: UserLearningProviding {
                     pronunciation: pronunciation,
                     at: now()
                 )
+                return true
             } catch {
                 Self.logger.error(
                     "Could not update user learning data; input will continue."
                 )
+                return false
             }
+        }
+        if changed {
+            notifyChange(.mergeable)
         }
     }
 
@@ -79,9 +112,9 @@ final class UserLearningService: UserLearningProviding {
         character: String,
         pronunciation: String
     ) {
-        queue.sync {
+        let changed: Bool = queue.sync {
             guard let store else {
-                return
+                return false
             }
             do {
                 try store.setPinned(
@@ -89,11 +122,16 @@ final class UserLearningService: UserLearningProviding {
                     character: character,
                     pronunciation: pronunciation
                 )
+                return true
             } catch {
                 Self.logger.error(
                     "Could not update a user learning pin; input will continue."
                 )
+                return false
             }
+        }
+        if changed {
+            notifyChange(pinned ? .mergeable : .replacement)
         }
     }
 
@@ -123,7 +161,7 @@ final class UserLearningService: UserLearningProviding {
         pronunciationSequence: [String],
         createdAt: Date
     ) -> Bool {
-        queue.sync {
+        let changed: Bool = queue.sync {
             guard let store else {
                 return false
             }
@@ -141,6 +179,10 @@ final class UserLearningService: UserLearningProviding {
                 return false
             }
         }
+        if changed {
+            notifyChange(.mergeable)
+        }
+        return changed
     }
 
     func recordPhraseSelection(
@@ -148,9 +190,9 @@ final class UserLearningService: UserLearningProviding {
         pronunciationSequence: [String],
         at date: Date
     ) {
-        queue.sync {
+        let changed: Bool = queue.sync {
             guard let store else {
-                return
+                return false
             }
             do {
                 try store.recordPhraseSelection(
@@ -158,11 +200,16 @@ final class UserLearningService: UserLearningProviding {
                     pronunciationSequence: pronunciationSequence,
                     at: date
                 )
+                return true
             } catch {
                 Self.logger.error(
                     "Could not update user phrase learning; input will continue."
                 )
+                return false
             }
+        }
+        if changed {
+            notifyChange(.mergeable)
         }
     }
 
@@ -171,9 +218,9 @@ final class UserLearningService: UserLearningProviding {
         phrase: String,
         pronunciationSequence: [String]
     ) {
-        queue.sync {
+        let changed: Bool = queue.sync {
             guard let store else {
-                return
+                return false
             }
             do {
                 try store.setPhrasePinned(
@@ -181,11 +228,16 @@ final class UserLearningService: UserLearningProviding {
                     phrase: phrase,
                     pronunciationSequence: pronunciationSequence
                 )
+                return true
             } catch {
                 Self.logger.error(
                     "Could not update a user phrase pin; input will continue."
                 )
+                return false
             }
+        }
+        if changed {
+            notifyChange(pinned ? .mergeable : .replacement)
         }
     }
 
@@ -285,8 +337,11 @@ final class UserLearningService: UserLearningProviding {
         }
     }
 
-    func merge(_ archive: UserDataArchive) -> UserDataMergeSummary? {
-        queue.sync {
+    func merge(
+        _ archive: UserDataArchive,
+        notifyChange: Bool = true
+    ) -> UserDataMergeSummary? {
+        let summary: UserDataMergeSummary? = queue.sync {
             guard let store else {
                 return nil
             }
@@ -299,13 +354,17 @@ final class UserLearningService: UserLearningProviding {
                 return nil
             }
         }
+        if summary != nil, notifyChange {
+            self.notifyChange(.mergeable)
+        }
+        return summary
     }
 
     private func clear(
         _ description: String,
         operation: (any UserLearningStoring) throws -> Void
     ) -> Bool {
-        queue.sync {
+        let changed: Bool = queue.sync {
             guard let store else {
                 return false
             }
@@ -319,5 +378,17 @@ final class UserLearningService: UserLearningProviding {
                 return false
             }
         }
+        if changed {
+            notifyChange(.replacement)
+        }
+        return changed
+    }
+
+    private func notifyChange(_ mutation: UserLearningMutation) {
+        notificationCenter.post(
+            name: Self.didChangeNotification,
+            object: self,
+            userInfo: [Self.mutationUserInfoKey: mutation.rawValue]
+        )
     }
 }

@@ -68,4 +68,36 @@ final class BopomofoSyllableTests: XCTestCase {
         XCTAssertTrue(syllable.removeLastComponent())
         XCTAssertTrue(syllable.isEmpty)
     }
+
+    func testRestoresStoredPronunciationForReverseComponentDeletion() throws {
+        var syllable = try XCTUnwrap(
+            BopomofoSyllable(pronunciation: "ㄒㄧㄤˋ")
+        )
+
+        XCTAssertTrue(syllable.removeLastComponent())
+        XCTAssertEqual(syllable.text, "ㄒㄧㄤ")
+        XCTAssertTrue(syllable.removeLastComponent())
+        XCTAssertEqual(syllable.text, "ㄒㄧ")
+        XCTAssertTrue(syllable.removeLastComponent())
+        XCTAssertEqual(syllable.text, "ㄒ")
+        XCTAssertTrue(syllable.removeLastComponent())
+        XCTAssertTrue(syllable.isEmpty)
+    }
+
+    func testRestoresInvisibleFirstToneAsTheLastInputComponent() throws {
+        var syllable = try XCTUnwrap(
+            BopomofoSyllable(pronunciation: "ㄒㄧㄤ")
+        )
+
+        XCTAssertTrue(syllable.removeLastComponent())
+        XCTAssertEqual(syllable.text, "ㄒㄧㄤ")
+        XCTAssertTrue(syllable.removeLastComponent())
+        XCTAssertEqual(syllable.text, "ㄒㄧ")
+    }
+
+    func testRejectsMalformedStoredPronunciations() {
+        for pronunciation in ["", "向", "ˋㄒㄧㄤ", "ㄧㄒ", "ㄒㄒ"] {
+            XCTAssertNil(BopomofoSyllable(pronunciation: pronunciation))
+        }
+    }
 }

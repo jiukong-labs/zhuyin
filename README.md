@@ -2,11 +2,11 @@
 
 > 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
 
-久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速而實用的候選字、單按 Shift 切換中英文，以及完全離線的個人選字與詞組學習。
+久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速而實用的候選字、單按 Shift 切換中英文，以及可選擇使用私人 iCloud 備份的個人選字與詞組學習。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
+Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and personal character and phrase learning with optional private iCloud backup.
 
-> 開發狀態：Milestone 11 已加入跟隨游標的輸入模式指示器。字與詞的學習資料只保存在目前 Mac。
+> 開發狀態：已加入使用 CloudKit 私有資料庫同步選字紀錄與使用者詞的功能。
 
 ## 原創開發原則
 
@@ -27,10 +27,11 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Persistent settings for Shift switching and automatic learning
 - Searchable user-dictionary management with pinning, deletion, and clearing
 - Local JSON export and merging import of personal learning data
+- Automatic private CloudKit backup and reinstall restoration of personal learning data
 - Full-width Chinese punctuation on every arrangement
 - Standard, Eten Traditional, and IBM Bopomofo arrangements
 - Optional cursor-following indicator for the current input mode
-- Fully offline
+- Offline input and ranking; optional iCloud transfer only when cloud sync is enabled
 - Open source
 - MIT-licensed source code
 
@@ -70,21 +71,23 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 例如 `j i 3` 會完成 `ㄨㄛˇ`，並直接在 marked composition 中預覽第一候選「我」；`r u 0 4` 會預覽 `ㄐㄧㄢˋ` 的第一候選。完成音節時不主動顯示候選窗，按 ↓ 才開啟完整選字模式；開啟後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看，原本第一候選仍保持反白。一般模式只採 CNS 第 1、2 字面的常用與次常用字；第 3 字面以後的罕用、異體、戶政與其他專門用字須在設定中開啟「顯示罕用字」才會加入。若 macOS 對某字只能提供 LastResort 缺字符號，則無論設定為何都會略過，避免候選窗出現方框問號。
 
-一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中選擇要修改的字，候選窗標題會顯示例如「定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫／Del 刪字　↓ 選字」，目前字也會加上黃色底色與橘色粗底線；此時可用 Shift+←／→ 從目前字向相應方向開始造詞範圍，也可用退格鍵（⌫／Backspace）或前向 Del 直接刪除目前字；按 ↓ 則進入選字層。進入選字層後標題改為「選字」，←／→ 才會移動候選反白，↑／↓ 可跨列移動，Esc 返回定位層。Return、數字鍵或滑鼠可確認候選；逐字修改期間畫面列出的 `1`–`9` 永遠代表候選編號，不會被當成下一個注音鍵。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末繼續輸入。
+一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中移動游標，這個定位階段不顯示候選窗，也不替任何字加底色或底線。此時 Shift+← 會從游標左側開始造詞，Shift+→ 則從游標右側開始。退格鍵（⌫／Backspace）會把游標左邊緊鄰的讀音字恢復成原注音並先刪除聲調，例如 `路｜鏡 → ㄌㄨ｜鏡 → ㄌ｜鏡 → ｜鏡`；它不會跨越標點，游標在第一字前時也不會改動文字。前向 Del（Fn+Backspace）則以同樣方式倒退編輯游標右邊的字，例如 `路｜鏡 → 路ㄐㄧㄥ｜ → 路ㄐㄧ｜ → 路ㄐ｜ → 路｜`。按 ↓ 才開啟游標左邊緊鄰字的九個候選，例如 `路｜鏡` 會顯示「選字 1／2：路」，而 `路鏡｜` 會顯示「選字 2／2：鏡」；再按 ↓ 可展開完整候選格。候選窗開啟後仍把同一個零長度游標留在原位，不把任何字或整段組字當成 selection。選字層的 ←／→ 移動候選反白，↑ 或 Esc 關閉候選並回到文字定位，之後 ←／→ 又會移動游標。Return、數字鍵或滑鼠可確認候選；只有候選窗開啟後，畫面列出的 `1`–`9` 才代表候選編號。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末，仍可按 ↓ 修改最後一字或直接繼續輸入。
 
 完成一個音節後可直接輸入下一個音節，久空會先把目前預覽的第一候選收進 marked composition；這也適用於標準、倚天與 IBM 配置中位於數字列的聲母、介音或韻母。候選窗未開啟時，主鍵區 `1`–`9` 不選候選，而是照鍵盤配置繼續輸入；要改選時先按 ↓，開窗後 `1`–`9` 才全部明確代表候選編號。Return／Keypad Enter 會接受預覽並直接提交整段組字，Space 接受第一候選並留在組字中，也可開窗後用方向鍵、數字或滑鼠選定。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
 
-- Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或一般候選窗開啟時，回到注音並刪除聲調；逐字定位或選字時刪除目前字；造詞範圍存在時刪除整個範圍。
-- Forward Delete（Del）：逐字定位或選字時刪除目前字；造詞範圍存在時刪除整個範圍。沒有明確的輸入法範圍或定位字時交回 App。
+- Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或一般候選窗開啟時，回到該字注音並由聲調開始倒退刪除；逐字定位／選字時，改為倒退編輯定位字左邊緊鄰字的注音；造詞範圍存在時刪除整個範圍。
+- Forward Delete（Del／Fn+Backspace）：逐字定位或選字時，倒退編輯游標右邊字的注音；造詞範圍存在時刪除整個範圍。沒有明確的輸入法範圍或定位字時交回 App。
 - Escape：候選窗開啟時先回到隱藏的第一候選預覽；再按一次才丟棄目前音節。
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
-候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選或預覽回到注音編輯，再刪除當前修改字、注音 component，或 buffer 的選取範圍／最後一個讀音單位。
+候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選回到該候選的注音編輯，或從定位字向左進入前一字的注音編輯，再逐一刪除注音 component；造詞範圍存在時則刪除整個範圍。
 
-未學習過且在目前候選範圍內、系統也能顯示的單字候選，忠實保留 CNS11643 注音資料的相對來源順序；該順序不是字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
+未學習過且在目前候選範圍內、系統也能顯示的單字候選，先依專案已釘選的 CNS11643 第 1 字面、第 2 字面與其他字面分成三級；個別罕見破音可由久空逐筆審訂降級。同級內再依該「字＋讀音」出現在久空自製內建詞表的次數排序，完全沒有自製詞例時才保留 CNS11643 的相對來源順序。第一方詞例加分永遠小於一級，不會讓後一級字跨級超越前一級字；這是久空自身詞表的排序訊號，並非匯入語料字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
 
-完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），即使第一音暫時顯示 CNS 順序的「冊」，第二音完成後第一候選會成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 815 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），第一音會依第一方詞例預覽「測」，第二音完成後第一候選成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 1,965 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+
+若 CNS11643 缺少久空需要支援的常用單字讀音，會逐筆記錄在 `Data/JiukongCharacters/characters.tsv`，由建置器驗證後合併；目前包含「麼／˙ㄇㄛ」，因此輸入 `ㄇㄛ` 加輕聲即可直接選到「麼」。補充項目必須是 CNS 已收字元，並沿用其 CNS 字碼與來源位置。
 
 同一機制可處理「測試中請稍後」：前五音可不停頓直接繼續，完成 `ㄏㄡˋ` 後會把六音完整句列為第一候選，而不是只顯示「後」的單字候選。候選格會依詞的長度自動加寬，不會把整句裁成一個字。
 
@@ -108,7 +111,7 @@ Shift+[  『      Shift+]  』      Shift+\  ／
 
 ### 中英文切換
 
-中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換。切換留在久空輸入法內，不會觸發 macOS 固定的 `ABC` 輸入來源提示；久空會在游標附近短暫顯示與游標指示器相同文字、顏色的紅色「中」或藍色 `A`，也不會搶走目前 App 的鍵盤焦點。
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換留在久空輸入法內，不會觸發 macOS 固定的 `ABC` 輸入來源提示；久空會在游標附近短暫顯示與游標指示器相同文字、顏色的紅色「中」或藍色 `A`，也不會搶走目前 App 的鍵盤焦點。
 
 英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
@@ -136,11 +139,13 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 ### 使用者造詞
 
-每個已選候選都保留其精確注音。先用 ←／→ 定位到要造詞的起點，再按 Shift+←，會從定位字向左選取；按 Shift+→，則會從定位字向右選取。進入範圍選取後，Shift+← 與 Shift+→ 可繼續擴張範圍的左、右邊界，久空自己的綠色浮動提示會明確框出目前範圍，例如「造詞範圍 2 字：【載入】」，不依賴目前 App 是否正確顯示 marked-text 反白。若沒有先定位，Shift+← 由 buffer 尾端開始，Shift+→ 由 buffer 開頭開始。範圍不會跨越標點；選取至少兩個讀音單位後按 Return，即把範圍文字與逐音注音加入使用者詞庫，再一次提交整段 composition。儲存成功後，游標旁會顯示例如「已儲存：【載入】」並保留約十秒；若選錯，可按右側 `×` 精確刪除剛儲存的使用者詞與該組逐音注音，不會刪除文件中已送出的文字。這個功能只處理輸入法尚未提交的 buffer，不會讀取其他 App 已有的文字。
+每個已選候選都保留其精確注音。先用 ←／→ 把游標定位在造詞範圍的一側：Shift+← 會選取游標左邊最多兩個相鄰讀音字，例如 `合併｜成` 會選到「合併」；Shift+→ 會選取游標右邊最多兩個相鄰讀音字。進入範圍選取後，Shift+← 與 Shift+→ 可繼續擴張範圍的左、右邊界，久空自己的綠色浮動提示會明確框出目前範圍，例如「造詞範圍 2 字：【載入】」，不依賴目前 App 是否正確顯示 marked-text 反白。若沒有先定位，Shift+← 由 buffer 尾端開始，Shift+→ 由 buffer 開頭開始。範圍不會跨越標點；選取至少兩個讀音單位後按 Return，即把範圍文字與逐音注音加入使用者詞庫，再一次提交整段 composition。儲存成功後，游標旁會顯示例如「已儲存：【載入】」並保留約十秒；若選錯，可按右側 `×` 精確刪除剛儲存的使用者詞與該組逐音注音，不會刪除文件中已送出的文字。這個功能只處理輸入法尚未提交的 buffer，不會讀取其他 App 已有的文字。
 
 之後重打相同的完整逐音序列時，使用者詞會出現在最後一個音節的候選中。查詢是完整相等、最長後綴優先；目前不做詞首聯想，也不會未經確認自動補完整詞。置頂仍是最高排序層，未置頂的精確使用者詞則優先於一般未置頂單字。
 
 學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v2 原地保留 M6 字頻並加入使用者詞與有順序的逐音讀音。資料庫無法使用時，輸入仍會安全退回 CNS 原始順序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
+
+啟用 iCloud 同步時，程式會把同一份經驗證的版本化 JSON 快照放入使用者自己的 CloudKit 私有資料庫；內建字典與輸入內容本身不會上傳。啟動時先合併雲端快照，再把合併結果存回雲端，因此同一 Apple 帳號的新安裝可自動還原。詳細的容器、簽署、開發／正式環境與驗證方式見 [Cloud sync](docs/CLOUD_SYNC.md)。
 
 ### 設定視窗
 
@@ -150,7 +155,7 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 - **游標指示器**：在游標旁顯示目前輸入模式，可設定位置、追蹤方式、文字大小、Caps Lock 指示，以及中／英文各自的文字與顏色；
 - **使用者詞**：列出所有自己造的詞與逐音注音，可搜尋、置頂或刪除單筆；
 - **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
-- **資料**：匯出／匯入 JSON，以及清除選字紀錄、清除使用者詞、清除全部。
+- **資料**：iCloud 同步開關、同步狀態、立即同步、匯出／匯入 JSON，以及清除選字紀錄、清除使用者詞、清除全部。
 
 設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；所有刪除與清除動作只影響 `user.sqlite`，不會動到內建字典，且都需要再次確認。開啟設定視窗前會先完成目前的組字。
 
@@ -175,6 +180,8 @@ xcodebuild \
   -configuration Debug \
   -destination "platform=macOS,arch=$(uname -m)" \
   -derivedDataPath .build/DerivedData \
+  CODE_SIGN_ENTITLEMENTS= CODE_SIGN_IDENTITY=- \
+  CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
   build
 
 xcodebuild \
@@ -183,6 +190,8 @@ xcodebuild \
   -configuration Debug \
   -destination "platform=macOS,arch=$(uname -m)" \
   -derivedDataPath .build/DerivedData \
+  CODE_SIGN_ENTITLEMENTS= CODE_SIGN_IDENTITY=- \
+  CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
   test
 ```
 
@@ -200,7 +209,7 @@ A file that exists on disk but is missing from the checked-in project is silentl
 
 GitHub Actions runs the same checks on every push and pull request: the source-membership check, the Debug test suite, a universal Release build, and a rebuild of the dictionary from its pinned snapshot that must reproduce the checked-in artifact byte for byte. A separate advisory job reports when the checked-in project no longer matches `project.yml`.
 
-The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot and Jiukong's first-party phrase TSV without network access:
+The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot and Jiukong's first-party character and phrase TSV files without network access:
 
 ```sh
 ./scripts/build-dictionary.sh
@@ -213,7 +222,7 @@ Normal app builds never download or parse the raw CNS11643 or phrase-source file
 The installer builds a Release configuration, copies it to the current user's supported Input Methods directory, validates the bundle, then registers it and requests enablement through Apple's public Text Input Sources APIs. It does not switch away from your current input source:
 
 ```sh
-./scripts/install.sh
+./scripts/install.sh                    # Apple Development signing + CloudKit
 ```
 
 The default build uses an ad-hoc local signature. A maintainer with an Apple Development certificate can select it without changing the project:
@@ -286,7 +295,7 @@ Milestone 11 把獨立工具 `lang-cursor` 的免費功能併入輸入法：跟�
 
 ## Privacy
 
-Jiukong Zhuyin works completely offline and does not collect or transmit typing data.
+輸入、組字、候選查詢與排序都在本機完成，專案不設自有伺服器，也不收集遙測。啟用 iCloud 同步時，只有選字統計、置頂狀態及使用者自建詞與其注音會傳送到使用者自己的 CloudKit 私有資料庫；可在設定的「資料」頁關閉。手動匯出的 JSON 未加密，應比照個人檔案保管。
 
 ## Project
 

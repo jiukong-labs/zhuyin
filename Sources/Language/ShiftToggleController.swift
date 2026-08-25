@@ -15,6 +15,17 @@ enum ShiftKeySide: Hashable {
             return nil
         }
     }
+
+    /// Device-dependent bits carried by macOS flags-changed events. AppKit
+    /// does not publish named ModifierFlags for these two longstanding masks.
+    var deviceModifierFlag: NSEvent.ModifierFlags {
+        switch self {
+        case .left:
+            return NSEvent.ModifierFlags(rawValue: 0x0000_0002)
+        case .right:
+            return NSEvent.ModifierFlags(rawValue: 0x0000_0004)
+        }
+    }
 }
 
 enum ShiftKeyPreference: String, CaseIterable, Codable, Equatable {
@@ -45,6 +56,7 @@ struct ShiftToggleController {
     private var pressedShiftKeys: Set<ShiftKeySide> = []
     private var toggleCandidate: ShiftKeySide?
     private var wasInterrupted = false
+    private var keyDownEventCountAtStart: UInt32?
 
     var isTrackingShift: Bool {
         !pressedShiftKeys.isEmpty
@@ -54,6 +66,7 @@ struct ShiftToggleController {
     mutating func handleFlagsChanged(
         keyCode: UInt16,
         modifierFlags: NSEvent.ModifierFlags,
+        systemKeyDownEventCount: UInt32? = nil,
         preference: ShiftKeyPreference = .both
     ) -> Bool {
         guard let side = ShiftKeySide(keyCode: keyCode) else {
@@ -66,6 +79,23 @@ struct ShiftToggleController {
             .isEmpty
 
         if pressedShiftKeys.contains(side) {
+            let otherSide: ShiftKeySide = side == .left ? .right : .left
+            let explicitlyReportsThisSide = modifierFlags.contains(
+                side.deviceModifierFlag
+            )
+            let reportsOnlyGenericShift = modifierFlags.contains(.shift)
+                && !modifierFlags.contains(otherSide.deviceModifierFlag)
+            if explicitlyReportsThisSide || reportsOnlyGenericShift {
+                // Some clients deliver a duplicate Shift-down flagsChanged
+                // event. It is not a physical release and must leave the
+                // gesture armed.
+                return false
+            }
+            if let initialCount = keyDownEventCountAtStart,
+               let systemKeyDownEventCount,
+               initialCount != systemKeyDownEventCount {
+                wasInterrupted = true
+            }
             if hasDisallowedModifier {
                 wasInterrupted = true
             }
@@ -94,6 +124,7 @@ struct ShiftToggleController {
         if pressedShiftKeys.isEmpty {
             toggleCandidate = side
             wasInterrupted = hasDisallowedModifier
+            keyDownEventCountAtStart = systemKeyDownEventCount
         } else {
             wasInterrupted = true
         }
@@ -123,5 +154,6 @@ struct ShiftToggleController {
     private mutating func clearGesture() {
         toggleCandidate = nil
         wasInterrupted = false
+        keyDownEventCountAtStart = nil
     }
 }

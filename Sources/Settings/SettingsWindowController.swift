@@ -11,6 +11,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private let preferences: PreferencesController
     private let learning: UserLearningService
+    private let cloudSync: UserDataCloudSyncService
 
     private let characterList: UserDataListController
     private let phraseList: UserDataListController
@@ -21,6 +22,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var arrangementPopUpButton: NSPopUpButton?
     private var automaticLearningButton: NSButton?
     private var showsRareCandidatesButton: NSButton?
+    private var cloudSyncButton: NSButton?
+    private var synchronizeNowButton: NSButton?
+    private var cloudSyncStatusLabel: NSTextField?
+    private var cloudSyncObserver: NSObjectProtocol?
 
     private static let arrangements = ZhuyinKeyboardArrangement.allCases
 
@@ -33,10 +38,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     init(
         preferences: PreferencesController = .shared,
-        learning: UserLearningService = .shared
+        learning: UserLearningService = .shared,
+        cloudSync: UserDataCloudSyncService = .shared
     ) {
         self.preferences = preferences
         self.learning = learning
+        self.cloudSync = cloudSync
         characterList = UserDataListController(
             kind: .characters,
             learning: learning
@@ -46,9 +53,24 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             preferences: preferences
         )
         super.init()
+        cloudSyncObserver = NotificationCenter.default.addObserver(
+            forName: UserDataCloudSyncService.didChangeNotification,
+            object: cloudSync,
+            queue: .main
+        ) { [weak self] _ in
+            self?.reloadCloudSyncControls()
+            self?.reloadLists()
+        }
+    }
+
+    deinit {
+        if let cloudSyncObserver {
+            NotificationCenter.default.removeObserver(cloudSyncObserver)
+        }
     }
 
     func show() {
+        cloudSync.start()
         let window = existingOrNewWindow()
         reloadControls()
         reloadLists()
@@ -179,6 +201,29 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeDataView() -> NSView {
+        let cloudCheckbox = NSButton(
+            checkboxWithTitle: "使用 iCloud 同步選字與使用者詞",
+            target: self,
+            action: #selector(cloudSyncPreferenceDidChange(_:))
+        )
+        cloudSyncButton = cloudCheckbox
+
+        let synchronizeButton = makeButton(
+            "立即同步",
+            action: #selector(synchronizeUserDataNow(_:))
+        )
+        synchronizeNowButton = synchronizeButton
+
+        let statusLabel = NSTextField(labelWithString: "")
+        statusLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        statusLabel.textColor = .secondaryLabelColor
+        cloudSyncStatusLabel = statusLabel
+
+        let cloudRow = NSStackView(views: [synchronizeButton, statusLabel])
+        cloudRow.orientation = .horizontal
+        cloudRow.alignment = .centerY
+        cloudRow.spacing = 10
+
         let transferRow = NSStackView(views: [
             makeButton("匯出…", action: #selector(exportUserData(_:))),
             makeButton("匯入…", action: #selector(importUserData(_:))),
@@ -197,6 +242,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         return SettingsPaneBuilder.pane(
             sections: [
                 SettingsPaneBuilder.section(
+                    title: "iCloud",
+                    controls: [cloudCheckbox, cloudRow],
+                    note: "使用同一個 Apple 帳號登入 iCloud 時，會在私人資料庫保存並合併選字紀錄與使用者詞；重灌後首次啟動會自動還原。"
+                ),
+                SettingsPaneBuilder.section(
                     title: "匯出與匯入",
                     controls: [transferRow],
                     note: "匯出為 JSON 檔。匯入會與現有資料合併：次數與時間取較大者，置頂取聯集，重複匯入同一個檔案不會重複累加。"
@@ -204,7 +254,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "清除",
                     controls: [clearRow],
-                    note: "資料只存在這台 Mac，清除後無法復原。"
+                    note: "清除會同步更新雲端快照；其他離線裝置之後重新上線時，仍可能把自己的較新資料合併回來。"
                 ),
             ]
         )
@@ -230,6 +280,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             current.automaticLearningEnabled ? .on : .off
         showsRareCandidatesButton?.state =
             current.showsRareCandidates ? .on : .off
+        reloadCloudSyncControls()
         cursorIndicatorSettings.reload()
     }
 
@@ -268,6 +319,29 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         preferences.update {
             $0.showsRareCandidates = sender.state == .on
         }
+    }
+
+    @objc private func cloudSyncPreferenceDidChange(_ sender: NSButton) {
+        preferences.update {
+            $0.cloudSyncEnabled = sender.state == .on
+        }
+        cloudSync.start()
+        if sender.state == .on {
+            cloudSync.synchronizeNow()
+        }
+        reloadCloudSyncControls()
+    }
+
+    @objc private func synchronizeUserDataNow(_ sender: Any?) {
+        synchronizeNowButton?.isEnabled = false
+        cloudSync.synchronizeNow()
+    }
+
+    private func reloadCloudSyncControls() {
+        let enabled = preferences.current.cloudSyncEnabled
+        cloudSyncButton?.state = enabled ? .on : .off
+        cloudSyncStatusLabel?.stringValue = cloudSync.state.localizedDescription
+        synchronizeNowButton?.isEnabled = enabled && cloudSync.state != .syncing
     }
 
     @objc private func exportUserData(_ sender: Any?) {

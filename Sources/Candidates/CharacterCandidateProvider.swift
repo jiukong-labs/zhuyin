@@ -46,6 +46,7 @@ final class CharacterCandidateProvider {
                     pronunciation: pronunciation,
                     baseRank: baseRank,
                     sourceOrder: entry.sourceOrder,
+                    baseFrequency: baseFrequency(for: entry),
                     userFrequency: learningRecord?.selectionCount ?? 0,
                     lastUsed: learningRecord?.lastSelectedAt,
                     pinned: learningRecord?.pinned ?? false
@@ -62,6 +63,19 @@ final class CharacterCandidateProvider {
             displayableCandidates,
             at: now()
         )
+    }
+
+    /// Encodes the independently authored base order without allowing phrase
+    /// evidence to move a character across its CNS-plane tier. Within one
+    /// tier, reviewed first-party phrase attestations outrank CNS source order.
+    private func baseFrequency(for entry: DictionaryCharacter) -> Double {
+        let tierStride: Int64 = 1_000_000
+        let boundedPhraseCount = min(
+            max(0, entry.firstPartyPhraseCount),
+            tierStride - 1
+        )
+        return Double(2 - entry.usageTier)
+            + Double(boundedPhraseCount) / Double(tierStride)
     }
 
     @discardableResult

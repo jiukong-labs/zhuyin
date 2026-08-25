@@ -26,17 +26,21 @@ Accepting a candidate does not commit it. A character candidate appends one unit
 
 ## Marked text and gestures
 
-`CompositionPresentation.make(buffer:activeSuffix:)` is the single pure source of `setMarkedText` content. An active raw syllable or candidate reading always owns the caret at the end; the buffer's phrase highlight is exposed only when no active suffix exists.
+`CompositionPresentation.make(buffer:activeSuffix:)` is the single pure source of `setMarkedText` content. An active raw syllable or candidate reading owns the caret; ordinary input places it at the end, while a positioned revision keeps it before the saved insertion anchor. The buffer's phrase highlight is exposed only when no active suffix exists.
 
-`CompositionSelectionCommandRouter` recognizes exactly two gestures — Shift+← extends the left range edge and Shift+→ extends the right edge. Carbon's inherent `.function` and `.numericPad` arrow flags are tolerated, while Command, Control, and Option are rejected so real client shortcuts still work. A raw syllable or expanded chooser still owns its arrows. In compact revision locating mode, a Shift arrow closes the candidate panel and starts phrase selection from the focused unit in the requested direction.
+`CompositionSelectionCommandRouter` recognizes exactly two gestures — Shift+← extends the left range edge and Shift+→ extends the right edge. Carbon's inherent `.function` and `.numericPad` arrow flags are tolerated, while Command, Control, and Option are rejected so real client shortcuts still work. A raw syllable or expanded chooser still owns its arrows. Revision locating is windowless; a Shift arrow starts phrase selection at the caret in the requested direction. Down opens candidates for the reading immediately before that caret, while Up or Escape closes them without moving it and restores windowless positioning.
 
 With a buffer and no active syllable or candidate:
 
 - Return/Keypad Enter adds the selected phrase to the user dictionary when at least two units are selected, then commits the whole composition once;
 - Escape clears the selection, or discards the buffer when nothing is selected;
-- Backspace or forward Delete removes the selected range or explicitly focused
-  revision unit. With neither target, Backspace deletes the last unit while
-  forward Delete remains available to the client application.
+- Backspace removes a selected range, or restores the reading unit immediately
+  before the focus and removes its final Bopomofo component for continued
+  editing; it does nothing at the first unit and never crosses punctuation.
+  Forward Delete restores the focused reading immediately after the caret and
+  removes its components in the same order. Either key removes a selected
+  range. With neither target, Backspace deletes the last unit while forward
+  Delete remains available to the client application.
 
 ## Phrase lookup and ranking
 

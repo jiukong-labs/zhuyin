@@ -75,6 +75,46 @@ enum CompositionCursorCommandRouter {
     }
 }
 
+enum CompositionRevisionCandidateCommand: Equatable {
+    case openCandidates
+    case returnToPositioning
+}
+
+/// Owns only the vertical-arrow transitions for an active composition
+/// revision. This keeps the positioning caret and candidate list as two
+/// explicit modes instead of letting the general candidate router interpret
+/// the same arrow differently.
+enum CompositionRevisionCandidateCommandRouter {
+    private static let rejectedModifiers: NSEvent.ModifierFlags = [
+        .command,
+        .control,
+        .option,
+        .shift
+    ]
+
+    static func command(
+        keyCode: UInt16,
+        modifierFlags: NSEvent.ModifierFlags,
+        hasRevisionCaret: Bool,
+        isChoosingCandidates: Bool
+    ) -> CompositionRevisionCandidateCommand? {
+        let modifiers = modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard hasRevisionCaret,
+              modifiers.intersection(rejectedModifiers).isEmpty else {
+            return nil
+        }
+
+        switch (Int(keyCode), isChoosingCandidates) {
+        case (kVK_DownArrow, false):
+            return .openCandidates
+        case (kVK_UpArrow, true):
+            return .returnToPositioning
+        default:
+            return nil
+        }
+    }
+}
+
 enum CompositionDeletionCommand: Equatable {
     case deleteBackward
     case deleteForward

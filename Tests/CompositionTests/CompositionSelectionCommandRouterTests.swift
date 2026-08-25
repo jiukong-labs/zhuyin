@@ -92,6 +92,62 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         XCTAssertNil(cursorCommand(kVK_ANSI_A, modifiers: []))
     }
 
+    func testDownOpensRevisionCandidatesAndUpReturnsToPositioning() {
+        XCTAssertEqual(
+            revisionCandidateCommand(
+                kVK_DownArrow,
+                modifiers: [.function],
+                hasRevisionCaret: true,
+                isChoosingCandidates: false
+            ),
+            .openCandidates
+        )
+        XCTAssertEqual(
+            revisionCandidateCommand(
+                kVK_UpArrow,
+                modifiers: [.function, .numericPad],
+                hasRevisionCaret: true,
+                isChoosingCandidates: true
+            ),
+            .returnToPositioning
+        )
+    }
+
+    func testRevisionCandidateModeOwnsOnlyItsMatchingVerticalArrow() {
+        XCTAssertNil(
+            revisionCandidateCommand(
+                kVK_UpArrow,
+                modifiers: [],
+                hasRevisionCaret: true,
+                isChoosingCandidates: false
+            )
+        )
+        XCTAssertNil(
+            revisionCandidateCommand(
+                kVK_DownArrow,
+                modifiers: [],
+                hasRevisionCaret: true,
+                isChoosingCandidates: true
+            )
+        )
+        XCTAssertNil(
+            revisionCandidateCommand(
+                kVK_DownArrow,
+                modifiers: [],
+                hasRevisionCaret: false,
+                isChoosingCandidates: false
+            )
+        )
+        XCTAssertNil(
+            revisionCandidateCommand(
+                kVK_DownArrow,
+                modifiers: [.shift],
+                hasRevisionCaret: true,
+                isChoosingCandidates: false
+            )
+        )
+    }
+
     func testBothPhysicalDeleteKeysAreRecognized() {
         XCTAssertEqual(
             deletionCommand(kVK_Delete, modifiers: []),
@@ -148,6 +204,20 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         CompositionDeletionCommandRouter.command(
             keyCode: UInt16(keyCode),
             modifierFlags: modifiers
+        )
+    }
+
+    private func revisionCandidateCommand(
+        _ keyCode: Int,
+        modifiers: NSEvent.ModifierFlags,
+        hasRevisionCaret: Bool,
+        isChoosingCandidates: Bool
+    ) -> CompositionRevisionCandidateCommand? {
+        CompositionRevisionCandidateCommandRouter.command(
+            keyCode: UInt16(keyCode),
+            modifierFlags: modifiers,
+            hasRevisionCaret: hasRevisionCaret,
+            isChoosingCandidates: isChoosingCandidates
         )
     }
 }

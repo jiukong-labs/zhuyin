@@ -1,0 +1,20 @@
+# Jiukong first-party heteronym tier overrides. See README.md.
+#
+# Each non-comment row is: character, tab, canonical Bopomofo reading, tab,
+# usage tier (0 = common, 1 = semi-common, 2 = other/rare). The tier here
+# wins over the pinned CNS plane tier for this exact (character, reading)
+# pair only; every other reading of the same character is unaffected.
+#
+# 疋的主要讀音是 ㄆㄧˇ；它的 ㄕㄨ
+# reading is an archaic/rare alternate that otherwise tied with 書, 舒, 俞,
+# and other everyday ㄕㄨ characters and outranked them on CNS source order
+# alone. Verified against Resources/Dictionary/JiukongZhuyin.sqlite3.
+疋	ㄕㄨ	2
+
+# 食的 ㄧˋ 只用於人名「酈食其」；日常音是 ㄕˊ，作「給人吃／飼養」
+# 時另讀 ㄙˋ。它不應只因「食」整字的 CNS 字面，就與日常 ㄧˋ 候選同層。
+食	ㄧˋ	2
+
+# 射的 ㄧˋ 限於古語及十二律名「無射」；日常音是 ㄕㄜˋ。它不應因
+# 「射」整字的 CNS 字面，就與日常 ㄧˋ 候選同層。
+射	ㄧˋ	2

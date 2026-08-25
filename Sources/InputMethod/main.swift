@@ -68,6 +68,13 @@ private func runApplication() throws {
         throw InputMethodApplicationError.serverInitializationFailed
     }
 
+    jiukongDebugLog("main.swift about to start SystemInputSourceObserver")
+    // Owns the cursor indicator's visibility for as long as this process
+    // runs, independent of any particular client's text-field focus.
+    SystemInputSourceObserver.shared.start()
+    UserDataCloudSyncService.shared.start()
+    jiukongDebugLog("main.swift finished starting SystemInputSourceObserver")
+
     withExtendedLifetime(server) {
         NSApplication.shared.run()
     }

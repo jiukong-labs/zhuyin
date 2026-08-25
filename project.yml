@@ -80,6 +80,7 @@ targets:
     dependencies:
       - sdk: AppKit.framework
       - sdk: Carbon.framework
+      - sdk: CloudKit.framework
       - sdk: InputMethodKit.framework
       - sdk: libsqlite3.tbd
     info:
@@ -99,8 +100,6 @@ targets:
         ComponentInputModeDict: &inputModeDictionary
           tsInputModeListKey:
             tw.idv.jiukong.inputmethod.zhuyin.Chinese:
-              TISIconLabels:
-                Primary: 中
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.Chinese
               TISIntendedLanguage: zh-Hant
               tsInputModeDefaultStateKey: true
@@ -110,8 +109,6 @@ targets:
               tsInputModePrimaryInScriptKey: true
               tsInputModeScriptKey: smUnicodeScript
             tw.idv.jiukong.inputmethod.zhuyin.English:
-              TISIconLabels:
-                Primary: A
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.English
               TISIntendedLanguage: en
               tsInputModeDefaultStateKey: true
@@ -140,9 +137,11 @@ targets:
         tsInputMethodIconFileKey: JiukongZhuyin.tiff
     settings:
       base:
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_ENTITLEMENTS: Resources/JiukongZhuyin.entitlements
+        CODE_SIGN_IDENTITY: Apple Development
+        CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 8
+        DEVELOPMENT_TEAM: 6KW8YABG8T
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO
@@ -182,6 +181,7 @@ targets:
     dependencies:
       - sdk: AppKit.framework
       - sdk: Carbon.framework
+      - sdk: CloudKit.framework
       - sdk: libsqlite3.tbd
     settings:
       base:

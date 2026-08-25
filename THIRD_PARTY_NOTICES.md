@@ -13,7 +13,7 @@ Jiukong Zhuyin contains data derived from:
 
 The repository retains the pinned phonetic and CNS/Unicode mapping source snapshot with individual SHA-256 hashes. `JiukongDictionaryBuilder` joins those mappings, excludes Unicode private-use scalars, deduplicates pronunciation/character pairs, and preserves source order in a read-only SQLite dictionary.
 
-The CNS11643 source snapshot and the character data derived from it in the generated dictionary are not covered by Jiukong Zhuyin's MIT License; their use and redistribution are governed by the Open Government Data License above. The separate phrase table is original Jiukong data covered by this repository's MIT License. CNS11643 fonts, glyph files, and audio are not included.
+The CNS11643 source snapshot and generated dictionary are not covered by Jiukong Zhuyin's MIT License; their use and redistribution are governed by the Open Government Data License above. CNS11643 fonts, glyph files, and audio are not included.
 
 ## Development-only tooling
 
