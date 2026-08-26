@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import XCTest
 
@@ -202,6 +203,128 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(transport.fetchCount, 0)
     }
 
+    func testDisablingDuringFetchCancelsTransferAndIgnoresLateResult() throws {
+        let store = try makeStore()
+        let preference = LockedBoolean(true)
+        let fetchStarted = expectation(description: "fetch started")
+        let transport = ProbeCloudTransport(
+            records: [try cloudCharacter(count: 4, pinned: false)],
+            defersFetch: true,
+            onFetch: { fetchStarted.fulfill() }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: MemoryCloudSyncStateStore(),
+            isEnabled: { preference.value },
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+        let stopped = expectation(description: "sync stopped")
+
+        coordinator.synchronizeNow {
+            stopped.fulfill()
+        }
+        wait(for: [fetchStarted], timeout: 2)
+        preference.value = false
+        coordinator.preferenceDidChange()
+        wait(for: [stopped], timeout: 2)
+
+        XCTAssertTrue(transport.fetchWasCancelled)
+        XCTAssertEqual(coordinator.status, .disabled)
+
+        transport.completeDeferredFetch()
+        drainDisabledCoordinator(coordinator)
+        XCTAssertTrue(try store.allCharacterRecords().isEmpty)
+        XCTAssertEqual(transport.saveCount, 0)
+    }
+
+    func testDisablingDuringSaveKeepsMutationPending() throws {
+        let store = try makeStore()
+        try store.recordSelection(character: "鍵", pronunciation: "ㄐㄧㄢˋ")
+        let identity = try CloudUserDataIdentity(
+            character: "鍵",
+            pronunciation: "ㄐㄧㄢˋ"
+        )
+        var state = completedState()
+        state.note(.upsert, identity: identity)
+        let stateStore = MemoryCloudSyncStateStore(state: state)
+        let preference = LockedBoolean(true)
+        let saveStarted = expectation(description: "save started")
+        let transport = ProbeCloudTransport(
+            defersSave: true,
+            onSave: { saveStarted.fulfill() }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: stateStore,
+            isEnabled: { preference.value },
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+        let stopped = expectation(description: "sync stopped")
+
+        coordinator.synchronizeNow {
+            stopped.fulfill()
+        }
+        wait(for: [saveStarted], timeout: 2)
+        preference.value = false
+        coordinator.preferenceDidChange()
+        wait(for: [stopped], timeout: 2)
+
+        XCTAssertTrue(transport.saveWasCancelled)
+        XCTAssertEqual(stateStore.load().pending.count, 1)
+
+        transport.completeDeferredSave()
+        drainDisabledCoordinator(coordinator)
+        XCTAssertEqual(stateStore.load().pending.count, 1)
+    }
+
+    func testAppleAccountChangeTurnsOffSyncAndRequiresFreshConsent() throws {
+        let store = try makeStore()
+        let notificationCenter = NotificationCenter()
+        let preference = LockedBoolean(true)
+        let fetchStarted = expectation(description: "fetch started")
+        let settingTurnedOff = expectation(description: "setting turned off")
+        let transport = ProbeCloudTransport(
+            defersFetch: true,
+            onFetch: { fetchStarted.fulfill() }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: MemoryCloudSyncStateStore(),
+            isEnabled: { preference.value },
+            turnOffSyncAfterAccountChange: {
+                preference.value = false
+                settingTurnedOff.fulfill()
+            },
+            notificationCenter: notificationCenter,
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+
+        coordinator.start()
+        wait(for: [fetchStarted], timeout: 2)
+        notificationCenter.post(name: .CKAccountChanged, object: nil)
+        wait(for: [settingTurnedOff], timeout: 2)
+        drainDisabledCoordinator(coordinator)
+
+        XCTAssertFalse(preference.value)
+        XCTAssertTrue(transport.fetchWasCancelled)
+        XCTAssertEqual(coordinator.status, .disabled)
+
+        preference.value = true
+        drainDisabledCoordinator(coordinator)
+        XCTAssertEqual(transport.fetchCount, 1)
+        preference.value = false
+
+        transport.completeDeferredFetch()
+        drainDisabledCoordinator(coordinator)
+        XCTAssertEqual(transport.saveCount, 0)
+    }
+
     private func makeCoordinator(
         store: UserLearningStore,
         transport: ProbeCloudTransport,
@@ -229,6 +352,16 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
             completed.fulfill()
         }
         wait(for: [completed], timeout: 2)
+    }
+
+    private func drainDisabledCoordinator(
+        _ coordinator: UserDataCloudSyncCoordinator
+    ) {
+        let drained = expectation(description: "coordinator queue drained")
+        coordinator.synchronizeNow {
+            drained.fulfill()
+        }
+        wait(for: [drained], timeout: 2)
     }
 
     private func cloudCharacter(
@@ -303,17 +436,36 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
     private let records: [CloudUserDataRecord]
     private let fetchError: Error?
     private let saveError: Error?
+    private let defersFetch: Bool
+    private let defersSave: Bool
+    private let onFetch: (() -> Void)?
+    private let onSave: (() -> Void)?
     private var savedStorage: [CloudUserDataRecord] = []
     private var fetchCountStorage = 0
+    private var saveCountStorage = 0
+    private var fetchTransferStorage: ProbeCloudTransfer?
+    private var saveTransferStorage: ProbeCloudTransfer?
+    private var deferredFetchCompletion: (
+        (Result<[CloudUserDataRecord], Error>) -> Void
+    )?
+    private var deferredSaveCompletion: ((Result<Void, Error>) -> Void)?
 
     init(
         records: [CloudUserDataRecord] = [],
         fetchError: Error? = nil,
-        saveError: Error? = nil
+        saveError: Error? = nil,
+        defersFetch: Bool = false,
+        defersSave: Bool = false,
+        onFetch: (() -> Void)? = nil,
+        onSave: (() -> Void)? = nil
     ) {
         self.records = records
         self.fetchError = fetchError
         self.saveError = saveError
+        self.defersFetch = defersFetch
+        self.defersSave = defersSave
+        self.onFetch = onFetch
+        self.onSave = onSave
     }
 
     var savedRecords: [CloudUserDataRecord] {
@@ -328,30 +480,134 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
         return fetchCountStorage
     }
 
+    var saveCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return saveCountStorage
+    }
+
+    var fetchWasCancelled: Bool {
+        lock.lock()
+        let transfer = fetchTransferStorage
+        lock.unlock()
+        return transfer?.isCancelled ?? false
+    }
+
+    var saveWasCancelled: Bool {
+        lock.lock()
+        let transfer = saveTransferStorage
+        lock.unlock()
+        return transfer?.isCancelled ?? false
+    }
+
     func fetchAll(
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
-    ) {
+    ) -> CloudUserDataTransfer {
+        let transfer = ProbeCloudTransfer()
         lock.lock()
         fetchCountStorage += 1
+        fetchTransferStorage = transfer
+        if defersFetch {
+            deferredFetchCompletion = completion
+        }
         lock.unlock()
+        onFetch?()
+        guard !defersFetch else {
+            return transfer
+        }
         if let fetchError {
             completion(.failure(fetchError))
         } else {
             completion(.success(records))
         }
+        return transfer
     }
 
     func save(
         _ records: [CloudUserDataRecord],
         completion: @escaping (Result<Void, Error>) -> Void
-    ) {
+    ) -> CloudUserDataTransfer {
+        let transfer = ProbeCloudTransfer()
         lock.lock()
+        saveCountStorage += 1
         savedStorage.append(contentsOf: records)
+        saveTransferStorage = transfer
+        if defersSave {
+            deferredSaveCompletion = completion
+        }
         lock.unlock()
+        onSave?()
+        guard !defersSave else {
+            return transfer
+        }
         if let saveError {
             completion(.failure(saveError))
         } else {
             completion(.success(()))
+        }
+        return transfer
+    }
+
+    func completeDeferredFetch() {
+        lock.lock()
+        let completion = deferredFetchCompletion
+        deferredFetchCompletion = nil
+        lock.unlock()
+        if let fetchError {
+            completion?(.failure(fetchError))
+        } else {
+            completion?(.success(records))
+        }
+    }
+
+    func completeDeferredSave() {
+        lock.lock()
+        let completion = deferredSaveCompletion
+        deferredSaveCompletion = nil
+        lock.unlock()
+        if let saveError {
+            completion?(.failure(saveError))
+        } else {
+            completion?(.success(()))
+        }
+    }
+}
+
+private final class ProbeCloudTransfer: CloudUserDataTransfer {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+}
+
+private final class LockedBoolean {
+    private let lock = NSLock()
+    private var storage: Bool
+
+    init(_ value: Bool) {
+        storage = value
+    }
+
+    var value: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storage
+        }
+        set {
+            lock.lock()
+            storage = newValue
+            lock.unlock()
         }
     }
 }

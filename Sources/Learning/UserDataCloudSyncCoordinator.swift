@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import os
 
@@ -76,6 +77,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     private let transport: CloudUserDataTransporting
     private let stateStore: CloudSyncStateStoring
     private let isEnabled: () -> Bool
+    private let turnOffSyncAfterAccountChange: () -> Void
     private let now: () -> Date
     private let notificationCenter: NotificationCenter
     private let queue: DispatchQueue
@@ -88,8 +90,12 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
 
     private var persistedState: CloudSyncPersistedState
     private var started = false
+    private var requiresFreshConsent = false
     private var synchronizationInProgress = false
     private var synchronizeAgain = false
+    private var synchronizationID: UInt = 0
+    private var activeTransfer: CloudUserDataTransfer?
+    private var accountChangeObserver: NSObjectProtocol?
     private var debounceWorkItem: DispatchWorkItem?
     private var retryWorkItem: DispatchWorkItem?
     private var completionHandlers: [() -> Void] = []
@@ -100,6 +106,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         transport: CloudUserDataTransporting,
         stateStore: CloudSyncStateStoring,
         isEnabled: @escaping () -> Bool,
+        turnOffSyncAfterAccountChange: @escaping () -> Void = {},
         now: @escaping () -> Date = Date.init,
         notificationCenter: NotificationCenter = .default,
         queueLabel: String = "tw.idv.jiukong.cloud-user-data",
@@ -111,6 +118,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         self.transport = transport
         self.stateStore = stateStore
         self.isEnabled = isEnabled
+        self.turnOffSyncAfterAccountChange = turnOffSyncAfterAccountChange
         self.now = now
         self.notificationCenter = notificationCenter
         self.debounceInterval = debounceInterval
@@ -121,6 +129,13 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         statusStorage = isEnabled()
             ? .idle(lastSuccessfulSync: nil)
             : .disabled
+    }
+
+    deinit {
+        activeTransfer?.cancel()
+        if let accountChangeObserver {
+            notificationCenter.removeObserver(accountChangeObserver)
+        }
     }
 
     var status: UserDataCloudSyncStatus {
@@ -135,6 +150,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 return
             }
             started = true
+            observeForAccountChanges()
             requestSynchronization()
         }
     }
@@ -147,7 +163,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     /// so moving among text fields cannot turn into repeated network traffic.
     func refreshIfNeeded() {
         queue.async { [weak self] in
-            guard let self, isEnabled() else {
+            guard let self, synchronizationIsEnabled else {
                 return
             }
             if let lastAttemptAt,
@@ -182,15 +198,11 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 return
             }
             if isEnabled() {
+                requiresFreshConsent = false
                 setStatus(.idle(lastSuccessfulSync: nil))
                 requestSynchronization()
             } else {
-                debounceWorkItem?.cancel()
-                debounceWorkItem = nil
-                retryWorkItem?.cancel()
-                retryWorkItem = nil
-                setStatus(.disabled)
-                completeCurrentHandlers()
+                stopSynchronization()
             }
         }
     }
@@ -220,7 +232,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 )
                 setStatus(.unavailable(error.localizedDescription))
             }
-            guard isEnabled() else {
+            guard synchronizationIsEnabled else {
                 setStatus(.disabled)
                 return
             }
@@ -238,9 +250,8 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     }
 
     private func requestSynchronization() {
-        guard isEnabled() else {
-            setStatus(.disabled)
-            completeCurrentHandlers()
+        guard synchronizationIsEnabled else {
+            stopSynchronization()
             return
         }
         if synchronizationInProgress {
@@ -249,22 +260,30 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         }
 
         synchronizationInProgress = true
+        synchronizationID &+= 1
+        let currentSynchronizationID = synchronizationID
         lastAttemptAt = now()
         setStatus(.syncing)
-        transport.fetchAll { [weak self] result in
+        activeTransfer = transport.fetchAll { [weak self] result in
             self?.queue.async {
-                self?.handleFetchResult(result)
+                self?.handleFetchResult(
+                    result,
+                    synchronizationID: currentSynchronizationID
+                )
             }
         }
     }
 
     private func handleFetchResult(
-        _ result: Result<[CloudUserDataRecord], Error>
+        _ result: Result<[CloudUserDataRecord], Error>,
+        synchronizationID completedSynchronizationID: UInt
     ) {
-        guard isEnabled() else {
-            synchronizationInProgress = false
-            setStatus(.disabled)
-            completeCurrentHandlers()
+        guard completedSynchronizationID == synchronizationID else {
+            return
+        }
+        activeTransfer = nil
+        guard synchronizationIsEnabled else {
+            stopSynchronization()
             return
         }
         switch result {
@@ -278,11 +297,13 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 finishWithFailure(error)
                 return
             }
-            transport.save(reconciliation.uploads) { [weak self] result in
+            activeTransfer = transport.save(reconciliation.uploads) {
+                [weak self] result in
                 self?.queue.async {
                     self?.handleSaveResult(
                         result,
-                        reconciliation: reconciliation
+                        reconciliation: reconciliation,
+                        synchronizationID: completedSynchronizationID
                     )
                 }
             }
@@ -291,8 +312,17 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
 
     private func handleSaveResult(
         _ result: Result<Void, Error>,
-        reconciliation: Reconciliation
+        reconciliation: Reconciliation,
+        synchronizationID completedSynchronizationID: UInt
     ) {
+        guard completedSynchronizationID == synchronizationID else {
+            return
+        }
+        activeTransfer = nil
+        guard synchronizationIsEnabled else {
+            stopSynchronization()
+            return
+        }
         switch result {
         case let .failure(error):
             finishWithFailure(error)
@@ -484,10 +514,11 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     }
 
     private func finishSuccessfully() {
+        activeTransfer = nil
         retryWorkItem?.cancel()
         retryWorkItem = nil
         synchronizationInProgress = false
-        guard isEnabled() else {
+        guard synchronizationIsEnabled else {
             setStatus(.disabled)
             completeCurrentHandlers()
             return
@@ -501,6 +532,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     }
 
     private func finishWithFailure(_ error: Error) {
+        activeTransfer = nil
         Self.logger.error(
             "iCloud user-data synchronization failed: \(error.localizedDescription, privacy: .public)"
         )
@@ -508,7 +540,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         setStatus(.unavailable(error.localizedDescription))
         completeCurrentHandlers()
 
-        guard started, isEnabled() else {
+        guard started, synchronizationIsEnabled else {
             return
         }
         retryWorkItem?.cancel()
@@ -517,6 +549,45 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         }
         retryWorkItem = item
         queue.asyncAfter(deadline: .now() + retryInterval, execute: item)
+    }
+
+    private var synchronizationIsEnabled: Bool {
+        isEnabled() && !requiresFreshConsent
+    }
+
+    private func observeForAccountChanges() {
+        guard accountChangeObserver == nil else {
+            return
+        }
+        accountChangeObserver = notificationCenter.addObserver(
+            forName: .CKAccountChanged,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.queue.async {
+                self?.handleAccountChange()
+            }
+        }
+    }
+
+    private func handleAccountChange() {
+        requiresFreshConsent = true
+        turnOffSyncAfterAccountChange()
+        stopSynchronization()
+    }
+
+    private func stopSynchronization() {
+        synchronizationID &+= 1
+        activeTransfer?.cancel()
+        activeTransfer = nil
+        synchronizationInProgress = false
+        synchronizeAgain = false
+        debounceWorkItem?.cancel()
+        debounceWorkItem = nil
+        retryWorkItem?.cancel()
+        retryWorkItem = nil
+        setStatus(.disabled)
+        completeCurrentHandlers()
     }
 
     private func setStatus(_ status: UserDataCloudSyncStatus) {

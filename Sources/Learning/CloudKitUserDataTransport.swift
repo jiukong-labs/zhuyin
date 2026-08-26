@@ -2,15 +2,21 @@ import CloudKit
 import Foundation
 import os
 
+protocol CloudUserDataTransfer: AnyObject {
+    func cancel()
+}
+
 protocol CloudUserDataTransporting: AnyObject {
+    @discardableResult
     func fetchAll(
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
-    )
+    ) -> CloudUserDataTransfer
 
+    @discardableResult
     func save(
         _ records: [CloudUserDataRecord],
         completion: @escaping (Result<Void, Error>) -> Void
-    )
+    ) -> CloudUserDataTransfer
 }
 
 enum CloudKitUserDataTransportError: LocalizedError {
@@ -100,37 +106,49 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
 
     func fetchAll(
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
-    ) {
-        container.accountStatus { [weak self] status, error in
-            guard let self else {
+    ) -> CloudUserDataTransfer {
+        let transfer = CloudKitUserDataTransfer()
+        container.accountStatus { [weak self, weak transfer] status, error in
+            guard let self, let transfer, transfer.isActive else {
                 return
             }
             if let error {
-                completion(.failure(error))
+                transfer.deliver(.failure(error), to: completion)
                 return
             }
             guard status == .available else {
-                completion(.failure(Self.error(for: status)))
+                transfer.deliver(
+                    .failure(Self.error(for: status)),
+                    to: completion
+                )
                 return
             }
-            ensureZone { result in
+            ensureZone(transfer: transfer) { result in
+                guard transfer.isActive else {
+                    return
+                }
                 switch result {
                 case .success:
-                    self.fetchZoneChanges(completion: completion)
+                    self.fetchZoneChanges(
+                        transfer: transfer,
+                        completion: completion
+                    )
                 case let .failure(error):
-                    completion(.failure(error))
+                    transfer.deliver(.failure(error), to: completion)
                 }
             }
         }
+        return transfer
     }
 
     func save(
         _ records: [CloudUserDataRecord],
         completion: @escaping (Result<Void, Error>) -> Void
-    ) {
+    ) -> CloudUserDataTransfer {
+        let transfer = CloudKitUserDataTransfer()
         guard !records.isEmpty else {
-            completion(.success(()))
-            return
+            transfer.deliver(.success(()), to: completion)
+            return transfer
         }
 
         do {
@@ -138,74 +156,134 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             saveBatches(
                 Array(cloudRecords.chunked(maximumCount: Self.maximumBatchSize)),
                 at: 0,
+                transfer: transfer,
                 completion: completion
             )
         } catch {
-            completion(.failure(error))
+            transfer.deliver(.failure(error), to: completion)
         }
+        return transfer
     }
 
     private func ensureZone(
+        transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
-        database.fetch(withRecordZoneIDs: [zoneID]) { [weak self] result in
-            guard let self else {
+        let operation = CKFetchRecordZonesOperation(
+            recordZoneIDs: [zoneID]
+        )
+        operation.qualityOfService = .utility
+
+        let resultLock = NSLock()
+        var fetchedZoneResult: Result<CKRecordZone, Error>?
+        operation.perRecordZoneResultBlock = { recordZoneID, result in
+            guard recordZoneID == self.zoneID else {
                 return
             }
-            switch result {
-            case let .failure(error):
-                if Self.isMissingZone(error) {
-                    createZone(completion: completion)
-                } else {
-                    completion(.failure(error))
-                }
-            case let .success(results):
-                guard let zoneResult = results[zoneID] else {
-                    completion(.failure(
-                        CloudKitUserDataTransportError.missingZoneResult
-                    ))
-                    return
-                }
+            resultLock.lock()
+            fetchedZoneResult = result
+            resultLock.unlock()
+        }
+        operation.fetchRecordZonesResultBlock = {
+            [weak self, weak transfer] operationResult in
+            guard let self, let transfer, transfer.isActive else {
+                return
+            }
+
+            resultLock.lock()
+            let zoneResult = fetchedZoneResult
+            resultLock.unlock()
+            if let zoneResult {
                 switch zoneResult {
                 case .success:
                     completion(.success(()))
                 case let .failure(error):
                     if Self.isMissingZone(error) {
-                        createZone(completion: completion)
+                        createZone(
+                            transfer: transfer,
+                            completion: completion
+                        )
                     } else {
                         completion(.failure(error))
                     }
                 }
+                return
+            }
+
+            switch operationResult {
+            case let .failure(error):
+                if Self.isMissingZone(error) {
+                    createZone(
+                        transfer: transfer,
+                        completion: completion
+                    )
+                } else {
+                    completion(.failure(error))
+                }
+            case .success:
+                completion(.failure(
+                    CloudKitUserDataTransportError.missingZoneResult
+                ))
             }
         }
+        guard transfer.track(operation) else {
+            return
+        }
+        database.add(operation)
     }
 
     private func createZone(
+        transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         let zone = CKRecordZone(zoneID: zoneID)
-        database.modifyRecordZones(saving: [zone], deleting: []) { result in
-            switch result {
+        let operation = CKModifyRecordZonesOperation(
+            recordZonesToSave: [zone],
+            recordZoneIDsToDelete: nil
+        )
+        operation.qualityOfService = .utility
+
+        let resultLock = NSLock()
+        var savedZoneResult: Result<CKRecordZone, Error>?
+        operation.perRecordZoneSaveBlock = { recordZoneID, result in
+            guard recordZoneID == self.zoneID else {
+                return
+            }
+            resultLock.lock()
+            savedZoneResult = result
+            resultLock.unlock()
+        }
+        operation.modifyRecordZonesResultBlock = {
+            [weak transfer] operationResult in
+            guard let transfer, transfer.isActive else {
+                return
+            }
+
+            resultLock.lock()
+            let zoneResult = savedZoneResult
+            resultLock.unlock()
+            if let zoneResult {
+                completion(zoneResult.map { _ in () })
+                return
+            }
+
+            switch operationResult {
             case let .failure(error):
                 completion(.failure(error))
-            case let .success(results):
-                guard let zoneResult = results.saveResults[self.zoneID] else {
-                    completion(.failure(
-                        CloudKitUserDataTransportError.missingZoneResult
-                    ))
-                    return
-                }
-                switch zoneResult {
-                case .success:
-                    completion(.success(()))
-                case let .failure(error):
-                    completion(.failure(error))
-                }
+            case .success:
+                completion(.failure(
+                    CloudKitUserDataTransportError.missingZoneResult
+                ))
             }
         }
+        guard transfer.track(operation) else {
+            return
+        }
+        database.add(operation)
     }
 
     private func fetchZoneChanges(
+        transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
     ) {
         let configuration = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
@@ -249,12 +327,13 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 resultLock.unlock()
             }
         }
-        operation.fetchRecordZoneChangesResultBlock = { [weak self] result in
-            guard let self else {
+        operation.fetchRecordZoneChangesResultBlock = {
+            [weak self, weak transfer] result in
+            guard let self, let transfer, transfer.isActive else {
                 return
             }
             if case let .failure(error) = result {
-                completion(.failure(error))
+                transfer.deliver(.failure(error), to: completion)
                 return
             }
             resultLock.lock()
@@ -262,7 +341,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             let fetchedRecords = Array(fetched.values)
             resultLock.unlock()
             if let error = recordError {
-                completion(.failure(error))
+                transfer.deliver(.failure(error), to: completion)
                 return
             }
 
@@ -279,10 +358,16 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                     )
                 }
             }
+            guard transfer.isActive else {
+                return
+            }
             cacheLock.lock()
             cachedRecords = validCloudRecords
             cacheLock.unlock()
-            completion(.success(decoded))
+            transfer.deliver(.success(decoded), to: completion)
+        }
+        guard transfer.track(operation) else {
+            return
         }
         database.add(operation)
     }
@@ -290,10 +375,14 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     private func saveBatches(
         _ batches: [[CKRecord]],
         at index: Int,
+        transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
+        guard transfer.isActive else {
+            return
+        }
         guard batches.indices.contains(index) else {
-            completion(.success(()))
+            transfer.deliver(.success(()), to: completion)
             return
         }
 
@@ -304,24 +393,37 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
         operation.savePolicy = .ifServerRecordUnchanged
         operation.isAtomic = false
         operation.qualityOfService = .utility
-        operation.perRecordSaveBlock = { [weak self] recordID, result in
-            guard let self, case let .success(record) = result else {
+        operation.perRecordSaveBlock = {
+            [weak self, weak transfer] recordID, result in
+            guard let self,
+                  let transfer,
+                  transfer.isActive,
+                  case let .success(record) = result else {
                 return
             }
             cacheLock.lock()
             cachedRecords[recordID.recordName] = record
             cacheLock.unlock()
         }
-        operation.modifyRecordsResultBlock = { [weak self] result in
-            guard let self else {
+        operation.modifyRecordsResultBlock = {
+            [weak self, weak transfer] result in
+            guard let self, let transfer, transfer.isActive else {
                 return
             }
             switch result {
             case let .failure(error):
-                completion(.failure(error))
+                transfer.deliver(.failure(error), to: completion)
             case .success:
-                saveBatches(batches, at: index + 1, completion: completion)
+                saveBatches(
+                    batches,
+                    at: index + 1,
+                    transfer: transfer,
+                    completion: completion
+                )
             }
+        }
+        guard transfer.track(operation) else {
+            return
         }
         database.add(operation)
     }
@@ -488,6 +590,60 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
 
     private static func isMissingZone(_ error: Error) -> Bool {
         (error as? CKError)?.code == .zoneNotFound
+    }
+}
+
+private final class CloudKitUserDataTransfer: CloudUserDataTransfer {
+    private let lock = NSLock()
+    private var operations: [CKOperation] = []
+    private var cancelled = false
+    private var finished = false
+
+    var isActive: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return !cancelled && !finished
+    }
+
+    func track(_ operation: CKOperation) -> Bool {
+        lock.lock()
+        guard !cancelled, !finished else {
+            lock.unlock()
+            operation.cancel()
+            return false
+        }
+        operations.append(operation)
+        lock.unlock()
+        return true
+    }
+
+    func deliver<Value>(
+        _ result: Result<Value, Error>,
+        to completion: (Result<Value, Error>) -> Void
+    ) {
+        lock.lock()
+        guard !cancelled, !finished else {
+            lock.unlock()
+            return
+        }
+        finished = true
+        operations.removeAll()
+        lock.unlock()
+        completion(result)
+    }
+
+    func cancel() {
+        lock.lock()
+        guard !cancelled, !finished else {
+            lock.unlock()
+            return
+        }
+        cancelled = true
+        let operationsToCancel = operations
+        operations.removeAll()
+        lock.unlock()
+
+        operationsToCancel.forEach { $0.cancel() }
     }
 }
 

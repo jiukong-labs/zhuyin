@@ -9,6 +9,11 @@ inside iCloud Drive.
 ## Behavior
 
 - Sync is enabled by default and can be disabled in Settings → Data.
+- Turning sync off cancels the active fetch or save and ignores any callback
+  that arrives after cancellation. Local pending mutations remain journaled.
+- When macOS reports an Apple Account change, Jiukong cancels the active
+  transfer and turns sync off. The user must explicitly enable it again for
+  the newly active account.
 - App startup performs an initial fetch. Activating the input method also
   checks for remote changes, rate-limited to once per 15 minutes.
 - Successful local mutations are persisted to
@@ -73,5 +78,6 @@ Before shipping:
 
 Unit tests use an in-memory transport and cover restore, initial upload,
 tombstones, pending local precedence, exact unpinning, failed-save retention,
-disabled sync, stable opaque identities, and private journal persistence. They
-do not substitute for the signed two-Mac CloudKit acceptance run above.
+disabled and cancelled sync, Apple Account changes, stable opaque identities,
+and private journal persistence. They do not substitute for the signed two-Mac
+CloudKit acceptance run above.

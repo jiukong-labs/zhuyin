@@ -20,13 +20,19 @@ final class UserLearningService: UserLearningProviding {
         do {
             let location = try UserDataLocation.userDomain()
             let learningStore = try UserLearningStore(location: location)
+            let preferences = PreferencesController.shared
             store = learningStore
             cloudSync = UserDataCloudSyncCoordinator(
                 store: learningStore,
                 transport: CloudKitUserDataTransport(),
                 stateStore: FileCloudSyncStateStore(location: location),
                 isEnabled: {
-                    PreferencesController.shared.current.iCloudSyncEnabled
+                    preferences.current.iCloudSyncEnabled
+                },
+                turnOffSyncAfterAccountChange: {
+                    preferences.update {
+                        $0.iCloudSyncEnabled = false
+                    }
                 }
             )
         } catch {

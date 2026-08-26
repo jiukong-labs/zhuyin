@@ -336,6 +336,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     @objc private func cloudSyncStatusDidChange(_ notification: Notification) {
+        iCloudSyncButton?.state = preferences.current.iCloudSyncEnabled
+            ? .on
+            : .off
         reloadCloudSyncStatus()
     }
 

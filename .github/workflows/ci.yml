@@ -35,6 +35,10 @@ jobs:
             -configuration Debug \
             -destination "platform=macOS,arch=$(uname -m)" \
             -derivedDataPath .build/DerivedData \
+            CODE_SIGN_ENTITLEMENTS= \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
             test
 
       - name: Build (Release, universal)
@@ -45,6 +49,10 @@ jobs:
             -configuration Release \
             -destination "generic/platform=macOS" \
             -derivedDataPath .build/DerivedData \
+            CODE_SIGN_ENTITLEMENTS= \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
             build
 
       # The harness needs Accessibility permission, so it cannot run here.
@@ -57,6 +65,9 @@ jobs:
             -configuration Release \
             -destination "generic/platform=macOS" \
             -derivedDataPath .build/AcceptanceHarness \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
             build
 
       - name: Check the Release build is a universal binary

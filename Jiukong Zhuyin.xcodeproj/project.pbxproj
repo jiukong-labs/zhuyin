@@ -174,7 +174,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text; name = "Jiukong Acceptance Harness"; path = JiukongAcceptanceHarness; sourceTree = BUILT_PRODUCTS_DIR; };
+		03372E98F4DBBEF1F851A3BF /* Jiukong Acceptance Harness */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Acceptance Harness"; sourceTree = BUILT_PRODUCTS_DIR; };
 		03517B2F1F6C10948547B0A2 /* PreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesStoreTests.swift; sourceTree = "<group>"; };
 		0748FDE71A052EB86AE9FC0B /* InputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputController.swift; sourceTree = "<group>"; };
 		0B2D193AE0A0EB6D678E9964 /* CloudSyncStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncStateStore.swift; sourceTree = "<group>"; };
@@ -223,7 +223,7 @@
 		6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodConfiguration.swift; sourceTree = "<group>"; };
 		6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometryTests.swift; sourceTree = "<group>"; };
 		70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiukongDebugLog.swift; sourceTree = "<group>"; };
-		715321CFA6F26EE6DA16640F /* Jiukong Dictionary Builder */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text; name = "Jiukong Dictionary Builder"; path = JiukongDictionaryBuilder; sourceTree = BUILT_PRODUCTS_DIR; };
+		715321CFA6F26EE6DA16640F /* Jiukong Dictionary Builder */ = {isa = PBXFileReference; includeInIndex = 0; path = "Jiukong Dictionary Builder"; sourceTree = BUILT_PRODUCTS_DIR; };
 		75066D454F50C29C343823FA /* CandidateRankerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateRankerTests.swift; sourceTree = "<group>"; };
 		7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceRegistrar.swift; sourceTree = "<group>"; };
 		7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDictionaryTests.swift; sourceTree = "<group>"; };
@@ -270,7 +270,7 @@
 		DB6A7847C769C7EBFA02807B /* UserLearningServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningServiceTests.swift; sourceTree = "<group>"; };
 		DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CNS11643_NOTICE.txt; sourceTree = "<group>"; };
 		DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryDatabaseBuilder.swift; sourceTree = "<group>"; };
-		DC6DA06683B57D7A7EE892B0 /* JiukongZhuyin.sqlite3 */ = {isa = PBXFileReference; lastKnownFileType = file; path = JiukongZhuyin.sqlite3; sourceTree = "<group>"; };
+		DC6DA06683B57D7A7EE892B0 /* JiukongZhuyin.sqlite3 */ = {isa = PBXFileReference; path = JiukongZhuyin.sqlite3; sourceTree = "<group>"; };
 		DCE4D0FD6DBF128C8A6E0E95 /* CNS11643Parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643Parser.swift; sourceTree = "<group>"; };
 		DCFB253696548963758C54D3 /* LanguageMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageMode.swift; sourceTree = "<group>"; };
 		DE945FBF3665CB323C8AADFD /* CursorIndicatorSettingsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorSettingsController.swift; sourceTree = "<group>"; };
@@ -815,6 +815,9 @@
 					ADDAB8049B125A436A92B854 = {
 						ProvisioningStyle = Manual;
 					};
+					FEACA4DCDDB5E1A1F2154B49 = {
+						ProvisioningStyle = Manual;
+					};
 				};
 			};
 			buildConfigurationList = 37FAAA7E67E23EBF012832F3 /* Build configuration list for PBXProject "Jiukong Zhuyin" */;
@@ -1053,27 +1056,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "$(JIUKONG_CLOUDKIT_ENTITLEMENTS)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = 6KW8YABG8T;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Resources/Info.plist;
-				JIUKONG_CLOUDKIT_ENTITLEMENTS = Resources/JiukongZhuyin.entitlements;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				MTL_ENABLE_DEBUG_INFO = "";
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1206,27 +1204,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "$(JIUKONG_CLOUDKIT_ENTITLEMENTS)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = 6KW8YABG8T;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Resources/Info.plist;
-				JIUKONG_CLOUDKIT_ENTITLEMENTS = Resources/JiukongZhuyin.entitlements;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				MTL_ENABLE_DEBUG_INFO = "";
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Debug;

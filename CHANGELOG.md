@@ -120,6 +120,12 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Changed
 
+- Disabling iCloud sync now cancels in-flight CloudKit operations without
+  clearing pending local mutations. Changing the active Apple Account also
+  turns sync off until the user explicitly enables it again.
+- CI now overrides development-team and entitlement settings for reproducible
+  ad-hoc builds, and temporary `/tmp` diagnostics now use privacy-protected
+  unified logging.
 - Standalone Shift updates the persistent cursor indicator without showing a
   second short-lived boxed `中` or `A` HUD.
 - Down Arrow at a revision caret positioned before the first composition
