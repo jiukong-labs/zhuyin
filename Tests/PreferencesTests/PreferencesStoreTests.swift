@@ -27,6 +27,7 @@ final class PreferencesStoreTests: XCTestCase {
         let saved = Preferences(
             shiftKeyPreference: .right,
             automaticLearningEnabled: false,
+            iCloudSyncEnabled: false,
             showsRareCandidates: true
         )
         UserDefaultsPreferencesStore(defaults: defaults).save(saved)
@@ -41,6 +42,9 @@ final class PreferencesStoreTests: XCTestCase {
         )
         XCTAssertTrue(
             defaults.bool(forKey: PreferenceKey.showsRareCandidates.rawValue)
+        )
+        XCTAssertFalse(
+            defaults.bool(forKey: PreferenceKey.iCloudSyncEnabled.rawValue)
         )
     }
 

@@ -80,6 +80,8 @@ targets:
     dependencies:
       - sdk: AppKit.framework
       - sdk: Carbon.framework
+      - sdk: CloudKit.framework
+      - sdk: CryptoKit.framework
       - sdk: InputMethodKit.framework
       - sdk: libsqlite3.tbd
     info:
@@ -136,6 +138,9 @@ targets:
         tsInputMethodIconFileKey: JiukongZhuyin.tiff
     settings:
       base:
+        # Empty for the repository's ad-hoc local build. A Developer Team build
+        # sets JIUKONG_CLOUDKIT_ENTITLEMENTS to the checked-in entitlement file.
+        CODE_SIGN_ENTITLEMENTS: $(JIUKONG_CLOUDKIT_ENTITLEMENTS)
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
         CURRENT_PROJECT_VERSION: 8
@@ -178,6 +183,8 @@ targets:
     dependencies:
       - sdk: AppKit.framework
       - sdk: Carbon.framework
+      - sdk: CloudKit.framework
+      - sdk: CryptoKit.framework
       - sdk: libsqlite3.tbd
     settings:
       base:

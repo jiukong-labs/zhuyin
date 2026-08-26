@@ -2,17 +2,23 @@
 
 > 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
 
-久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速而實用的候選字、單按 Shift 切換中英文，以及完全離線的個人選字與詞組學習。
+久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速而實用的候選字、單按 Shift 切換中英文，以及離線優先、可透過 iCloud 自動還原的個人選字與詞組學習。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and fully local character and phrase learning.
+Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and offline-first character and phrase learning with optional iCloud restoration.
 
-> 開發狀態：Milestone 11 已加入跟隨游標的輸入模式指示器。字與詞的學習資料只保存在目前 Mac。
+> 開發狀態：選字與使用者詞已具備 CloudKit 私有資料庫同步實作；正式連線仍須以 Apple Developer Team 簽署、建立 container 並部署 production schema。
+
+## AI 製作聲明
+
+久空輸入法完全由 AI 製作，包括產品設計、程式碼、測試、文件與本專案原創的內建詞表。第三方平台、工具與官方標準資料不屬於本專案的創作內容，其範圍與授權另見 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
+
+Jiukong Zhuyin is made entirely by AI, including its product design, source code, tests, documentation, and original built-in lexicon. Third-party platforms, tools, and official standards data are not project-authored content; their scope and licenses are documented in [Third-Party Notices](THIRD_PARTY_NOTICES.md).
 
 ## 原創開發原則
 
-久空輸入法採完全自主設計：輸入法核心、組字流程、候選排序、學習機制、資料庫格式、介面，以及內建詞表，均針對本專案自行設計與實作，不複製、移植或改寫其他輸入法的程式碼、演算法實作或詞庫資料。這是本專案後續開發的永久原則。
+久空輸入法採完全自主設計：輸入法核心、組字流程、候選排序、學習機制、資料庫格式、介面與第一方詞表，均針對本專案自行設計與實作，不複製、移植或改寫其他輸入法的程式碼、演算法實作或詞庫資料。這是本專案後續開發的永久原則。
 
-為了正確支援 macOS 與正式中文字碼，本專案只保留清楚揭露的基礎例外：Apple 平台 SDK／系統程式庫、僅供開發使用的工具，以及數位發展部公布的 CNS11643 官方字碼與注音標準資料。這些例外只提供平台介面與單字標準，不提供久空的輸入引擎、排序演算法或自製詞表；完整範圍列於 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
+例外範圍固定為 Apple 平台 SDK／系統程式庫、僅供開發使用的工具、數位發展部公布的 CNS11643 官方字碼與注音資料，以及教育部的常用／次常用國字標準字體表、《成語典》與《重編國語辭典修訂本》。教育部字表只用於粗略的候選字分級；後兩者只保留已釘選四字條目的原文詞目與讀音，作為獨立標示的政府來源詞資料，不屬於第一方詞表或 AI 創作內容。各項版本、轉換方式與授權列於 [Third-Party Notices](THIRD_PARTY_NOTICES.md)，未經明確同意不再擴大例外。
 
 ## Current features
 
@@ -23,14 +29,15 @@ Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused o
 - Standalone left/right Shift Chinese/English switching
 - Persistent, local character-selection learning and deterministic ranking
 - Multi-character marked composition and exact user-phrase learning
-- Original built-in phrase lexicon maintained by this project
+- Original first-party phrase lexicon maintained by this project
+- Pinned MOE idiom and revised-dictionary four-character phrase candidates
 - Persistent settings for Shift switching and automatic learning
 - Searchable user-dictionary management with pinning, deletion, and clearing
 - Local JSON export and merging import of personal learning data
 - Full-width Chinese punctuation on every arrangement
 - Standard, Eten Traditional, and IBM Bopomofo arrangements
 - Optional cursor-following indicator for the current input mode
-- Fully offline
+- Offline-first input with optional private iCloud learning sync
 - Open source
 - MIT-licensed source code
 
@@ -72,6 +79,8 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中移動游標，這個定位階段不顯示候選窗，也不替任何字加底色或底線。此時 Shift+← 會從游標左側開始造詞，Shift+→ 則從游標右側開始。退格鍵（⌫／Backspace）會把游標左邊緊鄰的讀音字恢復成原注音並先刪除聲調，例如 `路｜鏡 → ㄌㄨ｜鏡 → ㄌ｜鏡 → ｜鏡`；它不會跨越標點，游標在第一字前時也不會改動文字。前向 Del（Fn+Backspace）則以同樣方式倒退編輯游標右邊的字，例如 `路｜鏡 → 路ㄐㄧㄥ｜ → 路ㄐㄧ｜ → 路ㄐ｜ → 路｜`。按 ↓ 才開啟游標左邊緊鄰字的九個候選，例如 `路｜鏡` 會顯示「選字 1／2：路」，而 `路鏡｜` 會顯示「選字 2／2：鏡」；再按 ↓ 可展開完整候選格。候選窗開啟後仍把同一個零長度游標留在原位，不把任何字或整段組字當成 selection。選字層的 ←／→ 移動候選反白，↑ 或 Esc 關閉候選並回到文字定位，之後 ←／→ 又會移動游標。Return、數字鍵或滑鼠可確認候選；只有候選窗開啟後，畫面列出的 `1`–`9` 才代表候選編號。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末，仍可按 ↓ 修改最後一字或直接繼續輸入。
 
+當游標位於整段組字的第一字前方時，左邊沒有可選文字；此時按 ↓ 會改為開啟右邊第一字的候選。其他游標位置仍以左邊緊鄰字為選字目標。
+
 完成一個音節後可直接輸入下一個音節，久空會先把目前預覽的第一候選收進 marked composition；這也適用於標準、倚天與 IBM 配置中位於數字列的聲母、介音或韻母。候選窗未開啟時，主鍵區 `1`–`9` 不選候選，而是照鍵盤配置繼續輸入；要改選時先按 ↓，開窗後 `1`–`9` 才全部明確代表候選編號。Return／Keypad Enter 會接受預覽並直接提交整段組字，Space 接受第一候選並留在組字中，也可開窗後用方向鍵、數字或滑鼠選定。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
 
 - Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或一般候選窗開啟時，回到該字注音並由聲調開始倒退刪除；逐字定位／選字時，改為倒退編輯定位字左邊緊鄰字的注音；造詞範圍存在時刪除整個範圍。
@@ -80,11 +89,15 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
+單獨按下 `⌥ Option` 不會觸發久空功能。按住 Option 搭配其他鍵時，按鍵會交由目前 App 與 macOS 鍵盤配置處理；若久空正在組字，會先完成目前組字再交回快捷鍵。
+
 候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選回到該候選的注音編輯，或從定位字向左進入前一字的注音編輯，再逐一刪除注音 component；造詞範圍存在時則刪除整個範圍。
 
 未學習過且在目前候選範圍內、系統也能顯示的單字候選，先依教育部常用、次常用與其他字表分成三級；個別罕見破音可由久空逐筆審訂降級。同級內再依該「字＋讀音」出現在久空自製內建詞表的次數排序，完全沒有自製詞例時才保留 CNS11643 的相對來源順序。第一方詞例加分永遠小於一級，不會讓次常用字跨級超越常用字；這是久空自身詞表的排序訊號，並非匯入語料字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時直接成為第一候選；選過多個同音字時以最近一次提交者優先，手動置頂仍高於自動學習。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
 
-完成第二個以上的音節時，久空也會查詢自製內建詞表與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），第一音會依第一方詞例預覽「測」，第二音完成後第一候選成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。內建詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 1,965 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+完成第二個以上的音節時，久空也會查詢內建詞資料與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），第一音會依第一方詞例預覽「測」，第二音完成後第一候選成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。第一方詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 1,965 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部由 AI 為本專案逐筆編寫，字音以專案內釘選的 CNS11643 資料自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
+
+同一個唯讀字典另外合併教育部《成語典》的 1,642 筆四字主條，以及《重編國語辭典修訂本》的 33,295 筆四字條目。這些政府來源資料不是第一方詞表或 AI 創作內容；專案只保留來源的詞目與讀音，不匯入釋義或詞頻，也不把它們計入第一方詞例排序訊號。詳細來源、篩選方式與 CC BY-ND 3.0 TW 授權說明見 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
 
 若 CNS11643 缺少久空需要支援的常用單字讀音，會逐筆記錄在 `Data/JiukongCharacters/characters.tsv`，由建置器驗證後合併；目前包含「麼／˙ㄇㄛ」，因此輸入 `ㄇㄛ` 加輕聲即可直接選到「麼」。補充項目必須是 CNS 已收字元，並沿用其 CNS 字碼與來源位置。
 
@@ -110,7 +123,7 @@ Shift+[  『      Shift+]  』      Shift+\  ／
 
 ### 中英文切換
 
-中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換留在久空輸入法內，不會觸發 macOS 固定的 `ABC` 輸入來源提示；久空會在游標附近短暫顯示與游標指示器相同文字、顏色的紅色「中」或藍色 `A`，也不會搶走目前 App 的鍵盤焦點。
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換留在久空輸入法內，不會觸發 macOS 固定的 `ABC` 輸入來源提示；若已開啟游標指示器，久空會直接把它更新為相應的「中」或 `A`。指示器關閉時不另外顯示短暫 HUD，也不會搶走目前 App 的鍵盤焦點。
 
 英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
@@ -142,19 +155,23 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 之後重打相同的完整逐音序列時，使用者詞會出現在最後一個音節的候選中。查詢是完整相等、最長後綴優先；目前不做詞首聯想，也不會未經確認自動補完整詞。置頂仍是最高排序層，未置頂的精確使用者詞則優先於一般未置頂單字。
 
+使用者詞候選的右側會顯示可點選的 `×`，可刪除該文字與完整讀音的精確記錄並立即更新候選。內建詞與單字候選不會顯示這個刪除按鈕。
+
 學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v2 原地保留 M6 字頻並加入使用者詞與有順序的逐音讀音。資料庫無法使用時，輸入仍會安全退回 CNS 原始順序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
+
+iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即同步。輸入與候選查詢永遠使用本機 SQLite，不等待網路；啟動時與持續使用期間會從同一 Apple Account 的 CloudKit 私有資料庫合併變更，本機異動則短暫合併後在背景上傳。同步的是逐筆記錄而非 SQLite 檔案，刪除會留下雲端 tombstone，避免離線的另一台 Mac 或重灌後把舊資料復活。CloudKit record name 只含穩定雜湊，文字、注音、次數、時間與置頂欄位均使用 CloudKit encrypted values。完整設計與部署前置條件見 [iCloud sync notes](docs/CLOUD_SYNC.md)。
 
 ### 設定視窗
 
 在 macOS 輸入選單中選擇久空的「偏好設定…」即可開啟設定視窗，共五個分頁：
 
-- **一般**：注音鍵盤配置（標準／倚天傳統／IBM）、中英文切換要用哪一側 Shift（左右皆可／只用左／只用右／關閉）、自動學習開關，以及是否顯示 CNS 第 3 字面以後的罕用與專門用字；
+- **一般**：注音鍵盤配置（標準／倚天傳統／IBM）、Shift 中英文切換與 Option 組合鍵的行為說明、自動學習開關，以及是否顯示 CNS 第 3 字面以後的罕用與專門用字；
 - **游標指示器**：在游標旁顯示目前輸入模式，可設定位置、追蹤方式、文字大小、Caps Lock 指示，以及中／英文各自的文字與顏色；
 - **使用者詞**：列出所有自己造的詞與逐音注音，可搜尋、置頂或刪除單筆；
 - **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
-- **資料**：匯出／匯入 JSON，以及清除選字紀錄、清除使用者詞、清除全部。
+- **資料**：iCloud 同步開關、狀態與立即同步，JSON 匯出／匯入，以及清除選字紀錄、清除使用者詞、清除全部。
 
-設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；所有刪除與清除動作只影響 `user.sqlite`，不會動到內建字典，且都需要再次確認。開啟設定視窗前會先完成目前的組字。
+設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；所有刪除與清除動作只影響個人學習資料並會送出同步 tombstone，不會動到內建字典，且都需要再次確認。開啟設定視窗前會先完成目前的組字。
 
 刪除是以「文字 + 完整讀音」為單位，所以刪掉 `行／ㄒㄧㄥˊ` 不會影響 `行／ㄏㄤˊ`。
 
@@ -202,13 +219,13 @@ A file that exists on disk but is missing from the checked-in project is silentl
 
 GitHub Actions runs the same checks on every push and pull request: the source-membership check, the Debug test suite, a universal Release build, and a rebuild of the dictionary from its pinned snapshot that must reproduce the checked-in artifact byte for byte. A separate advisory job reports when the checked-in project no longer matches `project.yml`.
 
-The runtime dictionary is already checked in. To verify or regenerate it from the pinned, hash-validated CNS11643 snapshot and Jiukong's first-party character and phrase TSV files without network access:
+The runtime dictionary is already checked in. To verify or regenerate it without network access, the builder uses the pinned, hash-validated CNS11643 snapshot; Jiukong's first-party character, phrase, and heteronym-override files; the MOE common/semi-common character tables; and the pinned MOE idiom and revised-dictionary phrase extracts:
 
 ```sh
 ./scripts/build-dictionary.sh
 ```
 
-Normal app builds never download or parse the raw CNS11643 or phrase-source files.
+Normal app builds never download or parse the raw dictionary-source files.
 
 ## Install for local development
 
@@ -232,8 +249,8 @@ macOS input menu:
 `tw.idv.jiukong.inputmethod.zhuyin.English`. Their first-party color icons
 show red `中` and blue `A`. A standalone Shift changes Jiukong's shared runtime
 mode without asking Text Input Sources to select another mode, preventing the
-separate fixed `ABC` overlay; Jiukong's own HUD and cursor indicator report the
-change instead.
+separate fixed `ABC` overlay. When enabled, Jiukong's cursor indicator updates
+in place to report the change; no additional transient HUD is shown.
 
 - **The identifier must contain an `inputmethod` component that is not the last one.** `tw.idv.jiukong.inputmethod.zhuyin` and `tw.idv.inputmethod.zhuyin` register; `tw.idv.jiukong.zhuyin`, `tw.idv.jiukong.zhuyinim`, and `tw.idv.jiukong.zhuyin.inputmethod` do not. `TISRegisterInputSource` still returns `noErr` for the rejected ones, so the only symptom is that the source never appears.
 - **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
@@ -288,7 +305,7 @@ Milestone 11 把獨立工具 `lang-cursor` 的免費功能併入輸入法：跟�
 
 ## Privacy
 
-Jiukong Zhuyin works completely offline and does not collect or transmit typing data.
+Composition and candidate lookup stay on the Mac. When iCloud learning sync is enabled, Jiukong sends only committed character-learning records and explicitly saved user phrases to the current user's private CloudKit database; it does not upload uncommitted composition or document contents. Sync can be disabled in the Data settings pane, and manual JSON export/import remains available.
 
 ## Project
 
@@ -296,4 +313,4 @@ Jiukong Zhuyin works completely offline and does not collect or transmit typing 
 - Website: https://jiukong.cloudgate.org.tw
 - License: [MIT](LICENSE)
 
-The product implementation and built-in phrase lexicon are original to this project and MIT-licensed. The CNS11643 source snapshot and the character portion of the generated dictionary are distributed under Taiwan's Open Government Data License 1.0; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+The project-authored implementation and first-party phrase lexicon are AI-created for Jiukong and MIT-licensed. Third-party data keeps its own terms: the CNS11643 snapshot is covered by Taiwan's Open Government Data License 1.0, the MOE standard character tables are treated as public-domain government promulgations, and the MOE dictionary extracts are covered by CC BY-ND 3.0 TW. See [Third-Party Notices](THIRD_PARTY_NOTICES.md) for attribution, scope, and license details.

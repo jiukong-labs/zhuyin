@@ -20,11 +20,19 @@ enum UserDataLocationError: LocalizedError {
 struct UserDataLocation: Equatable {
     static let directoryName = "JiukongZhuyin"
     static let databaseName = "user.sqlite"
+    static let cloudSyncStateName = "cloud-sync-state.json"
 
     let directoryURL: URL
 
     var databaseURL: URL {
         directoryURL.appendingPathComponent(Self.databaseName, isDirectory: false)
+    }
+
+    var cloudSyncStateURL: URL {
+        directoryURL.appendingPathComponent(
+            Self.cloudSyncStateName,
+            isDirectory: false
+        )
     }
 
     init(applicationSupportRootURL: URL) {

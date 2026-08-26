@@ -20,6 +20,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var shiftPopUpButton: NSPopUpButton?
     private var arrangementPopUpButton: NSPopUpButton?
     private var automaticLearningButton: NSButton?
+    private var iCloudSyncButton: NSButton?
+    private var cloudSyncStatusLabel: NSTextField?
     private var showsRareCandidatesButton: NSButton?
 
     private static let arrangements = ZhuyinKeyboardArrangement.allCases
@@ -46,6 +48,22 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             preferences: preferences
         )
         super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cloudSyncStatusDidChange(_:)),
+            name: UserDataCloudSyncCoordinator.statusDidChangeNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cloudSyncDidApplyRemoteChanges(_:)),
+            name: UserDataCloudSyncCoordinator.didApplyRemoteChangesNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     func show() {
@@ -67,7 +85,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 540),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -130,6 +148,22 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         popUpButton.action = #selector(shiftPreferenceDidChange(_:))
         shiftPopUpButton = popUpButton
 
+        let shiftToggleLabel = NSTextField(labelWithString: "中英文切換：")
+        let shiftToggleRow = NSStackView(views: [
+            shiftToggleLabel,
+            popUpButton,
+        ])
+        shiftToggleRow.orientation = .horizontal
+        shiftToggleRow.alignment = .centerY
+        shiftToggleRow.spacing = 8
+
+        let optionShortcutLabel = NSTextField(
+            wrappingLabelWithString:
+                "⌥ Option：單獨按下不執行久空功能；Option 組合鍵交由目前 App 處理。"
+        )
+        optionShortcutLabel.preferredMaxLayoutWidth =
+            SettingsPaneBuilder.contentWidth
+
         let checkbox = NSButton(
             checkboxWithTitle: "自動學習已提交的選字與詞頻",
             target: self,
@@ -160,9 +194,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     note: "與目前選用的英文字母鍵盤配置無關。切換時會先送出尚未完成的組字。"
                 ),
                 SettingsPaneBuilder.section(
-                    title: "中英文切換",
-                    controls: [popUpButton],
-                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。"
+                    title: "快捷鍵",
+                    controls: [shiftToggleRow, optionShortcutLabel],
+                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。正在組字時使用 Option 組合鍵，久空會先完成目前組字。"
                 ),
                 SettingsPaneBuilder.section(
                     title: "學習",
@@ -179,6 +213,23 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeDataView() -> NSView {
+        let syncCheckbox = NSButton(
+            checkboxWithTitle: "使用 iCloud 自動同步選字與使用者詞",
+            target: self,
+            action: #selector(iCloudSyncDidChange(_:))
+        )
+        iCloudSyncButton = syncCheckbox
+
+        let syncNowButton = makeButton(
+            "立即同步",
+            action: #selector(synchronizeCloudNow(_:))
+        )
+        let statusLabel = NSTextField(wrappingLabelWithString: "")
+        statusLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.preferredMaxLayoutWidth = SettingsPaneBuilder.contentWidth
+        cloudSyncStatusLabel = statusLabel
+
         let transferRow = NSStackView(views: [
             makeButton("匯出…", action: #selector(exportUserData(_:))),
             makeButton("匯入…", action: #selector(importUserData(_:))),
@@ -197,6 +248,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         return SettingsPaneBuilder.pane(
             sections: [
                 SettingsPaneBuilder.section(
+                    title: "iCloud 同步",
+                    controls: [syncCheckbox, syncNowButton, statusLabel],
+                    note: "使用同一個 Apple Account 的 Mac 會自動合併學習資料。輸入仍使用本機資料庫；沒有網路或 iCloud 暫時無法使用時，不會影響打字。同步欄位使用 CloudKit 加密值。"
+                ),
+                SettingsPaneBuilder.section(
                     title: "匯出與匯入",
                     controls: [transferRow],
                     note: "匯出為 JSON 檔。匯入會與現有資料合併：次數與時間取較大者，置頂取聯集，重複匯入同一個檔案不會重複累加。"
@@ -204,7 +260,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "清除",
                     controls: [clearRow],
-                    note: "資料只存在這台 Mac，清除後無法復原。"
+                    note: "清除會同步到 iCloud，避免其他 Mac 或重灌後把舊資料恢復。"
                 ),
             ]
         )
@@ -228,8 +284,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         automaticLearningButton?.state =
             current.automaticLearningEnabled ? .on : .off
+        iCloudSyncButton?.state = current.iCloudSyncEnabled ? .on : .off
         showsRareCandidatesButton?.state =
             current.showsRareCandidates ? .on : .off
+        reloadCloudSyncStatus()
         cursorIndicatorSettings.reload()
     }
 
@@ -262,6 +320,30 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         preferences.update {
             $0.automaticLearningEnabled = sender.state == .on
         }
+    }
+
+    @objc private func iCloudSyncDidChange(_ sender: NSButton) {
+        preferences.update {
+            $0.iCloudSyncEnabled = sender.state == .on
+        }
+        learning.cloudSyncPreferenceDidChange()
+        reloadCloudSyncStatus()
+    }
+
+    @objc private func synchronizeCloudNow(_ sender: Any?) {
+        learning.synchronizeCloudNow()
+        reloadCloudSyncStatus()
+    }
+
+    @objc private func cloudSyncStatusDidChange(_ notification: Notification) {
+        reloadCloudSyncStatus()
+    }
+
+    @objc private func cloudSyncDidApplyRemoteChanges(
+        _ notification: Notification
+    ) {
+        reloadLists()
+        reloadCloudSyncStatus()
     }
 
     @objc private func showsRareCandidatesDidChange(_ sender: NSButton) {
@@ -411,6 +493,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         alert.informativeText = informative
         alert.addButton(withTitle: "好")
         alert.runModal()
+    }
+
+    private func reloadCloudSyncStatus() {
+        cloudSyncStatusLabel?.stringValue =
+            learning.cloudSyncStatus.localizedDescription
     }
 
     private static func exportFileName() -> String {

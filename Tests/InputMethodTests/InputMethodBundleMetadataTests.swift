@@ -241,6 +241,28 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         }
     }
 
+    func testCloudKitEntitlementsUseTheDocumentedPrivateContainer() throws {
+        let entitlementsURL = repositoryRoot
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("JiukongZhuyin.entitlements")
+        let data = try Data(contentsOf: entitlementsURL)
+        let propertyList = try PropertyListSerialization.propertyList(
+            from: data,
+            format: nil
+        )
+        let entitlements = try XCTUnwrap(propertyList as? [String: Any])
+
+        XCTAssertEqual(
+            entitlements["com.apple.developer.icloud-container-identifiers"]
+                as? [String],
+            [CloudKitUserDataTransport.containerIdentifier]
+        )
+        XCTAssertEqual(
+            entitlements["com.apple.developer.icloud-services"] as? [String],
+            ["CloudKit"]
+        )
+    }
+
     private func mostOpaqueColor(
         in representation: NSBitmapImageRep
     ) -> NSColor? {

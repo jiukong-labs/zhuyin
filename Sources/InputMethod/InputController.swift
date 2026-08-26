@@ -306,6 +306,7 @@ final class InputController: IMKInputController {
         super.activateServer(sender)
         shiftToggleController.reset()
         synchronizeLanguageModeWithCurrentInputSource()
+        UserLearningService.shared.refreshCloudIfNeeded()
         startCursorIndicator()
     }
 

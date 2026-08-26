@@ -10,6 +10,7 @@ struct Preferences: Equatable {
 
     var shiftKeyPreference: ShiftKeyPreference
     var automaticLearningEnabled: Bool
+    var iCloudSyncEnabled: Bool
     var showsRareCandidates: Bool
     var keyboardArrangement: ZhuyinKeyboardArrangement
     var cursorIndicator: CursorIndicatorPreferences
@@ -17,12 +18,14 @@ struct Preferences: Equatable {
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
         automaticLearningEnabled: Bool = true,
+        iCloudSyncEnabled: Bool = true,
         showsRareCandidates: Bool = false,
         keyboardArrangement: ZhuyinKeyboardArrangement = .standard,
         cursorIndicator: CursorIndicatorPreferences = CursorIndicatorPreferences()
     ) {
         self.shiftKeyPreference = shiftKeyPreference
         self.automaticLearningEnabled = automaticLearningEnabled
+        self.iCloudSyncEnabled = iCloudSyncEnabled
         self.showsRareCandidates = showsRareCandidates
         self.keyboardArrangement = keyboardArrangement
         self.cursorIndicator = cursorIndicator
@@ -67,6 +70,7 @@ enum PreferenceKey: String, CaseIterable {
     case version = "JiukongPreferencesVersion"
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
+    case iCloudSyncEnabled = "JiukongICloudSyncEnabled"
     case showsRareCandidates = "JiukongShowsRareCandidates"
     case keyboardArrangement = "JiukongKeyboardArrangement"
     case cursorIndicatorEnabled = "JiukongCursorIndicatorEnabled"
@@ -106,6 +110,7 @@ extension Preferences {
                 shiftKeyPreference.rawValue,
             PreferenceKey.automaticLearningEnabled.rawValue:
                 automaticLearningEnabled,
+            PreferenceKey.iCloudSyncEnabled.rawValue: iCloudSyncEnabled,
             PreferenceKey.showsRareCandidates.rawValue:
                 showsRareCandidates,
             PreferenceKey.keyboardArrangement.rawValue:
@@ -146,6 +151,12 @@ extension Preferences {
             from: values[PreferenceKey.automaticLearningEnabled.rawValue]
         ) {
             preferences.automaticLearningEnabled = enabled
+        }
+
+        if let enabled = boolean(
+            from: values[PreferenceKey.iCloudSyncEnabled.rawValue]
+        ) {
+            preferences.iCloudSyncEnabled = enabled
         }
 
         if let enabled = boolean(

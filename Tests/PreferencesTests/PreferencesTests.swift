@@ -10,7 +10,19 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(preferences, .default)
         XCTAssertEqual(preferences.shiftKeyPreference, .both)
         XCTAssertTrue(preferences.automaticLearningEnabled)
+        XCTAssertTrue(preferences.iCloudSyncEnabled)
         XCTAssertFalse(preferences.showsRareCandidates)
+    }
+
+    func testICloudSyncPreferenceRoundTripsAndDefaultsOn() {
+        let stored = Preferences(iCloudSyncEnabled: false).encoded()
+
+        XCTAssertFalse(Preferences.decoded(from: stored).iCloudSyncEnabled)
+        XCTAssertTrue(
+            Preferences.decoded(
+                from: [PreferenceKey.iCloudSyncEnabled.rawValue: "invalid"]
+            ).iCloudSyncEnabled
+        )
     }
 
     func testRareCandidatePreferenceRoundTripsAndDefaultsOff() {

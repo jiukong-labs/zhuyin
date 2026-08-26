@@ -54,6 +54,7 @@ private func runApplication() throws {
     if arguments == ["--settings"] {
         let application = NSApplication.shared
         application.setActivationPolicy(.accessory)
+        UserLearningService.shared.startCloudSync()
         DispatchQueue.main.async {
             SettingsWindowController.shared.show()
         }
@@ -72,6 +73,7 @@ private func runApplication() throws {
     // Owns the cursor indicator's visibility for as long as this process
     // runs, independent of any particular client's text-field focus.
     SystemInputSourceObserver.shared.start()
+    UserLearningService.shared.startCloudSync()
     jiukongDebugLog("main.swift finished starting SystemInputSourceObserver")
 
     withExtendedLifetime(server) {

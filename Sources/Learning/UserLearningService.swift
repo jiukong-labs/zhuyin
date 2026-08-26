@@ -11,30 +11,65 @@ final class UserLearningService: UserLearningProviding {
 
     private let queue: DispatchQueue
     private let store: UserLearningStoring?
+    private let cloudSync: UserDataCloudSyncing?
     private let now: () -> Date
 
     private convenience init() {
         let store: UserLearningStoring?
+        let cloudSync: UserDataCloudSyncing?
         do {
             let location = try UserDataLocation.userDomain()
-            store = try UserLearningStore(location: location)
+            let learningStore = try UserLearningStore(location: location)
+            store = learningStore
+            cloudSync = UserDataCloudSyncCoordinator(
+                store: learningStore,
+                transport: CloudKitUserDataTransport(),
+                stateStore: FileCloudSyncStateStore(location: location),
+                isEnabled: {
+                    PreferencesController.shared.current.iCloudSyncEnabled
+                }
+            )
         } catch {
             Self.logger.error(
                 "User learning storage is unavailable; personalization is disabled."
             )
             store = nil
+            cloudSync = nil
         }
-        self.init(store: store)
+        self.init(store: store, cloudSync: cloudSync)
     }
 
     init(
         store: UserLearningStoring?,
+        cloudSync: UserDataCloudSyncing? = nil,
         now: @escaping () -> Date = Date.init,
         queueLabel: String = "tw.idv.jiukong.user-learning"
     ) {
         self.store = store
+        self.cloudSync = cloudSync
         self.now = now
         queue = DispatchQueue(label: queueLabel, qos: .userInitiated)
+    }
+
+    var cloudSyncStatus: UserDataCloudSyncStatus {
+        cloudSync?.status
+            ?? .unavailable("本機學習資料庫目前無法使用。")
+    }
+
+    func startCloudSync() {
+        cloudSync?.start()
+    }
+
+    func synchronizeCloudNow() {
+        cloudSync?.synchronizeNow()
+    }
+
+    func refreshCloudIfNeeded() {
+        cloudSync?.refreshIfNeeded()
+    }
+
+    func cloudSyncPreferenceDidChange() {
+        cloudSync?.preferenceDidChange()
     }
 
     func records(
@@ -66,6 +101,10 @@ final class UserLearningService: UserLearningProviding {
                     pronunciation: pronunciation,
                     at: now()
                 )
+                noteCharacterUpsert(
+                    character: character,
+                    pronunciation: pronunciation
+                )
             } catch {
                 Self.logger.error(
                     "Could not update user learning data; input will continue."
@@ -86,6 +125,10 @@ final class UserLearningService: UserLearningProviding {
             do {
                 try store.setPinned(
                     pinned,
+                    character: character,
+                    pronunciation: pronunciation
+                )
+                noteCharacterUpsert(
                     character: character,
                     pronunciation: pronunciation
                 )
@@ -133,6 +176,10 @@ final class UserLearningService: UserLearningProviding {
                     pronunciationSequence: pronunciationSequence,
                     createdAt: createdAt
                 )
+                notePhraseUpsert(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence
+                )
                 return true
             } catch {
                 Self.logger.error(
@@ -158,6 +205,10 @@ final class UserLearningService: UserLearningProviding {
                     pronunciationSequence: pronunciationSequence,
                     at: date
                 )
+                notePhraseUpsert(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence
+                )
             } catch {
                 Self.logger.error(
                     "Could not update user phrase learning; input will continue."
@@ -181,6 +232,10 @@ final class UserLearningService: UserLearningProviding {
                     phrase: phrase,
                     pronunciationSequence: pronunciationSequence
                 )
+                notePhraseUpsert(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence
+                )
             } catch {
                 Self.logger.error(
                     "Could not update a user phrase pin; input will continue."
@@ -193,17 +248,57 @@ final class UserLearningService: UserLearningProviding {
     /// request did not take effect instead of silently appearing to succeed.
     @discardableResult
     func clearCharacterLearning() -> Bool {
-        clear("character learning") { try $0.clearCharacterLearning() }
+        clear(
+            "character learning",
+            identities: { store in
+                try store.allCharacterRecords().compactMap {
+                    try? CloudUserDataIdentity(
+                        character: $0.character,
+                        pronunciation: $0.pronunciation
+                    )
+                }
+            },
+            operation: { try $0.clearCharacterLearning() }
+        )
     }
 
     @discardableResult
     func clearUserPhrases() -> Bool {
-        clear("user phrases") { try $0.clearUserPhrases() }
+        clear(
+            "user phrases",
+            identities: { store in
+                try store.allPhraseRecords().compactMap {
+                    try? CloudUserDataIdentity(
+                        phrase: $0.phrase,
+                        readings: $0.pronunciationSequence
+                    )
+                }
+            },
+            operation: { try $0.clearUserPhrases() }
+        )
     }
 
     @discardableResult
     func clearAllUserData() -> Bool {
-        clear("all user data") { try $0.clearAllUserData() }
+        clear(
+            "all user data",
+            identities: { store in
+                let characters = try store.allCharacterRecords().compactMap {
+                    try? CloudUserDataIdentity(
+                        character: $0.character,
+                        pronunciation: $0.pronunciation
+                    )
+                }
+                let phrases = try store.allPhraseRecords().compactMap {
+                    try? CloudUserDataIdentity(
+                        phrase: $0.phrase,
+                        readings: $0.pronunciationSequence
+                    )
+                }
+                return characters + phrases
+            },
+            operation: { try $0.clearAllUserData() }
+        )
     }
 
     func allCharacterRecords() -> [CharacterLearningRecord] {
@@ -243,7 +338,15 @@ final class UserLearningService: UserLearningProviding {
         character: String,
         pronunciation: String
     ) -> Bool {
-        clear("a character record") {
+        clear(
+            "a character record",
+            identities: { _ in
+                [try CloudUserDataIdentity(
+                    character: character,
+                    pronunciation: pronunciation
+                )]
+            }
+        ) {
             try $0.deleteCharacterRecord(
                 character: character,
                 pronunciation: pronunciation
@@ -256,7 +359,15 @@ final class UserLearningService: UserLearningProviding {
         phrase: String,
         pronunciationSequence: [String]
     ) -> Bool {
-        clear("a user phrase") {
+        clear(
+            "a user phrase",
+            identities: { _ in
+                [try CloudUserDataIdentity(
+                    phrase: phrase,
+                    readings: pronunciationSequence
+                )]
+            }
+        ) {
             try $0.deletePhrase(
                 phrase: phrase,
                 pronunciationSequence: pronunciationSequence
@@ -291,7 +402,20 @@ final class UserLearningService: UserLearningProviding {
                 return nil
             }
             do {
-                return try store.merge(archive)
+                let summary = try store.merge(archive)
+                for entry in archive.characters {
+                    noteCharacterUpsert(
+                        character: entry.character,
+                        pronunciation: entry.pronunciation
+                    )
+                }
+                for entry in archive.phrases {
+                    notePhraseUpsert(
+                        phrase: entry.phrase,
+                        pronunciationSequence: entry.readings
+                    )
+                }
+                return summary
             } catch {
                 Self.logger.error(
                     "Could not import user data; the existing data was kept."
@@ -303,6 +427,7 @@ final class UserLearningService: UserLearningProviding {
 
     private func clear(
         _ description: String,
+        identities: (any UserLearningStoring) throws -> [CloudUserDataIdentity],
         operation: (any UserLearningStoring) throws -> Void
     ) -> Bool {
         queue.sync {
@@ -310,7 +435,11 @@ final class UserLearningService: UserLearningProviding {
                 return false
             }
             do {
+                let deletedIdentities = try identities(store)
                 try operation(store)
+                for identity in deletedIdentities {
+                    cloudSync?.noteDeletion(identity)
+                }
                 return true
             } catch {
                 Self.logger.error(
@@ -319,5 +448,31 @@ final class UserLearningService: UserLearningProviding {
                 return false
             }
         }
+    }
+
+    private func noteCharacterUpsert(
+        character: String,
+        pronunciation: String
+    ) {
+        guard let identity = try? CloudUserDataIdentity(
+            character: character,
+            pronunciation: pronunciation
+        ) else {
+            return
+        }
+        cloudSync?.noteUpsert(identity)
+    }
+
+    private func notePhraseUpsert(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) {
+        guard let identity = try? CloudUserDataIdentity(
+            phrase: phrase,
+            readings: pronunciationSequence
+        ) else {
+            return
+        }
+        cloudSync?.noteUpsert(identity)
     }
 }

@@ -6,6 +6,13 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- The General settings pane now explains standalone Option and Option-key
+  shortcut pass-through behavior beside the Shift language-toggle setting.
+- Offline-first iCloud CloudKit synchronization for character learning and
+  user phrases, including encrypted record fields, deterministic opaque IDs,
+  first-launch restoration, persistent offline mutations, deletion
+  tombstones, conflict merging, rate-limited refresh, settings status, and a
+  manual sync action.
 - User-recorded phrase candidates now show a clickable `×` that deletes that
   exact text-and-pronunciation record and refreshes the open candidate panel.
   The delete control is visually separated from the phrase; built-in phrases
@@ -66,8 +73,9 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Optional cursor-following mode indicator with placement, tracking, size, Caps Lock badge, and per-mode text and color, ported from the lang-cursor utility.
 - Milestone 11 cursor-indicator and verification documentation.
 - Permanent original-implementation policy for product code, algorithms, UI,
-  database formats, and the built-in phrase lexicon, with only the documented
-  platform, tooling, and official CNS11643 standard-data exceptions.
+  database formats, and the first-party phrase lexicon, with closed,
+  documented exceptions for platform/tooling, official CNS11643 data, MOE
+  standard character tables, and the pinned MOE four-character phrase data.
 - Plain Left/Right revision across uncommitted reading units, with exact
   same-reading character replacement and UTF-16-safe inline focus.
 - Original exact phrases for `測試中請稍後` and its useful suffixes, plus

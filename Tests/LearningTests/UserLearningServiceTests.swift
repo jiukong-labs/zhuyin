@@ -2,6 +2,72 @@ import Foundation
 import XCTest
 
 final class UserLearningServiceTests: XCTestCase {
+    func testSuccessfulLearningOperationsNotifyCloudSync() {
+        let store = ProbeLearningStore()
+        let cloudSync = ProbeCloudSync()
+        let service = UserLearningService(
+            store: store,
+            cloudSync: cloudSync
+        )
+        let readings = ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+
+        service.recordSelection(character: "鍵", pronunciation: "ㄐㄧㄢˋ")
+        service.setPinned(true, character: "鍵", pronunciation: "ㄐㄧㄢˋ")
+        XCTAssertTrue(
+            service.addPhrase(
+                phrase: "久空",
+                pronunciationSequence: readings,
+                createdAt: Date()
+            )
+        )
+        service.recordPhraseSelection(
+            phrase: "久空",
+            pronunciationSequence: readings,
+            at: Date()
+        )
+        service.setPhrasePinned(
+            true,
+            phrase: "久空",
+            pronunciationSequence: readings
+        )
+        XCTAssertTrue(
+            service.deleteCharacterRecord(
+                character: "鍵",
+                pronunciation: "ㄐㄧㄢˋ"
+            )
+        )
+        XCTAssertTrue(
+            service.deletePhrase(
+                phrase: "久空",
+                pronunciationSequence: readings
+            )
+        )
+
+        XCTAssertEqual(cloudSync.upserts.count, 5)
+        XCTAssertEqual(cloudSync.upserts.filter { $0.kind == .character }.count, 2)
+        XCTAssertEqual(cloudSync.upserts.filter { $0.kind == .phrase }.count, 3)
+        XCTAssertEqual(Set(cloudSync.deletions.map(\.kind)), [.character, .phrase])
+    }
+
+    func testCloudLifecycleOperationsAreForwarded() {
+        let cloudSync = ProbeCloudSync()
+        let service = UserLearningService(
+            store: ProbeLearningStore(),
+            cloudSync: cloudSync
+        )
+
+        service.startCloudSync()
+        service.refreshCloudIfNeeded()
+        service.synchronizeCloudNow()
+        service.cloudSyncPreferenceDidChange()
+
+        XCTAssertEqual(cloudSync.startCount, 1)
+        XCTAssertEqual(cloudSync.refreshCount, 1)
+        XCTAssertEqual(cloudSync.synchronizeCount, 1)
+        XCTAssertEqual(cloudSync.preferenceChangeCount, 1)
+        XCTAssertEqual(service.cloudSyncStatus, .idle(lastSuccessfulSync: nil))
+    }
+
     func testServiceUsesInjectedClockAndStore() {
         let store = ProbeLearningStore()
         let date = Date(timeIntervalSince1970: 1_234)
@@ -128,6 +194,40 @@ final class UserLearningServiceTests: XCTestCase {
         XCTAssertEqual(store.phraseAdditions.first?.date, createdAt)
         XCTAssertEqual(store.phraseSelections.first?.date, selectedAt)
         XCTAssertEqual(store.phrasePins.first?.pinned, true)
+    }
+}
+
+private final class ProbeCloudSync: UserDataCloudSyncing {
+    var status: UserDataCloudSyncStatus = .idle(lastSuccessfulSync: nil)
+    private(set) var upserts: [CloudUserDataIdentity] = []
+    private(set) var deletions: [CloudUserDataIdentity] = []
+    private(set) var startCount = 0
+    private(set) var refreshCount = 0
+    private(set) var synchronizeCount = 0
+    private(set) var preferenceChangeCount = 0
+
+    func start() {
+        startCount += 1
+    }
+
+    func synchronizeNow() {
+        synchronizeCount += 1
+    }
+
+    func refreshIfNeeded() {
+        refreshCount += 1
+    }
+
+    func preferenceDidChange() {
+        preferenceChangeCount += 1
+    }
+
+    func noteUpsert(_ identity: CloudUserDataIdentity) {
+        upserts.append(identity)
+    }
+
+    func noteDeletion(_ identity: CloudUserDataIdentity) {
+        deletions.append(identity)
     }
 }
 
