@@ -130,6 +130,35 @@ enum CanonicalBopomofoReading {
         }
         return true
     }
+
+    /// The body of a neutral-tone reading (its leading `˙` stripped), or nil
+    /// if `reading` isn't itself marked neutral tone.
+    static func neutralToneBody(of reading: String) -> String? {
+        guard reading.first == neutralTone else {
+            return nil
+        }
+        return String(reading.dropFirst())
+    }
+
+    /// `reading` itself, if it is already an unmarked first-tone body (no
+    /// leading `˙`, no trailing tone mark), or nil otherwise.
+    static func firstToneBody(of reading: String) -> String? {
+        guard let first = reading.first, first != neutralTone,
+              let last = reading.last, !suffixTones.contains(last),
+              isValid(reading) else {
+            return nil
+        }
+        return reading
+    }
+
+    /// `body` spelled with every one of the five tones, first tone (unmarked)
+    /// first.
+    static func tonedReadings(forBody body: String) -> [String] {
+        [body, String(neutralTone) + body]
+            + suffixToneMarks.map { body + String($0) }
+    }
+
+    private static let suffixToneMarks: [Character] = ["ˊ", "ˇ", "ˋ"]
 }
 
 final class CharacterDictionary {

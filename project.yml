@@ -83,6 +83,7 @@ targets:
       - sdk: CloudKit.framework
       - sdk: CryptoKit.framework
       - sdk: InputMethodKit.framework
+      - sdk: Security.framework
       - sdk: libsqlite3.tbd
     info:
       path: Resources/Info.plist
@@ -185,6 +186,7 @@ targets:
       - sdk: Carbon.framework
       - sdk: CloudKit.framework
       - sdk: CryptoKit.framework
+      - sdk: Security.framework
       - sdk: libsqlite3.tbd
     settings:
       base:

@@ -39,10 +39,27 @@ final class SystemInputSourceObserver {
             suspensionBehavior: .deliverImmediately
         )
 
+        // The settings window lives in the same process as this observer, so
+        // a preference change (position, tracking, size, …) should redraw the
+        // already-visible indicator immediately rather than waiting for the
+        // next input-source switch to pick it up.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(preferencesDidChange),
+            name: PreferencesController.didChangeNotification,
+            object: nil
+        )
+
         refresh()
     }
 
     @objc private func selectedInputSourceDidChange() {
+        DispatchQueue.main.async { [weak self] in
+            self?.refresh()
+        }
+    }
+
+    @objc private func preferencesDidChange() {
         DispatchQueue.main.async { [weak self] in
             self?.refresh()
         }

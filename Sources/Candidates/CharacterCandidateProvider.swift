@@ -31,35 +31,35 @@ final class CharacterCandidateProvider {
         for pronunciation: String,
         phraseQueries: [CompositionPhraseQuery] = []
     ) throws -> [Candidate] {
-        let learningRecords = learning?.records(for: pronunciation) ?? [:]
         let includesRareCandidates = showsRareCandidates()
-        let characterCandidates = try dictionary.candidateEntries(for: pronunciation)
-            .filter {
-                includesRareCandidates
-                    || $0.isInGeneralCandidateRepertoire
+        var characterCandidates = try dictionaryCandidates(
+            for: pronunciation,
+            includesRareCandidates: includesRareCandidates,
+            rankOffset: 0
+        )
+
+        // First tone (Space, the default when no tone key is pressed) and
+        // neutral tone (˙, a common "don't care which tone" shortcut in
+        // fast/casual speech) are both routinely typed without regard to a
+        // character's actual tone — e.g. 播 is canonically ㄅㄛˋ, never
+        // ㄅㄛ or ˙ㄅㄛ. Widen either one across the other tones of the
+        // same body so those characters stay reachable without requiring
+        // the exact tone key.
+        if let body = CanonicalBopomofoReading.neutralToneBody(of: pronunciation)
+            ?? CanonicalBopomofoReading.firstToneBody(of: pronunciation) {
+            var seenText = Set(characterCandidates.map(\.text))
+            let otherTonedReadings = CanonicalBopomofoReading
+                .tonedReadings(forBody: body)
+                .filter { $0 != pronunciation }
+            for tonedReading in otherTonedReadings {
+                let tonedCandidates = try dictionaryCandidates(
+                    for: tonedReading,
+                    includesRareCandidates: includesRareCandidates,
+                    rankOffset: characterCandidates.count
+                ).filter { seenText.insert($0.text).inserted }
+                characterCandidates.append(contentsOf: tonedCandidates)
             }
-            .enumerated()
-            .map { baseRank, entry in
-                let learningRecord = learningRecords[entry.text]
-                let phraseCount = max(0, entry.firstPartyPhraseCount)
-                // Keep the three usage tiers strict while ranking entries
-                // within a tier by evidence from Jiukong's own reviewed
-                // phrase lexicon. count / (count + 1) stays below one, so it
-                // can never cross a tier boundary.
-                let firstPartyPhraseBonus = Double(phraseCount)
-                    / (Double(phraseCount) + 1)
-                return Candidate(
-                    text: entry.text,
-                    pronunciation: pronunciation,
-                    baseRank: baseRank,
-                    sourceOrder: entry.sourceOrder,
-                    baseFrequency: Double(2 - entry.usageTier)
-                        + firstPartyPhraseBonus,
-                    userFrequency: learningRecord?.selectionCount ?? 0,
-                    lastUsed: learningRecord?.lastSelectedAt,
-                    pinned: learningRecord?.pinned ?? false
-                )
-            }
+        }
 
         let phraseCandidates = try exactPhraseCandidates(
             for: pronunciation,
@@ -71,6 +71,41 @@ final class CharacterCandidateProvider {
             displayableCandidates,
             at: now()
         )
+    }
+
+    private func dictionaryCandidates(
+        for pronunciation: String,
+        includesRareCandidates: Bool,
+        rankOffset: Int
+    ) throws -> [Candidate] {
+        let learningRecords = learning?.records(for: pronunciation) ?? [:]
+        return try dictionary.candidateEntries(for: pronunciation)
+            .filter {
+                includesRareCandidates
+                    || $0.isInGeneralCandidateRepertoire
+            }
+            .enumerated()
+            .map { index, entry in
+                let learningRecord = learningRecords[entry.text]
+                let phraseCount = max(0, entry.firstPartyPhraseCount)
+                // Keep the three usage tiers strict while ranking entries
+                // within a tier by evidence from Jiukong's own reviewed
+                // phrase lexicon. count / (count + 1) stays below one, so it
+                // can never cross a tier boundary.
+                let firstPartyPhraseBonus = Double(phraseCount)
+                    / (Double(phraseCount) + 1)
+                return Candidate(
+                    text: entry.text,
+                    pronunciation: pronunciation,
+                    baseRank: rankOffset + index,
+                    sourceOrder: entry.sourceOrder,
+                    baseFrequency: Double(2 - entry.usageTier)
+                        + firstPartyPhraseBonus,
+                    userFrequency: learningRecord?.selectionCount ?? 0,
+                    lastUsed: learningRecord?.lastSelectedAt,
+                    pinned: learningRecord?.pinned ?? false
+                )
+            }
     }
 
     @discardableResult

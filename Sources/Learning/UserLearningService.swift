@@ -22,19 +22,32 @@ final class UserLearningService: UserLearningProviding {
             let learningStore = try UserLearningStore(location: location)
             let preferences = PreferencesController.shared
             store = learningStore
-            cloudSync = UserDataCloudSyncCoordinator(
-                store: learningStore,
-                transport: CloudKitUserDataTransport(),
-                stateStore: FileCloudSyncStateStore(location: location),
-                isEnabled: {
-                    preferences.current.iCloudSyncEnabled
-                },
-                turnOffSyncAfterAccountChange: {
-                    preferences.update {
-                        $0.iCloudSyncEnabled = false
+            // Constructing CKContainer without the container entitlement
+            // traps the process rather than throwing, so an unentitled
+            // build (the repository's own ad-hoc local build included) must
+            // never reach it.
+            if ProcessEntitlements.isEntitledForICloudContainer(
+                CloudKitUserDataTransport.containerIdentifier
+            ) {
+                cloudSync = UserDataCloudSyncCoordinator(
+                    store: learningStore,
+                    transport: CloudKitUserDataTransport(),
+                    stateStore: FileCloudSyncStateStore(location: location),
+                    isEnabled: {
+                        preferences.current.iCloudSyncEnabled
+                    },
+                    turnOffSyncAfterAccountChange: {
+                        preferences.update {
+                            $0.iCloudSyncEnabled = false
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                Self.logger.notice(
+                    "This build has no iCloud container entitlement; cloud sync is disabled."
+                )
+                cloudSync = nil
+            }
         } catch {
             Self.logger.error(
                 "User learning storage is unavailable; personalization is disabled."

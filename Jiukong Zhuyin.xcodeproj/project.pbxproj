@@ -26,6 +26,7 @@
 		1D378560EA1F2C421C82DEEA /* InputMethodBundleMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */; };
 		1D773CD1E1A309F6C81E3F1B /* InputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0748FDE71A052EB86AE9FC0B /* InputController.swift */; };
 		1F94381C74A7CB144051FCEF /* SystemInputSourceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18908D66BF59A103E6375944 /* SystemInputSourceObserver.swift */; };
+		1FDF4D3E9FBF8FD143F2AA53 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3956B2AE2EBC770F628C9DB3 /* Security.framework */; };
 		2207DC03991162132E2D24A9 /* CloudKitUserDataTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */; };
 		221A51110211C7971ECB3808 /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
 		24AB213BDD66DFC7BFAF095A /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
@@ -54,6 +55,7 @@
 		4E0D9DE49EDA18DC03634DAE /* CloudUserDataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65E2ED9B9B0619D268501FA /* CloudUserDataModels.swift */; };
 		4E179BBFE7B49DD47A04264B /* CompositionPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14C51C5EA239A803E995F77 /* CompositionPresentationTests.swift */; };
 		4E27FB179E3297E5BCDA4255 /* JiukongDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */; };
+		4E77E4E926F338BBE5EFAC3A /* ProcessEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E02E22713564B559C471CEE /* ProcessEntitlements.swift */; };
 		4EE56011674AE8700780FC80 /* ShiftToggleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E03D98756138B225E54A9B /* ShiftToggleController.swift */; };
 		52262D0D1FE7C1B84A323476 /* CompositionPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8118F46308D10E62E4662D8 /* CompositionPresentation.swift */; };
 		541310968ECA585A33D08250 /* CNS11643Manifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9502DD5E44CA13CFA608D85 /* CNS11643Manifest.swift */; };
@@ -159,6 +161,7 @@
 		E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		E0E3E8A547EFCC37BACA41EA /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		E28F248C99C7DF51EDAF39E1 /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
+		E59BB2EACE8615C94B5986A1 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3956B2AE2EBC770F628C9DB3 /* Security.framework */; };
 		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
 		EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
@@ -171,6 +174,7 @@
 		FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */; };
 		FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */; };
 		FBAF5AFE01B9D5EE4BDAFFF3 /* CursorIndicatorAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */; };
+		FF9E6E8589539CF01B832346 /* ProcessEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E02E22713564B559C471CEE /* ProcessEntitlements.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -194,6 +198,7 @@
 		32EFC11EAB2C94A893A2CB57 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		342935799C98E9EB5584AF78 /* CompositionSelectionCommandRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionSelectionCommandRouterTests.swift; sourceTree = "<group>"; };
 		390A747ED6D62564F6523EAB /* UserDataLocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataLocationTests.swift; sourceTree = "<group>"; };
+		3956B2AE2EBC770F628C9DB3 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducer.swift; sourceTree = "<group>"; };
 		3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllableTests.swift; sourceTree = "<group>"; };
 		419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSession.swift; sourceTree = "<group>"; };
@@ -212,6 +217,7 @@
 		5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandRouterTests.swift; sourceTree = "<group>"; };
 		5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoInputSessionTests.swift; sourceTree = "<group>"; };
 		5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitUserDataTransport.swift; sourceTree = "<group>"; };
+		5E02E22713564B559C471CEE /* ProcessEntitlements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessEntitlements.swift; sourceTree = "<group>"; };
 		5E22AD0F0E53E2614E50243E /* ZhuyinKeyboardArrangementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhuyinKeyboardArrangementTests.swift; sourceTree = "<group>"; };
 		64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayout.swift; sourceTree = "<group>"; };
 		66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayout.swift; sourceTree = "<group>"; };
@@ -307,6 +313,7 @@
 				FA5D4798C7B7AFA33E123E22 /* Carbon.framework in Frameworks */,
 				A431CA677C91ADEB6DB757DB /* CloudKit.framework in Frameworks */,
 				DAB7E6162D556C7F816BEB2F /* CryptoKit.framework in Frameworks */,
+				1FDF4D3E9FBF8FD143F2AA53 /* Security.framework in Frameworks */,
 				0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -320,6 +327,7 @@
 				844532DE7B7F37E1857AD534 /* CloudKit.framework in Frameworks */,
 				F154953E8795E872037E4B08 /* CryptoKit.framework in Frameworks */,
 				FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */,
+				E59BB2EACE8615C94B5986A1 /* Security.framework in Frameworks */,
 				C246AB747EDFD6E92B592CF2 /* libsqlite3.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -363,6 +371,7 @@
 				5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */,
 				0B2D193AE0A0EB6D678E9964 /* CloudSyncStateStore.swift */,
 				B65E2ED9B9B0619D268501FA /* CloudUserDataModels.swift */,
+				5E02E22713564B559C471CEE /* ProcessEntitlements.swift */,
 				FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */,
 				443AFD224DBEF6F890A10793 /* UserDataCloudSyncCoordinator.swift */,
 				1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */,
@@ -633,6 +642,7 @@
 				1E38BA26E2A742FE938ED829 /* CryptoKit.framework */,
 				BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */,
 				D01F60E94243161D89FAC2DA /* libsqlite3.tbd */,
+				3956B2AE2EBC770F628C9DB3 /* Security.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -923,6 +933,7 @@
 				A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */,
 				10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */,
 				C79D565EE382F7DF72B0B86E /* PreferencesStore.swift in Sources */,
+				FF9E6E8589539CF01B832346 /* ProcessEntitlements.swift in Sources */,
 				73B0C3C365AC586D955484A3 /* PunctuationLayout.swift in Sources */,
 				3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */,
 				9287CE720D6704310DC434EC /* SettingsPaneBuilder.swift in Sources */,
@@ -1003,6 +1014,7 @@
 				5B46C5E8B79F4EB84B727D15 /* PreferencesStore.swift in Sources */,
 				75B45809505AAD2B711EEEEE /* PreferencesStoreTests.swift in Sources */,
 				CB892CD22D17228E5671B987 /* PreferencesTests.swift in Sources */,
+				4E77E4E926F338BBE5EFAC3A /* ProcessEntitlements.swift in Sources */,
 				A0A1101F2A6E54631335AB66 /* PunctuationLayout.swift in Sources */,
 				0F0FA0A3E6356E1AA6EC69C2 /* PunctuationLayoutTests.swift in Sources */,
 				F7761C7EF89808E052F64C42 /* SQLiteDatabase.swift in Sources */,

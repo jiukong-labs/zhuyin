@@ -118,6 +118,51 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(try provider.candidates(for: "not-zhuyin"), [])
     }
 
+    func testNeutralToneQueryWidensAcrossOtherTonesOfTheSameBody() throws {
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary()
+        )
+
+        let candidates = try provider.candidates(for: "˙ㄅㄛ")
+
+        // 蔔 is genuinely neutral tone (˙ㄅㄛ, as in 蘿蔔); 播 is canonically
+        // fourth tone (ㄅㄛˋ) but neutral tone is a common "don't care which
+        // tone" shortcut, so it must still be reachable here — tagged with
+        // its own real reading, not the neutral query.
+        XCTAssertTrue(candidates.contains { $0.text == "蔔" && $0.pronunciation == "˙ㄅㄛ" })
+        XCTAssertTrue(candidates.contains { $0.text == "播" && $0.pronunciation == "ㄅㄛˋ" })
+        XCTAssertTrue(candidates.allSatisfy { $0.type == .character })
+        XCTAssertEqual(candidates.map(\.text).count, Set(candidates.map(\.text)).count)
+    }
+
+    func testFirstToneQueryWidensAcrossOtherTonesOfTheSameBody() throws {
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary()
+        )
+
+        let candidates = try provider.candidates(for: "ㄅㄛ")
+
+        // Space (first tone, unmarked) is the default way to finish a
+        // syllable without picking a tone, so it must reach 播 (ㄅㄛˋ) the
+        // same way neutral tone does — tagged with its own real reading.
+        XCTAssertTrue(candidates.contains { $0.text == "波" && $0.pronunciation == "ㄅㄛ" })
+        XCTAssertTrue(candidates.contains { $0.text == "播" && $0.pronunciation == "ㄅㄛˋ" })
+        XCTAssertTrue(candidates.allSatisfy { $0.type == .character })
+        XCTAssertEqual(candidates.map(\.text).count, Set(candidates.map(\.text)).count)
+    }
+
+    func testExplicitlyTonedQueryIsNotWidened() throws {
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary()
+        )
+
+        let candidates = try provider.candidates(for: "ㄅㄛˊ")
+
+        XCTAssertFalse(candidates.contains { $0.text == "波" })
+        XCTAssertFalse(candidates.contains { $0.text == "播" })
+        XCTAssertTrue(candidates.allSatisfy { $0.pronunciation == "ㄅㄛˊ" })
+    }
+
     func testProviderOmitsCandidatesRejectedByDisplayPolicy() throws {
         let dictionary = try makeDictionary()
         let unfilteredProvider = CharacterCandidateProvider(
@@ -151,10 +196,19 @@ final class CharacterCandidateProviderTests: XCTestCase {
             showsRareCandidates: { true }
         )
 
-        XCTAssertEqual(
-            try provider.candidates(for: "ㄇㄚ").map(\.text),
-            ["媽", "嗎", "摩", "螞", "嬤"]
-        )
+        // First-tone widening (see below) can interleave candidates from
+        // other tones of the same body around these, so check their
+        // relative order rather than the exact full list.
+        let texts = try provider.candidates(for: "ㄇㄚ").map(\.text)
+        let everydayCharacters = ["媽", "嗎", "摩", "螞", "嬤"]
+        var previousIndex = -1
+        for character in everydayCharacters {
+            let index = try XCTUnwrap(texts.firstIndex(of: character))
+            XCTAssertGreaterThan(index, previousIndex)
+            previousIndex = index
+        }
+        XCTAssertFalse(texts.contains("嬷"))
+
         XCTAssertTrue(
             try rareProvider.candidates(for: "ㄇㄚ").contains {
                 $0.text == "嬷"
