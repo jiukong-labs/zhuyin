@@ -13,10 +13,13 @@ enum LanguageMode: String, CaseIterable, Codable, Equatable {
         }
     }
 
-    /// Each language state is also declared as a Text Input Sources mode so it
-    /// can be chosen explicitly from the macOS input menu. A standalone Shift
-    /// toggle is kept inside Jiukong instead, avoiding macOS's separate ABC
-    /// overlay while the cursor indicator presents the active state.
+    var toggled: LanguageMode {
+        self == .chinese ? .english : .chinese
+    }
+
+    /// Each language state is declared as a Text Input Sources mode so both
+    /// direct menu selection and standalone Shift switching can update the
+    /// macOS input-menu icon.
     var inputSourceIDSuffix: String {
         switch self {
         case .chinese:
@@ -50,23 +53,14 @@ final class LanguageModeController {
     static let shared = LanguageModeController()
 
     private(set) var mode: LanguageMode
-    private(set) var isInternallyManaged = false
 
     init(initialMode: LanguageMode = .chinese) {
         mode = initialMode
     }
 
     @discardableResult
-    func toggleInternally() -> LanguageMode {
-        mode = mode == .chinese ? .english : .chinese
-        isInternallyManaged = true
-        return mode
-    }
-
-    @discardableResult
     func synchronize(withSystemMode mode: LanguageMode) -> LanguageMode {
         self.mode = mode
-        isInternallyManaged = false
         return mode
     }
 }

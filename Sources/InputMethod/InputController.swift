@@ -227,6 +227,18 @@ final class InputController: IMKInputController {
             }
         }
 
+        if let digit = OptionDigitShortcut.text(
+            for: resolvedKey,
+            modifierFlags: event.modifierFlags
+        ) {
+            finishComposition(
+                reason: .implicitPassThrough,
+                using: inputClient
+            )
+            commitText(digit, to: inputClient)
+            return true
+        }
+
         // Caps Lock does not change Bopomofo input, so it must not change
         // punctuation either. Any real shortcut modifier still passes through.
         let punctuationModifiers = modifiers.subtracting(.capsLock)
@@ -411,11 +423,28 @@ final class InputController: IMKInputController {
         }
 
         finishComposition(reason: .lifecycle, using: inputClient)
-        // Keep a standalone Shift toggle inside the input method. Selecting a
-        // separate TIS mode here makes macOS present its own fixed 中/ABC
-        // overlay, whose label and color cannot follow Jiukong's cursor
-        // indicator preferences.
-        let mode = languageModeController.toggleInternally()
+        let mode = languageModeController.mode.toggled
+        guard let parentID = Bundle.main.object(
+            forInfoDictionaryKey: "TISInputSourceID"
+        ) as? String else {
+            return false
+        }
+
+        do {
+            try InputSourceRegistrar.select(
+                mode: mode,
+                bundleIdentifier: parentID
+            )
+        } catch {
+            NSLog(
+                "Jiukong Zhuyin could not select the %@ mode: %@",
+                mode.rawValue,
+                error.localizedDescription
+            )
+            return false
+        }
+
+        languageModeController.synchronize(withSystemMode: mode)
         cursorIndicator.update(mode: mode)
         return false
     }
@@ -449,12 +478,6 @@ final class InputController: IMKInputController {
     }
 
     private func synchronizeLanguageModeWithCurrentInputSource() {
-        // An internal Shift toggle intentionally does not change the selected
-        // TIS mode. Preserve that state across client activations until the
-        // user explicitly selects a system input source again.
-        guard !languageModeController.isInternallyManaged else {
-            return
-        }
         let parentID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
         ) as? String

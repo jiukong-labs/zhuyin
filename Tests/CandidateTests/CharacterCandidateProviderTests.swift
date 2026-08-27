@@ -135,20 +135,62 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(candidates.map(\.text).count, Set(candidates.map(\.text)).count)
     }
 
-    func testFirstToneQueryWidensAcrossOtherTonesOfTheSameBody() throws {
+    func testFirstToneQueryDoesNotWidenAcrossOtherTonesOfTheSameBody() throws {
         let provider = CharacterCandidateProvider(
             dictionary: try makeDictionary()
         )
 
         let candidates = try provider.candidates(for: "ㄅㄛ")
 
-        // Space (first tone, unmarked) is the default way to finish a
-        // syllable without picking a tone, so it must reach 播 (ㄅㄛˋ) the
-        // same way neutral tone does — tagged with its own real reading.
+        // Space explicitly selects first tone. A fourth-tone candidate must
+        // not replace that reading and poison a following exact phrase query.
         XCTAssertTrue(candidates.contains { $0.text == "波" && $0.pronunciation == "ㄅㄛ" })
-        XCTAssertTrue(candidates.contains { $0.text == "播" && $0.pronunciation == "ㄅㄛˋ" })
+        XCTAssertFalse(candidates.contains { $0.text == "播" })
         XCTAssertTrue(candidates.allSatisfy { $0.type == .character })
-        XCTAssertEqual(candidates.map(\.text).count, Set(candidates.map(\.text)).count)
+        XCTAssertTrue(candidates.allSatisfy { $0.pronunciation == "ㄅㄛ" })
+    }
+
+    func testFirstToneJinIgnoresLearnedFourthToneAndKeepsTodayReachable() throws {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let learning = LearningSpy()
+        learning.recordsByPronunciation["ㄐㄧㄣˋ"] = [
+            "進": CharacterLearningRecord(
+                character: "進",
+                pronunciation: "ㄐㄧㄣˋ",
+                selectionCount: 12,
+                lastSelectedAt: now,
+                pinned: false
+            ),
+        ]
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            now: { now }
+        )
+
+        let firstToneCandidates = try provider.candidates(for: "ㄐㄧㄣ")
+
+        XCTAssertTrue(firstToneCandidates.contains { $0.text == "今" })
+        XCTAssertFalse(firstToneCandidates.contains { $0.text == "進" })
+        XCTAssertTrue(
+            firstToneCandidates.allSatisfy { $0.pronunciation == "ㄐㄧㄣ" }
+        )
+
+        var buffer = CompositionBuffer()
+        XCTAssertTrue(
+            buffer.acceptCandidate(
+                Candidate(text: "金", pronunciation: "ㄐㄧㄣ"),
+                reason: .implicitPassThrough
+            )
+        )
+        let secondSyllableCandidates = try provider.candidates(
+            for: "ㄊㄧㄢ",
+            phraseQueries: buffer.phraseLookupQueries(appending: "ㄊㄧㄢ")
+        )
+
+        let today = try XCTUnwrap(secondSyllableCandidates.first)
+        XCTAssertEqual(today.text, "今天")
+        XCTAssertEqual(today.pronunciationSequence, ["ㄐㄧㄣ", "ㄊㄧㄢ"])
     }
 
     func testExplicitlyTonedQueryIsNotWidened() throws {
@@ -196,9 +238,6 @@ final class CharacterCandidateProviderTests: XCTestCase {
             showsRareCandidates: { true }
         )
 
-        // First-tone widening (see below) can interleave candidates from
-        // other tones of the same body around these, so check their
-        // relative order rather than the exact full list.
         let texts = try provider.candidates(for: "ㄇㄚ").map(\.text)
         let everydayCharacters = ["媽", "嗎", "摩", "螞", "嬤"]
         var previousIndex = -1

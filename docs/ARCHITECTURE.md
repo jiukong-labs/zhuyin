@@ -58,7 +58,7 @@ existing syllable, candidate, buffer, or client behavior continues unchanged.
 
 Each input controller owns a `ShiftToggleController` for its own modifier gesture, while every controller reads one process-wide `LanguageModeController`. A left or right Shift release toggles only when that Shift was pressed without any intervening key, other modifier, or second Shift. The state machine deliberately has no tap timeout. Its policy models both, left-only, right-only, and disabled behavior; since Milestone 8 the active policy comes from the persisted `ShiftKeyPreference` rather than a fixed value.
 
-A toggle first uses the existing idempotent composition finalization path, then changes the process-wide mode internally. It deliberately does not call `TISSelectInputSource`: doing so makes macOS add its own fixed `中`／`ABC` overlay, which cannot follow the cursor-indicator preferences. Chinese mode continues through candidate and Bopomofo handling. English mode returns key events unchanged, allowing the client and selected macOS keyboard layout to own characters, capitalization, dead keys, repeats, and shortcuts. The internally managed state survives client activation; explicitly selecting a Jiukong mode from the macOS input menu synchronizes it back to that system choice. A new process defaults to Chinese.
+A toggle first uses the existing idempotent composition finalization path, then calls `TISSelectInputSource` for the other Jiukong mode. This keeps the process-wide language state and the macOS input-menu icon synchronized, while allowing macOS to present its native transient input-source indicator. Chinese mode continues through candidate and Bopomofo handling. English mode returns key events unchanged, allowing the client and selected macOS keyboard layout to own characters, capitalization, dead keys, repeats, and shortcuts. Selecting a Jiukong mode directly from the macOS input menu follows the same synchronization path. A new process defaults to Chinese.
 
 `CursorIndicatorController` owns the optional persistent indicator that follows the mouse pointer, ported from the separate `lang-cursor` utility without its paid licensing. Because the input method knows its own mode, the indicator is driven by `LanguageModeController` rather than by classifying the system input source, and custom text and color are stored per mode. `CursorIndicatorGeometry` keeps placement, clamping, and easing pure and testable; the panel, its 30 Hz tracking timer, and the 5 Hz Caps Lock poll run only while the indicator is enabled and a client is active. Standalone Shift updates this existing indicator directly and does not present a second transient boxed `中` or `A` HUD.
 
@@ -175,9 +175,9 @@ The bundle metadata declares:
 - one stable Text Input Sources parent with Chinese and English modes;
 - a localized English and Traditional Chinese display name.
 
-Each language mode has its own first-party color icon (red `中` or blue `A`) for
-direct selection through the macOS input menu. Standalone Shift switching stays
-inside Jiukong so the system does not add its fixed `ABC` overlay.
+Each language mode has its own first-party color icon (red `中` or blue `A`).
+Direct menu selection and standalone Shift switching both select the concrete
+mode so the macOS input-menu icon reflects the active language.
 
 The bundle identifier is not free-form. Text Input Sources only creates an input source when the identifier contains an `inputmethod` component that is not the last one, and only while no other bundle claims the same identifier in LaunchServices. Both failures are silent: `TISRegisterInputSource` returns `noErr` and the source simply never appears. `tw.idv.jiukong.inputmethod.zhuyin` satisfies the first; the second is a workflow hazard, because every build registers another copy of the same identifier under `.build`.
 

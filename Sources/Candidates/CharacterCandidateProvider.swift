@@ -38,15 +38,15 @@ final class CharacterCandidateProvider {
             rankOffset: 0
         )
 
-        // First tone (Space, the default when no tone key is pressed) and
-        // neutral tone (˙, a common "don't care which tone" shortcut in
-        // fast/casual speech) are both routinely typed without regard to a
-        // character's actual tone — e.g. 播 is canonically ㄅㄛˋ, never
-        // ㄅㄛ or ˙ㄅㄛ. Widen either one across the other tones of the
-        // same body so those characters stay reachable without requiring
-        // the exact tone key.
-        if let body = CanonicalBopomofoReading.neutralToneBody(of: pronunciation)
-            ?? CanonicalBopomofoReading.firstToneBody(of: pronunciation) {
+        // Neutral tone remains a convenient "don't care which tone"
+        // shortcut in fast/casual speech. First tone is different: Space is
+        // an explicit tone key in every supported layout, so widening it
+        // would let a learned candidate from another tone replace the typed
+        // reading and break exact phrase lookup (for example, ㄐㄧㄣ ㄊㄧㄢ
+        // must still be able to resolve to 「今天」).
+        if let body = CanonicalBopomofoReading.neutralToneBody(
+            of: pronunciation
+        ) {
             var seenText = Set(characterCandidates.map(\.text))
             let otherTonedReadings = CanonicalBopomofoReading
                 .tonedReadings(forBody: body)

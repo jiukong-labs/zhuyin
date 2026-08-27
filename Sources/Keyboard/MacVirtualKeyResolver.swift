@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 
 enum MacVirtualKeyResolver {
@@ -54,6 +55,36 @@ enum MacVirtualKeyResolver {
         case kVK_Escape: return .escape
         case kVK_Return: return .returnKey
         case kVK_ANSI_KeypadEnter: return .keypadEnter
+        default: return nil
+        }
+    }
+}
+
+/// A narrow Chinese-mode escape for entering ASCII digits without changing
+/// input mode. Other Option chords remain owned by the client application.
+enum OptionDigitShortcut {
+    static func text(
+        for key: KeyboardKey?,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> String? {
+        let modifiers = modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .subtracting(.capsLock)
+        guard modifiers == .option else {
+            return nil
+        }
+
+        switch key {
+        case .digit0: return "0"
+        case .digit1: return "1"
+        case .digit2: return "2"
+        case .digit3: return "3"
+        case .digit4: return "4"
+        case .digit5: return "5"
+        case .digit6: return "6"
+        case .digit7: return "7"
+        case .digit8: return "8"
+        case .digit9: return "9"
         default: return nil
         }
     }

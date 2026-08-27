@@ -74,4 +74,53 @@ final class StandardZhuyinLayoutTests: XCTestCase {
         XCTAssertNil(layout.component(for: .quote))
         XCTAssertNil(layout.component(for: .equal))
     }
+
+    func testOptionDigitShortcutProducesEveryTopRowASCIIDigit() {
+        let mappings: [(KeyboardKey, String)] = [
+            (.digit0, "0"), (.digit1, "1"), (.digit2, "2"),
+            (.digit3, "3"), (.digit4, "4"), (.digit5, "5"),
+            (.digit6, "6"), (.digit7, "7"), (.digit8, "8"),
+            (.digit9, "9"),
+        ]
+
+        for (key, expectedText) in mappings {
+            XCTAssertEqual(
+                OptionDigitShortcut.text(
+                    for: key,
+                    modifierFlags: .option
+                ),
+                expectedText
+            )
+            XCTAssertEqual(
+                OptionDigitShortcut.text(
+                    for: key,
+                    modifierFlags: [.option, .capsLock]
+                ),
+                expectedText
+            )
+        }
+    }
+
+    func testOptionDigitShortcutRejectsOtherKeysAndModifierChords() {
+        XCTAssertNil(
+            OptionDigitShortcut.text(for: .letterA, modifierFlags: .option)
+        )
+        XCTAssertNil(
+            OptionDigitShortcut.text(for: .digit1, modifierFlags: [])
+        )
+
+        for modifiers: NSEvent.ModifierFlags in [
+            [.option, .shift],
+            [.option, .command],
+            [.option, .control],
+            [.option, .function],
+        ] {
+            XCTAssertNil(
+                OptionDigitShortcut.text(
+                    for: .digit1,
+                    modifierFlags: modifiers
+                )
+            )
+        }
+    }
 }

@@ -269,9 +269,9 @@ final class ShiftToggleControllerTests: XCTestCase {
     func testLanguageModeControllerAlternatesModes() {
         let modeController = LanguageModeController(initialMode: .chinese)
 
-        XCTAssertEqual(modeController.toggleInternally(), .english)
-        XCTAssertEqual(modeController.toggleInternally(), .chinese)
-        XCTAssertTrue(modeController.isInternallyManaged)
+        XCTAssertEqual(modeController.mode.toggled, .english)
+        _ = modeController.synchronize(withSystemMode: .english)
+        XCTAssertEqual(modeController.mode.toggled, .chinese)
     }
 
     func testLanguageModesHaveStableInputSourceIdentifiers() {
@@ -303,14 +303,11 @@ final class ShiftToggleControllerTests: XCTestCase {
     func testLanguageModeControllerCanSynchronizeWithSystemMode() {
         let modeController = LanguageModeController(initialMode: .chinese)
 
-        _ = modeController.toggleInternally()
-        XCTAssertTrue(modeController.isInternallyManaged)
         XCTAssertEqual(
             modeController.synchronize(withSystemMode: .english),
             .english
         )
         XCTAssertEqual(modeController.mode, .english)
-        XCTAssertFalse(modeController.isInternallyManaged)
     }
 
     func testIndependentGestureTrackersCanDriveOneLanguageMode() {
@@ -320,13 +317,17 @@ final class ShiftToggleControllerTests: XCTestCase {
 
         _ = press(.left, on: &firstClient)
         if release(.left, on: &firstClient) {
-            modeController.toggleInternally()
+            modeController.synchronize(
+                withSystemMode: modeController.mode.toggled
+            )
         }
         XCTAssertEqual(modeController.mode, .english)
 
         _ = press(.right, on: &secondClient)
         if release(.right, on: &secondClient) {
-            modeController.toggleInternally()
+            modeController.synchronize(
+                withSystemMode: modeController.mode.toggled
+            )
         }
         XCTAssertEqual(modeController.mode, .chinese)
     }

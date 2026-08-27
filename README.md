@@ -89,7 +89,7 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
-單獨按下 `⌥ Option` 不會觸發久空功能。按住 Option 搭配其他鍵時，按鍵會交由目前 App 與 macOS 鍵盤配置處理；若久空正在組字，會先完成目前組字再交回快捷鍵。
+中文模式下，`⌥ Option` 搭配主鍵區 `0`–`9` 會直接輸入半形數字；其他 Option 組合鍵仍交由目前 App 與 macOS 鍵盤配置處理。若久空正在組字，會先完成目前組字。英文模式不改寫任何 Option 組合鍵。
 
 候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選回到該候選的注音編輯，或從定位字向左進入前一字的注音編輯，再逐一刪除注音 component；造詞範圍存在時則刪除整個範圍。
 
@@ -123,7 +123,7 @@ Shift+[  『      Shift+]  』      Shift+\  ／
 
 ### 中英文切換
 
-中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換留在久空輸入法內，不會觸發 macOS 固定的 `ABC` 輸入來源提示；若已開啟游標指示器，久空會直接把它更新為相應的「中」或 `A`。指示器關閉時不另外顯示短暫 HUD，也不會搶走目前 App 的鍵盤焦點。
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換會選取久空對應的 macOS 輸入 mode，使選單列圖示同步顯示紅「中」或藍 `A`；macOS 也可能短暫顯示其原生輸入來源提示。若已開啟游標指示器，久空會直接把它更新為相應的「中」或 `A`。
 
 英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
@@ -184,6 +184,19 @@ iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即�
 - macOS 13 or later for the input method
 - macOS 14 or later for the current unit-test target
 - Xcode 26.6 or a compatible Xcode version with the macOS SDK
+
+## Download and install
+
+Public versions are distributed from [GitHub Releases](https://github.com/jiukong-labs/zhuyin/releases)
+as universal, Developer ID-signed and Apple-notarized `.pkg` installers. The
+installer places 久空輸入法 in `/Library/Input Methods`; macOS still requires
+each user to approve and enable a newly installed input method in System
+Settings.
+
+See the [installation guide](docs/INSTALL.md) for verification, enablement,
+updates, and removal. Maintainers should use the guarded release process in
+[Public release](docs/RELEASING.md); the local script below is only for
+development builds.
 
 ## Build and test
 
@@ -247,10 +260,10 @@ The bundle is the parent of two modes that remain directly selectable from the
 macOS input menu:
 `tw.idv.jiukong.inputmethod.zhuyin.Chinese` and
 `tw.idv.jiukong.inputmethod.zhuyin.English`. Their first-party color icons
-show red `中` and blue `A`. A standalone Shift changes Jiukong's shared runtime
-mode without asking Text Input Sources to select another mode, preventing the
-separate fixed `ABC` overlay. When enabled, Jiukong's cursor indicator updates
-in place to report the change; no additional transient HUD is shown.
+show red `中` and blue `A`. A standalone Shift selects the corresponding mode,
+so the macOS input-menu icon and Jiukong's optional cursor indicator both
+update to report the change. macOS may also show its native transient
+input-source indicator.
 
 - **The identifier must contain an `inputmethod` component that is not the last one.** `tw.idv.jiukong.inputmethod.zhuyin` and `tw.idv.inputmethod.zhuyin` register; `tw.idv.jiukong.zhuyin`, `tw.idv.jiukong.zhuyinim`, and `tw.idv.jiukong.zhuyin.inputmethod` do not. `TISRegisterInputSource` still returns `noErr` for the rejected ones, so the only symptom is that the source never appears.
 - **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
@@ -309,7 +322,7 @@ Composition and candidate lookup stay on the Mac. When iCloud learning sync is e
 
 ## Project
 
-- GitHub: https://github.com/jiukong-labs/jiukong-zhuyin
+- GitHub: https://github.com/jiukong-labs/zhuyin
 - Website: https://jiukong.cloudgate.org.tw
 - License: [MIT](LICENSE)
 

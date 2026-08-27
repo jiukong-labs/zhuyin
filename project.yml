@@ -73,6 +73,14 @@ targets:
         buildPhase: resources
       - path: Resources/Dictionary/JiukongZhuyin.sqlite3
         buildPhase: resources
+      - path: LICENSE
+        buildPhase: resources
+      - path: THIRD_PARTY_NOTICES.md
+        buildPhase: resources
+      - path: Data/MOEIdioms/idiomsdict_usage_note.txt
+        buildPhase: resources
+      - path: Data/MOERevisedDictionary/reviseddict_usage_note.txt
+        buildPhase: resources
       - path: Resources/en.lproj/InfoPlist.strings
         buildPhase: resources
       - path: Resources/zh-Hant.lproj/InfoPlist.strings

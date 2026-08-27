@@ -6,6 +6,11 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- Developer ID signing, CloudKit production export, notarization, stapling,
+  checksum, and signed installer-package release tooling, including a guarded
+  GitHub Actions workflow that uploads only to an existing draft release.
+- The application bundle now carries the project license, consolidated
+  third-party notices, and the source-verbatim MOE dictionary usage notes.
 - The General settings pane now explains standalone Option and Option-key
   shortcut pass-through behavior beside the Shift language-toggle setting.
 - Offline-first iCloud CloudKit synchronization for character learning and
