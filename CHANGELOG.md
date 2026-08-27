@@ -6,13 +6,18 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- A release-blocking installed input-behavior matrix now covers Option ASCII,
+  Shift language round trips, active-composition finalization, candidates,
+  revision, punctuation, and phrase selection; CI locks its required manifest.
 - Developer ID signing, CloudKit production export, notarization, stapling,
   checksum, and signed installer-package release tooling, including a guarded
   GitHub Actions workflow that uploads only to an existing draft release.
 - The application bundle now carries the project license, consolidated
   third-party notices, and the source-verbatim MOE dictionary usage notes.
-- The General settings pane now explains standalone Option and Option-key
-  shortcut pass-through behavior beside the Shift language-toggle setting.
+- Chinese mode now supports Option+A–Z for lowercase ASCII letters and
+  Option+Shift+A–Z for uppercase letters, alongside Option+0–9 digits.
+- The General settings pane now explains the Option ASCII shortcuts and
+  pass-through behavior beside the Shift language-toggle setting.
 - Offline-first iCloud CloudKit synchronization for character learning and
   user phrases, including encrypted record fields, deterministic opaque IDs,
   first-launch restoration, persistent offline mutations, deletion

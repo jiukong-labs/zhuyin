@@ -75,7 +75,7 @@ final class StandardZhuyinLayoutTests: XCTestCase {
         XCTAssertNil(layout.component(for: .equal))
     }
 
-    func testOptionDigitShortcutProducesEveryTopRowASCIIDigit() {
+    func testOptionASCIIShortcutProducesEveryTopRowDigit() {
         let mappings: [(KeyboardKey, String)] = [
             (.digit0, "0"), (.digit1, "1"), (.digit2, "2"),
             (.digit3, "3"), (.digit4, "4"), (.digit5, "5"),
@@ -85,14 +85,14 @@ final class StandardZhuyinLayoutTests: XCTestCase {
 
         for (key, expectedText) in mappings {
             XCTAssertEqual(
-                OptionDigitShortcut.text(
+                OptionASCIIShortcut.text(
                     for: key,
                     modifierFlags: .option
                 ),
                 expectedText
             )
             XCTAssertEqual(
-                OptionDigitShortcut.text(
+                OptionASCIIShortcut.text(
                     for: key,
                     modifierFlags: [.option, .capsLock]
                 ),
@@ -101,23 +101,56 @@ final class StandardZhuyinLayoutTests: XCTestCase {
         }
     }
 
-    func testOptionDigitShortcutRejectsOtherKeysAndModifierChords() {
+    func testOptionASCIIShortcutProducesLowercaseAndShiftedUppercaseLetters() {
+        let mappings: [(KeyboardKey, String)] = [
+            (.letterA, "a"), (.letterB, "b"), (.letterC, "c"),
+            (.letterD, "d"), (.letterE, "e"), (.letterF, "f"),
+            (.letterG, "g"), (.letterH, "h"), (.letterI, "i"),
+            (.letterJ, "j"), (.letterK, "k"), (.letterL, "l"),
+            (.letterM, "m"), (.letterN, "n"), (.letterO, "o"),
+            (.letterP, "p"), (.letterQ, "q"), (.letterR, "r"),
+            (.letterS, "s"), (.letterT, "t"), (.letterU, "u"),
+            (.letterV, "v"), (.letterW, "w"), (.letterX, "x"),
+            (.letterY, "y"), (.letterZ, "z"),
+        ]
+
+        for (key, lowercase) in mappings {
+            XCTAssertEqual(
+                OptionASCIIShortcut.text(
+                    for: key,
+                    modifierFlags: .option
+                ),
+                lowercase
+            )
+            XCTAssertEqual(
+                OptionASCIIShortcut.text(
+                    for: key,
+                    modifierFlags: [.option, .shift]
+                ),
+                lowercase.uppercased()
+            )
+        }
+    }
+
+    func testOptionASCIIShortcutRejectsOtherKeysAndModifierChords() {
         XCTAssertNil(
-            OptionDigitShortcut.text(for: .letterA, modifierFlags: .option)
+            OptionASCIIShortcut.text(for: .digit1, modifierFlags: [])
         )
         XCTAssertNil(
-            OptionDigitShortcut.text(for: .digit1, modifierFlags: [])
+            OptionASCIIShortcut.text(
+                for: .digit1,
+                modifierFlags: [.option, .shift]
+            )
         )
 
         for modifiers: NSEvent.ModifierFlags in [
-            [.option, .shift],
             [.option, .command],
             [.option, .control],
             [.option, .function],
         ] {
             XCTAssertNil(
-                OptionDigitShortcut.text(
-                    for: .digit1,
+                OptionASCIIShortcut.text(
+                    for: .letterA,
                     modifierFlags: modifiers
                 )
             )

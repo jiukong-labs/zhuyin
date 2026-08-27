@@ -67,6 +67,14 @@ Before returning success it verifies the stable bundle identifier, both CPU
 architectures, Developer ID signature, Hardened Runtime, embedded provisioning
 profile, installer signature, notarization ticket, and Gatekeeper assessment.
 
+Before creating the tag, install the exact working build and run the local
+source, unit, and installed-input preflight:
+
+```sh
+./scripts/install.sh
+./scripts/run-release-preflight.sh
+```
+
 ## GitHub release workflow
 
 Create a protected GitHub Actions environment named `release`, then add these
@@ -87,8 +95,9 @@ private key, profile, password, or decoded secret in the repository.
 For each release:
 
 1. Update `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`,
-   regenerate the checked-in Xcode project, and complete CI and installed
-   acceptance testing.
+   regenerate the checked-in Xcode project, complete CI, install that exact
+   build, and pass `scripts/run-release-preflight.sh`, including every default
+   scenario defined by the [input behavior matrix](INPUT_BEHAVIOR_MATRIX.md).
 2. Create and push the matching tag, such as `v0.1.0`.
 3. Create a draft GitHub Release for that existing tag.
 4. Run **Build signed release** and enter the tag.
@@ -116,6 +125,10 @@ Mac and, while x86_64 remains supported, one Intel Mac:
    preserve local user data.
 6. `THIRD_PARTY_NOTICES.md`, `LICENSE`, and both source-verbatim MOE usage notes
    are present in the installed app's `Contents/Resources` directory.
+
+The installed input-behavior gate is release-blocking. Record its command and
+passing script count in the draft release notes; do not substitute a green
+unit-test run for the real InputMethodKit acceptance path.
 
 New input methods may require explicit approval in System Settings, and macOS
 may require one sign-out/sign-in before the input source appears. Document that

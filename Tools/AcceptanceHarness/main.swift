@@ -56,11 +56,45 @@ func select(id: String) -> Bool {
 
 struct Keystroke {
     let keyCode: Int
-    let flags: CGEventFlags
+    let keyDownFlags: CGEventFlags
+    let keyUpFlags: CGEventFlags
+    let settleDelayMicroseconds: useconds_t
 
-    init(_ keyCode: Int, _ flags: CGEventFlags = []) {
+    init(
+        _ keyCode: Int,
+        _ flags: CGEventFlags = [],
+        settleDelayMicroseconds: useconds_t = 120_000
+    ) {
         self.keyCode = keyCode
-        self.flags = flags
+        keyDownFlags = flags
+        keyUpFlags = flags
+        self.settleDelayMicroseconds = settleDelayMicroseconds
+    }
+
+    /// Modifier-only gestures need different flags on press and release so
+    /// InputMethodKit receives a real standalone `flagsChanged` pair.
+    static func modifierTap(
+        _ keyCode: Int,
+        flag: CGEventFlags
+    ) -> Keystroke {
+        Keystroke(
+            keyCode,
+            keyDownFlags: flag,
+            keyUpFlags: [],
+            settleDelayMicroseconds: 900_000
+        )
+    }
+
+    private init(
+        _ keyCode: Int,
+        keyDownFlags: CGEventFlags,
+        keyUpFlags: CGEventFlags,
+        settleDelayMicroseconds: useconds_t
+    ) {
+        self.keyCode = keyCode
+        self.keyDownFlags = keyDownFlags
+        self.keyUpFlags = keyUpFlags
+        self.settleDelayMicroseconds = settleDelayMicroseconds
     }
 }
 
@@ -73,7 +107,9 @@ func post(_ keystroke: Keystroke, to pid: pid_t) {
         ) else {
             continue
         }
-        event.flags = keystroke.flags
+        event.flags = isDown
+            ? keystroke.keyDownFlags
+            : keystroke.keyUpFlags
         event.postToPid(pid)
         usleep(28_000)
     }
@@ -121,6 +157,19 @@ struct AcceptanceScript {
     let probe: [Int]
     let keystrokes: [Keystroke]
     let expectation: String
+    let includedInDefaultRun: Bool
+
+    init(
+        probe: [Int],
+        keystrokes: [Keystroke],
+        expectation: String,
+        includedInDefaultRun: Bool = true
+    ) {
+        self.probe = probe
+        self.keystrokes = keystrokes
+        self.expectation = expectation
+        self.includedInDefaultRun = includedInDefaultRun
+    }
 }
 
 let standardProbe = [kVK_ANSI_J, kVK_ANSI_I, kVK_ANSI_3]
@@ -155,6 +204,45 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_Return),
         ],
         expectation: "我不"
+    ),
+    // Option ASCII is synthesized by Jiukong in Chinese mode rather than
+    // relying on the client application's keyboard-layout pass-through.
+    "option-ascii": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_A, .maskAlternate),
+            Keystroke(kVK_ANSI_Z, .maskAlternate),
+            Keystroke(kVK_ANSI_A, [.maskAlternate, .maskShift]),
+            Keystroke(kVK_ANSI_Z, [.maskAlternate, .maskShift]),
+            Keystroke(kVK_ANSI_0, .maskAlternate),
+            Keystroke(kVK_ANSI_9, .maskAlternate),
+        ],
+        expectation: "azAZ09"
+    ),
+    // An Option ASCII shortcut must accept the active candidate exactly once
+    // before inserting its literal text into the client.
+    "option-after-composition": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I),
+            Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_A, .maskAlternate),
+            Keystroke(kVK_ANSI_1, .maskAlternate),
+        ],
+        expectation: "我a1"
+    ),
+    // A complete Chinese → English → Chinese round trip proves both the
+    // standalone modifier gesture and direct English-mode event pass-through.
+    "shift-round-trip": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            .modifierTap(kVK_Shift, flag: .maskShift),
+            Keystroke(kVK_ANSI_A),
+            .modifierTap(kVK_Shift, flag: .maskShift),
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I),
+            Keystroke(kVK_ANSI_3), Keystroke(kVK_Return),
+        ],
+        expectation: "a我"
     ),
     // ㄘㄜˋ initially falls back to CNS source-order 冊. Completing ㄕˋ
     // must offer the first-party exact phrase and replace that suffix with 測試.
@@ -310,7 +398,8 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_X), Keystroke(kVK_ANSI_O), Keystroke(kVK_ANSI_3),
             Keystroke(kVK_Return),
         ],
-        expectation: "我"
+        expectation: "我",
+        includedInDefaultRun: false
     ),
     // Requires JiukongKeyboardArrangement = ibm before the process starts.
     "ibm": AcceptanceScript(
@@ -320,15 +409,26 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_Comma),
             Keystroke(kVK_Return),
         ],
-        expectation: "我"
+        expectation: "我",
+        includedInDefaultRun: false
     ),
 ]
 
 // MARK: - Run
 
 let arguments = Array(CommandLine.arguments.dropFirst())
+if arguments == ["--list-default"] {
+    let names = scripts
+        .filter(\.value.includedInDefaultRun)
+        .map(\.key)
+        .sorted()
+    print(names.joined(separator: "\n"))
+    exit(0)
+}
+
 guard let scriptName = arguments.first, let script = scripts[scriptName] else {
     print("usage: JiukongAcceptanceHarness <script>")
+    print("       JiukongAcceptanceHarness --list-default")
     print("scripts: \(scripts.keys.sorted().joined(separator: ", "))")
     exit(2)
 }
@@ -421,7 +521,7 @@ usleep(400_000)
 
 for keystroke in script.keystrokes {
     post(keystroke, to: clientPID)
-    usleep(120_000)
+    usleep(keystroke.settleDelayMicroseconds)
 }
 usleep(700_000)
 

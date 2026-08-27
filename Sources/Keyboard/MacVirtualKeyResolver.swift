@@ -60,9 +60,9 @@ enum MacVirtualKeyResolver {
     }
 }
 
-/// A narrow Chinese-mode escape for entering ASCII digits without changing
-/// input mode. Other Option chords remain owned by the client application.
-enum OptionDigitShortcut {
+/// A Chinese-mode escape for entering ASCII letters and digits without
+/// changing input mode. Other Option chords remain owned by the client.
+enum OptionASCIIShortcut {
     static func text(
         for key: KeyboardKey?,
         modifierFlags: NSEvent.ModifierFlags
@@ -70,22 +70,55 @@ enum OptionDigitShortcut {
         let modifiers = modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .subtracting(.capsLock)
-        guard modifiers == .option else {
+        guard modifiers == .option || modifiers == [.option, .shift] else {
             return nil
         }
 
         switch key {
-        case .digit0: return "0"
-        case .digit1: return "1"
-        case .digit2: return "2"
-        case .digit3: return "3"
-        case .digit4: return "4"
-        case .digit5: return "5"
-        case .digit6: return "6"
-        case .digit7: return "7"
-        case .digit8: return "8"
-        case .digit9: return "9"
+        case .digit0 where modifiers == .option: return "0"
+        case .digit1 where modifiers == .option: return "1"
+        case .digit2 where modifiers == .option: return "2"
+        case .digit3 where modifiers == .option: return "3"
+        case .digit4 where modifiers == .option: return "4"
+        case .digit5 where modifiers == .option: return "5"
+        case .digit6 where modifiers == .option: return "6"
+        case .digit7 where modifiers == .option: return "7"
+        case .digit8 where modifiers == .option: return "8"
+        case .digit9 where modifiers == .option: return "9"
+        case .letterA: return letter("a", modifiers: modifiers)
+        case .letterB: return letter("b", modifiers: modifiers)
+        case .letterC: return letter("c", modifiers: modifiers)
+        case .letterD: return letter("d", modifiers: modifiers)
+        case .letterE: return letter("e", modifiers: modifiers)
+        case .letterF: return letter("f", modifiers: modifiers)
+        case .letterG: return letter("g", modifiers: modifiers)
+        case .letterH: return letter("h", modifiers: modifiers)
+        case .letterI: return letter("i", modifiers: modifiers)
+        case .letterJ: return letter("j", modifiers: modifiers)
+        case .letterK: return letter("k", modifiers: modifiers)
+        case .letterL: return letter("l", modifiers: modifiers)
+        case .letterM: return letter("m", modifiers: modifiers)
+        case .letterN: return letter("n", modifiers: modifiers)
+        case .letterO: return letter("o", modifiers: modifiers)
+        case .letterP: return letter("p", modifiers: modifiers)
+        case .letterQ: return letter("q", modifiers: modifiers)
+        case .letterR: return letter("r", modifiers: modifiers)
+        case .letterS: return letter("s", modifiers: modifiers)
+        case .letterT: return letter("t", modifiers: modifiers)
+        case .letterU: return letter("u", modifiers: modifiers)
+        case .letterV: return letter("v", modifiers: modifiers)
+        case .letterW: return letter("w", modifiers: modifiers)
+        case .letterX: return letter("x", modifiers: modifiers)
+        case .letterY: return letter("y", modifiers: modifiers)
+        case .letterZ: return letter("z", modifiers: modifiers)
         default: return nil
         }
+    }
+
+    private static func letter(
+        _ lowercase: String,
+        modifiers: NSEvent.ModifierFlags
+    ) -> String {
+        modifiers.contains(.shift) ? lowercase.uppercased() : lowercase
     }
 }

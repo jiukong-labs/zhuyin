@@ -159,7 +159,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
         let optionShortcutLabel = NSTextField(
             wrappingLabelWithString:
-                "⌥ Option：搭配主鍵區 0–9 輸入半形數字；其他 Option 組合鍵交由目前 App 處理。"
+                "⌥ Option：搭配主鍵區 0–9 輸入半形數字，搭配 A–Z 輸入英文字母；其他 Option 組合鍵交由目前 App 處理。"
         )
         optionShortcutLabel.preferredMaxLayoutWidth =
             SettingsPaneBuilder.contentWidth

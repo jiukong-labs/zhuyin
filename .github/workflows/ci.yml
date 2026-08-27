@@ -73,6 +73,11 @@ jobs:
             DEVELOPMENT_TEAM= \
             build
 
+      - name: Check release-blocking acceptance matrix
+        run: |
+          ./scripts/check-acceptance-matrix.sh \
+            ".build/AcceptanceHarness/Build/Products/Release/JiukongAcceptanceHarness"
+
       - name: Check the Release build is a universal binary
         run: |
           binary=".build/DerivedData/Build/Products/Release/Jiukong Zhuyin.app/Contents/MacOS/Jiukong Zhuyin"

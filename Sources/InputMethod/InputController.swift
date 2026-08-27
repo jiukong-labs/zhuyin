@@ -227,7 +227,7 @@ final class InputController: IMKInputController {
             }
         }
 
-        if let digit = OptionDigitShortcut.text(
+        if let asciiText = OptionASCIIShortcut.text(
             for: resolvedKey,
             modifierFlags: event.modifierFlags
         ) {
@@ -235,7 +235,7 @@ final class InputController: IMKInputController {
                 reason: .implicitPassThrough,
                 using: inputClient
             )
-            commitText(digit, to: inputClient)
+            commitText(asciiText, to: inputClient)
             return true
         }
 

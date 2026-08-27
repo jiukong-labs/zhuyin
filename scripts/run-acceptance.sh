@@ -29,6 +29,8 @@ if [[ ! -x "${harness}" ]]; then
   exit 1
 fi
 
+"${script_directory}/check-acceptance-matrix.sh" "${harness}"
+
 # Building anything registers another copy of the bundle identifier under
 # .build, which can silently take the input source away from the installed
 # bundle. Re-assert it before driving the input method.
@@ -38,7 +40,9 @@ typeset -a requested
 if (( $# > 0 )); then
   requested=("$@")
 else
-  requested=(single number-one continuous builtin-phrase sentence revision-arrows revision-backspace revision-forward-delete escape punctuation brackets phrase phrase-right)
+  while IFS= read -r name; do
+    requested+=("${name}")
+  done < <("${harness}" --list-default)
 fi
 
 typeset -i failures=0

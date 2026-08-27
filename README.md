@@ -89,7 +89,7 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
 - 未映射按鍵或一般 Command／Control／Option／Shift／Fn 快捷鍵：先完成目前組字；候選模式會提交目前反白候選，再交回 App。
 
-中文模式下，`⌥ Option` 搭配主鍵區 `0`–`9` 會直接輸入半形數字；其他 Option 組合鍵仍交由目前 App 與 macOS 鍵盤配置處理。若久空正在組字，會先完成目前組字。英文模式不改寫任何 Option 組合鍵。
+中文模式下，`⌥ Option` 搭配主鍵區 `0`–`9` 會直接輸入半形數字，搭配 `A`–`Z` 會輸入小寫英文字母，`Option+Shift+A`–`Z` 則輸入大寫英文字母；其他 Option 組合鍵仍交由目前 App 與 macOS 鍵盤配置處理。若久空正在組字，會先完成目前組字。英文模式不改寫任何 Option 組合鍵。
 
 候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選回到該候選的注音編輯，或從定位字向左進入前一字的注音編輯，再逐一刪除注音 component；造詞範圍存在時則刪除整個範圍。
 
@@ -292,13 +292,19 @@ Unit tests cannot reach the InputMethodKit event path, so the behavior that only
 
 ```sh
 ./scripts/install.sh
-./scripts/run-acceptance.sh              # conversion, revision, punctuation, and both phrase-selection directions
+./scripts/run-acceptance.sh              # release-blocking input behavior matrix
+./scripts/run-release-preflight.sh       # unit tests plus the installed matrix
 ./scripts/run-acceptance.sh eten         # after setting the arrangement preference
 ```
 
 Each run launches its own TextEdit instance, types with real `CGEvent` delivery, compares the resulting text with the expectation, then restores the previous input source and closes the instance it launched. Existing TextEdit windows are untouched.
 
 Every run first completes a probe syllable, presses Down, and requires Jiukong's own candidate panel to appear before it types anything. Without that check a run can silently be composed by the system's built-in Zhuyin input method, which produces the same Bopomofo from the same keys and would look like a pass. A run that cannot prove the connection aborts instead of reporting a result.
+
+The complete release-blocking contract and its script mapping are recorded in
+[`docs/INPUT_BEHAVIOR_MATRIX.md`](docs/INPUT_BEHAVIOR_MATRIX.md). The default
+script list comes from the Harness itself and CI verifies that none of those
+required scenarios disappears silently.
 
 The `phrase` script creates the user phrase 九空 in the local learning database, and every run that commits text advances that character's count. Clear them from the settings window if the data is unwanted. The harness needs Accessibility and event-posting permission for the terminal running it, which is why it is not part of continuous integration.
 
