@@ -142,17 +142,29 @@ jobs:
               -c 'Print :Entitlements:com.apple.developer.icloud-container-identifiers:0' \
               "$profile_plist"
           )"
-          icloud_service="$(
+          icloud_services="$(
             /usr/libexec/PlistBuddy \
-              -c 'Print :Entitlements:com.apple.developer.icloud-services:0' \
+              -c 'Print :Entitlements:com.apple.developer.icloud-services' \
               "$profile_plist"
+          )"
+          icloud_environment="$(
+            /usr/libexec/PlistBuddy \
+              -c 'Print :Entitlements:com.apple.developer.icloud-container-environment' \
+              "$profile_plist"
+          )"
+          provisions_all_devices="$(
+            /usr/libexec/PlistBuddy -c 'Print :ProvisionsAllDevices' "$profile_plist"
           )"
           test "$application_identifier" = "$application_prefix.tw.idv.jiukong.inputmethod.zhuyin" \
             || { echo "::error::Provisioning profile belongs to the wrong App ID"; exit 1; }
           test "$icloud_container" = "iCloud.tw.idv.jiukong.inputmethod.zhuyin" \
             || { echo "::error::Provisioning profile has the wrong iCloud container"; exit 1; }
-          test "$icloud_service" = CloudKit \
+          test "$icloud_services" = '*' || [[ "$icloud_services" = *CloudKit* ]] \
             || { echo "::error::Provisioning profile does not authorize CloudKit"; exit 1; }
+          test "$icloud_environment" = Production \
+            || { echo "::error::Provisioning profile does not select Production CloudKit"; exit 1; }
+          test "$provisions_all_devices" = true \
+            || { echo "::error::Provisioning profile is not a Developer ID all-devices profile"; exit 1; }
 
           profiles_directory="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
           mkdir -p "$profiles_directory"
