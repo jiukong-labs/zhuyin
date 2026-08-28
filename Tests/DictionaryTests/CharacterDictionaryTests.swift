@@ -23,7 +23,8 @@ final class CharacterDictionaryTests: XCTestCase {
                     sourceOrder: 827,
                     cnsPlane: 1,
                     usageTier: 0,
-                    firstPartyPhraseCount: 35
+                    firstPartyPhraseCount: 35,
+                    defaultSelectionCount: 164
                 ),
                 DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1, usageTier: 0),
                 DictionaryCharacter(text: "婑", sourceOrder: 9_357, cnsPlane: 2, usageTier: 2),
@@ -93,7 +94,8 @@ final class CharacterDictionaryTests: XCTestCase {
                 DictionaryPhrase(
                     text: "測試",
                     pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
-                    sourceOrder: 0
+                    sourceOrder: 0,
+                    defaultSelectionCount: 8
                 ),
             ]
         )
@@ -125,6 +127,22 @@ final class CharacterDictionaryTests: XCTestCase {
         )
         XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "1965")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "1964")
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "default_character_ranking_entries"),
+            "804"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "default_character_ranking_selections"),
+            "7066"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "default_phrase_ranking_entries"),
+            "385"
+        )
+        XCTAssertEqual(
+            try dictionary.metadataValue(for: "default_phrase_ranking_selections"),
+            "2277"
+        )
         XCTAssertEqual(
             try dictionary.metadataValue(
                 for: "first_party_attested_character_readings"

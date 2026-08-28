@@ -12,6 +12,8 @@ private enum DictionaryBuilderCommandError: LocalizedError {
         [--frequency-common <MOE common character list>] \
         [--frequency-semi-common <MOE semi-common character list>] \
         [--heteronym-tiers <Jiukong heteronym tier TSV>] \
+        [--default-character-ranking <Jiukong default character ranking TSV>] \
+        [--default-phrase-ranking <Jiukong default phrase ranking TSV>] \
         --output <SQLite database>
         """
     }
@@ -51,6 +53,8 @@ private func run() throws {
         "--frequency-common",
         "--frequency-semi-common",
         "--heteronym-tiers",
+        "--default-character-ranking",
+        "--default-phrase-ranking",
     ]
     let values = try parseFlags(
         arguments,
@@ -73,6 +77,8 @@ private func run() throws {
         commonCharacterTierURL: url("--frequency-common"),
         semiCommonCharacterTierURL: url("--frequency-semi-common"),
         heteronymTierURL: url("--heteronym-tiers"),
+        defaultCharacterRankingURL: url("--default-character-ranking"),
+        defaultPhraseRankingURL: url("--default-phrase-ranking"),
         outputURL: url("--output")!
     )
 
@@ -96,6 +102,8 @@ private func run() throws {
     print("  First-party heteronym tier overrides: \(summary.frequencyTierStatistics.heteronymOverrideCount)")
     print("  First-party attested character readings: \(summary.phraseAttestationStatistics.distinctCharacterReadingCount)")
     print("  First-party character-reading attestations: \(summary.phraseAttestationStatistics.totalCharacterReadingCount)")
+    print("  Default character rankings: \(summary.defaultRankingStatistics.characterEntryCount) entries / \(summary.defaultRankingStatistics.characterSelectionCount) selections")
+    print("  Default phrase rankings: \(summary.defaultRankingStatistics.phraseEntryCount) entries / \(summary.defaultRankingStatistics.phraseSelectionCount) selections")
 }
 
 do {

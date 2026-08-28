@@ -32,9 +32,19 @@ cache.
 
 ## Update
 
-Download and run the newer signed package. It replaces the application bundle
-but preserves preferences, learned selections, and user phrases under the
-current user's Library directory.
+久空 automatically checks the project's latest published GitHub Release at
+most once every 24 hours. It only accepts a stable release that contains both
+the expected signed `.pkg` and adjacent `.pkg.sha256` asset. The request does
+not include composition text, learned selections, or user phrases.
+
+When a new version is available, its version appears under **Check for
+Updates…** in the input-source menu and in the **Software Update** settings
+pane. Open the release page, download and run the newer signed
+package. Administrator approval is still required because the package updates
+`/Library/Input Methods`. It replaces the application bundle but preserves
+preferences, learned selections, and user phrases under the current user's
+Library directory. macOS may continue running the previous process until the
+input method is restarted or the user signs out and back in.
 
 Do not keep a second development copy at
 `~/Library/Input Methods/Jiukong Zhuyin.app`: two bundles with the same

@@ -157,7 +157,7 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 使用者詞候選的右側會顯示可點選的 `×`，可刪除該文字與完整讀音的精確記錄並立即更新候選。內建詞與單字候選不會顯示這個刪除按鈕。
 
-學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v2 原地保留 M6 字頻並加入使用者詞與有順序的逐音讀音。資料庫無法使用時，輸入仍會安全退回 CNS 原始順序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
+學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v2 原地保留 M6 字頻並加入使用者詞與有順序的逐音讀音。內建字典另含專案自有的預設選字基準；個人資料庫無法使用時，輸入仍會安全使用這份內建排序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
 
 iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即同步。輸入與候選查詢永遠使用本機 SQLite，不等待網路；啟動時與持續使用期間會從同一 Apple Account 的 CloudKit 私有資料庫合併變更，本機異動則短暫合併後在背景上傳。同步的是逐筆記錄而非 SQLite 檔案，刪除會留下雲端 tombstone，避免離線的另一台 Mac 或重灌後把舊資料復活。CloudKit record name 只含穩定雜湊，文字、注音、次數、時間與置頂欄位均使用 CloudKit encrypted values。完整設計與部署前置條件見 [iCloud sync notes](docs/CLOUD_SYNC.md)。
 
@@ -197,6 +197,13 @@ See the [installation guide](docs/INSTALL.md) for verification, enablement,
 updates, and removal. Maintainers should use the guarded release process in
 [Public release](docs/RELEASING.md); the local script below is only for
 development builds.
+
+After installation, 久空 checks GitHub for a complete published release at
+most once every 24 hours. The check sends no composition, learning, or user
+phrase data. When an update is available, the input-source menu and Update
+settings pane show the new version and link to its release page. The signed
+`.pkg` must still be installed with macOS Installer because updating
+`/Library/Input Methods` requires administrator approval.
 
 ## Build and test
 

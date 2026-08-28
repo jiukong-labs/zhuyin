@@ -397,6 +397,81 @@ final class CNS11643ParserTests: XCTestCase {
         }
     }
 
+    func testDefaultRankingResolverLoadsOnlyExistingDictionaryEntries() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let characterURL = directory.appendingPathComponent("characters.tsv")
+        let phraseURL = directory.appendingPathComponent("phrases.tsv")
+        try Data("我\tㄨㄛˇ\t164\n".utf8).write(to: characterURL)
+        try Data("測試\tㄘㄜˋ ㄕˋ\t8\n".utf8).write(to: phraseURL)
+
+        let resolver = try JiukongDefaultRankingResolver.make(
+            characterSourceURL: characterURL,
+            phraseSourceURL: phraseURL,
+            characterDataset: makeDefaultRankingCharacterFixture(),
+            phraseDataset: makeDefaultRankingPhraseFixture()
+        )
+
+        XCTAssertEqual(
+            resolver.statistics,
+            JiukongDefaultRankingStatistics(
+                characterEntryCount: 1,
+                phraseEntryCount: 1,
+                characterSelectionCount: 164,
+                phraseSelectionCount: 8
+            )
+        )
+        XCTAssertEqual(
+            resolver.count(character: "我", pronunciation: "ㄨㄛˇ"),
+            164
+        )
+        XCTAssertEqual(
+            resolver.count(
+                phrase: "測試",
+                pronunciationKey: DictionaryPronunciationSequenceKey.encode(
+                    ["ㄘㄜˋ", "ㄕˋ"]
+                )!
+            ),
+            8
+        )
+    }
+
+    func testDefaultRankingResolverRejectsUnknownInvalidAndDuplicateRows() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sourceURL = directory.appendingPathComponent("characters.tsv")
+        let invalidSources = [
+            "我 ㄨㄛˇ 1\n",
+            "我\tASCII\t1\n",
+            "我\tㄨㄛˇ\t0\n",
+            "你\tㄋㄧˇ\t1\n",
+            "我\tㄨㄛˇ\t1\n我\tㄨㄛˇ\t2\n",
+        ]
+
+        for source in invalidSources {
+            try Data(source.utf8).write(to: sourceURL)
+            XCTAssertThrowsError(
+                try JiukongDefaultRankingResolver.make(
+                    characterSourceURL: sourceURL,
+                    phraseSourceURL: nil,
+                    characterDataset: makeDefaultRankingCharacterFixture(),
+                    phraseDataset: .empty
+                ),
+                "Unexpectedly accepted: \(source)"
+            )
+        }
+    }
+
     func testPinnedOfficialSnapshotStatistics() throws {
         let sourceDirectory = repositoryRoot
             .appendingPathComponent("Data", isDirectory: true)
@@ -650,6 +725,50 @@ final class CNS11643ParserTests: XCTestCase {
         directory: URL,
         manifest: CNS11643Manifest
     )
+
+    private func makeDefaultRankingCharacterFixture() -> CNS11643Dataset {
+        CNS11643Dataset(
+            entries: [
+                DictionarySourceEntry(
+                    pronunciation: "ㄨㄛˇ",
+                    character: "我",
+                    cnsCode: "1-2121",
+                    sourceOrder: 0
+                ),
+            ],
+            statistics: CNS11643Statistics(
+                phoneticRowCount: 1,
+                uniqueCNSCodeCount: 1,
+                excludedPrivateUseRowCount: 0,
+                duplicateEntryCount: 0,
+                dictionaryEntryCount: 1,
+                uniqueCharacterCount: 1,
+                pronunciationCount: 1,
+                multiPronunciationCharacterCount: 0
+            )
+        )
+    }
+
+    private func makeDefaultRankingPhraseFixture() -> JiukongPhraseDataset {
+        let readings = ["ㄘㄜˋ", "ㄕˋ"]
+        return JiukongPhraseDataset(
+            entries: [
+                JiukongPhraseEntry(
+                    phrase: "測試",
+                    pronunciationSequence: readings,
+                    pronunciationKey: DictionaryPronunciationSequenceKey.encode(
+                        readings
+                    )!,
+                    sourceOrder: 0
+                ),
+            ],
+            statistics: JiukongPhraseStatistics(
+                entryCount: 1,
+                uniquePhraseCount: 1,
+                pronunciationSequenceCount: 1
+            )
+        )
+    }
 
     private var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath)

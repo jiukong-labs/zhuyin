@@ -27,19 +27,22 @@ struct DictionaryCharacter: Equatable {
     let cnsPlane: Int
     let usageTier: Int
     let firstPartyPhraseCount: Int64
+    let defaultSelectionCount: Int64
 
     init(
         text: String,
         sourceOrder: Int64,
         cnsPlane: Int = 1,
         usageTier: Int = 2,
-        firstPartyPhraseCount: Int64 = 0
+        firstPartyPhraseCount: Int64 = 0,
+        defaultSelectionCount: Int64 = 0
     ) {
         self.text = text
         self.sourceOrder = sourceOrder
         self.cnsPlane = cnsPlane
         self.usageTier = usageTier
         self.firstPartyPhraseCount = firstPartyPhraseCount
+        self.defaultSelectionCount = defaultSelectionCount
     }
 
     var character: String {
@@ -58,6 +61,19 @@ struct DictionaryPhrase: Equatable {
     let text: String
     let pronunciationSequence: [String]
     let sourceOrder: Int64
+    let defaultSelectionCount: Int64
+
+    init(
+        text: String,
+        pronunciationSequence: [String],
+        sourceOrder: Int64,
+        defaultSelectionCount: Int64 = 0
+    ) {
+        self.text = text
+        self.pronunciationSequence = pronunciationSequence
+        self.sourceOrder = sourceOrder
+        self.defaultSelectionCount = defaultSelectionCount
+    }
 }
 
 /// Versioned, UTF-8 length-prefixed key for exact built-in phrase lookup.
@@ -165,7 +181,7 @@ final class CharacterDictionary {
     static let resourceName = "JiukongZhuyin"
     static let resourceExtension = "sqlite3"
     static let applicationID: Int64 = 0x4A4B5A59
-    static let schemaVersion = 4
+    static let schemaVersion = 5
 
     private let database: SQLiteDatabase
 
@@ -204,13 +220,13 @@ final class CharacterDictionary {
 
         do {
             _ = try database.prepare(
-                "SELECT character, source_order, cns_code, usage_tier, first_party_phrase_count FROM dictionary_entries LIMIT 0"
+                "SELECT character, source_order, cns_code, usage_tier, first_party_phrase_count, default_selection_count FROM dictionary_entries LIMIT 0"
             )
             _ = try database.prepare(
                 "SELECT pronunciation, source_order FROM dictionary_entries LIMIT 0"
             )
             _ = try database.prepare(
-                "SELECT pronunciation_key, phrase, source_order FROM phrase_entries LIMIT 0"
+                "SELECT pronunciation_key, phrase, source_order, default_selection_count FROM phrase_entries LIMIT 0"
             )
             _ = try database.prepare("SELECT value FROM metadata LIMIT 0")
         } catch {
@@ -232,7 +248,7 @@ final class CharacterDictionary {
         let statement = try database.prepare(
             """
             SELECT character, source_order, cns_code, usage_tier,
-                   first_party_phrase_count
+                   first_party_phrase_count, default_selection_count
             FROM dictionary_entries
             WHERE pronunciation = ?
             ORDER BY source_order, character
@@ -249,7 +265,8 @@ final class CharacterDictionary {
                     sourceOrder: statement.integer(at: 1),
                     cnsPlane: try cnsPlane(from: cnsCode),
                     usageTier: Int(statement.integer(at: 3)),
-                    firstPartyPhraseCount: statement.integer(at: 4)
+                    firstPartyPhraseCount: statement.integer(at: 4),
+                    defaultSelectionCount: statement.integer(at: 5)
                 )
             )
         }
@@ -288,7 +305,7 @@ final class CharacterDictionary {
         }
         let statement = try database.prepare(
             """
-            SELECT phrase, source_order
+            SELECT phrase, source_order, default_selection_count
             FROM phrase_entries
             WHERE pronunciation_key = ?
             ORDER BY source_order, phrase
@@ -302,7 +319,8 @@ final class CharacterDictionary {
                 DictionaryPhrase(
                     text: try statement.text(at: 0),
                     pronunciationSequence: normalizedReadings,
-                    sourceOrder: statement.integer(at: 1)
+                    sourceOrder: statement.integer(at: 1),
+                    defaultSelectionCount: statement.integer(at: 2)
                 )
             )
         }

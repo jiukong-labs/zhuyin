@@ -49,6 +49,17 @@ struct CandidateRanker {
                 return lhs.pinned
             }
 
+            // Exact phrase queries are emitted longest suffix first. Preserve
+            // that composition boundary before applying frequency, otherwise
+            // a frequent short phrase could replace only part of a longer
+            // exact match and leave stale provisional characters behind.
+            if lhs.type == .phrase, rhs.type == .phrase,
+               lhs.pronunciationSequence.count
+                    != rhs.pronunciationSequence.count {
+                return lhs.pronunciationSequence.count
+                    > rhs.pronunciationSequence.count
+            }
+
             // A deliberate character choice should be useful on the very next
             // lookup, even when that character was far down the CNS source
             // order. Phrases keep their independent tier, and an explicit pin
@@ -96,9 +107,9 @@ struct CandidateRanker {
             baseScore = fallbackBaseScore
         }
 
-        let selectionCount = max(0, candidate.userFrequency)
-        let userBonus = userFrequencyWeight
-            * log2(Double(selectionCount) + 1)
+        let userBonus = frequencyBonus(
+            selectionCount: candidate.userFrequency
+        )
 
         let recencyBonus: Double
         if let lastUsed = candidate.lastUsed {
@@ -111,6 +122,10 @@ struct CandidateRanker {
 
         let typeBonus = candidate.type == .phrase ? phraseBonus : 0
         return baseScore + userBonus + recencyBonus + typeBonus
+    }
+
+    func frequencyBonus(selectionCount: Int64) -> Double {
+        userFrequencyWeight * log2(Double(max(0, selectionCount)) + 1)
     }
 
     private func hasCommittedSelection(_ candidate: Candidate) -> Bool {

@@ -23,6 +23,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var iCloudSyncButton: NSButton?
     private var cloudSyncStatusLabel: NSTextField?
     private var showsRareCandidatesButton: NSButton?
+    private var updateButton: NSButton?
+    private var updateStatusLabel: NSTextField?
 
     private static let arrangements = ZhuyinKeyboardArrangement.allCases
 
@@ -58,6 +60,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             self,
             selector: #selector(cloudSyncDidApplyRemoteChanges(_:)),
             name: UserDataCloudSyncCoordinator.didApplyRemoteChangesNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateCheckDidChange(_:)),
+            name: UpdateController.didChangeNotification,
             object: nil
         )
     }
@@ -109,6 +117,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             ("使用者詞", phraseList.makeView()),
             ("選字紀錄", characterList.makeView()),
             ("資料", makeDataView()),
+            ("更新", makeUpdateView()),
         ] {
             let item = NSTabViewItem(identifier: label)
             item.label = label
@@ -212,6 +221,30 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         )
     }
 
+    private func makeUpdateView() -> NSView {
+        let updateButton = makeButton(
+            "檢查更新…",
+            action: #selector(checkForUpdates(_:))
+        )
+        self.updateButton = updateButton
+
+        let statusLabel = NSTextField(wrappingLabelWithString: "")
+        statusLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.preferredMaxLayoutWidth = SettingsPaneBuilder.contentWidth
+        updateStatusLabel = statusLabel
+
+        return SettingsPaneBuilder.pane(
+            sections: [
+                SettingsPaneBuilder.section(
+                    title: "軟體更新",
+                    controls: [updateButton, statusLabel],
+                    note: "久空每天最多向 GitHub 檢查一次正式版本。只傳送一般的版本查詢，不會傳送輸入內容或使用者資料；安裝新版仍需 macOS 管理員授權。"
+                ),
+            ]
+        )
+    }
+
     private func makeDataView() -> NSView {
         let syncCheckbox = NSButton(
             checkboxWithTitle: "使用 iCloud 自動同步選字與使用者詞",
@@ -287,6 +320,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         iCloudSyncButton?.state = current.iCloudSyncEnabled ? .on : .off
         showsRareCandidatesButton?.state =
             current.showsRareCandidates ? .on : .off
+        reloadUpdateStatus()
         reloadCloudSyncStatus()
         cursorIndicatorSettings.reload()
     }
@@ -352,6 +386,48 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     @objc private func showsRareCandidatesDidChange(_ sender: NSButton) {
         preferences.update {
             $0.showsRareCandidates = sender.state == .on
+        }
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        let updater = UpdateController.shared
+        if case .updateAvailable = updater.state {
+            UpdatePrompt.present(updater.state)
+            return
+        }
+        updater.checkNow { state in
+            UpdatePrompt.present(state)
+        }
+    }
+
+    @objc private func updateCheckDidChange(_ notification: Notification) {
+        reloadUpdateStatus()
+    }
+
+    private func reloadUpdateStatus() {
+        let state = UpdateController.shared.state
+        switch state {
+        case let .idle(installedVersion):
+            updateButton?.title = "檢查更新…"
+            updateButton?.isEnabled = true
+            updateStatusLabel?.stringValue = "目前版本：\(installedVersion)"
+        case let .checking(installedVersion):
+            updateButton?.title = "正在檢查…"
+            updateButton?.isEnabled = false
+            updateStatusLabel?.stringValue = "正在檢查版本 \(installedVersion) 的更新。"
+        case let .upToDate(installedVersion):
+            updateButton?.title = "再次檢查…"
+            updateButton?.isEnabled = true
+            updateStatusLabel?.stringValue = "目前版本 \(installedVersion) 已是最新版。"
+        case let .updateAvailable(release, installedVersion):
+            updateButton?.title = "下載 \(release.version)…"
+            updateButton?.isEnabled = true
+            updateStatusLabel?.stringValue =
+                "有新版 \(release.version)；目前版本為 \(installedVersion)。"
+        case let .failed(_, message):
+            updateButton?.title = "再試一次…"
+            updateButton?.isEnabled = true
+            updateStatusLabel?.stringValue = "上次檢查失敗：\(message)"
         }
     }
 
@@ -457,7 +533,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     @objc private func clearAllUserData(_ sender: Any?) {
         performClear(
             message: "清除全部使用者資料？",
-            informative: "會刪除所有選字紀錄與使用者詞，排序會回到 CNS 原始順序。"
+            informative: "會刪除所有個人選字紀錄與使用者詞，排序會回到久空內建預設。"
         ) { [learning] in
             learning.clearAllUserData()
         }

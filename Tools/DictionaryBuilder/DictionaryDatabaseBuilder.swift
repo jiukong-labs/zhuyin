@@ -11,6 +11,7 @@ struct DictionaryBuildSummary {
     let revisedDictionaryStatistics: JiukongPhraseStatistics
     let frequencyTierStatistics: JiukongFrequencyTierStatistics
     let phraseAttestationStatistics: JiukongPhraseAttestationStatistics
+    let defaultRankingStatistics: JiukongDefaultRankingStatistics
 }
 
 struct JiukongCharacterEntry: Equatable {
@@ -647,6 +648,259 @@ struct FirstPartyPhraseAttestationResolver {
     }
 }
 
+struct JiukongDefaultRankingStatistics: Equatable {
+    let characterEntryCount: Int
+    let phraseEntryCount: Int
+    let characterSelectionCount: Int64
+    let phraseSelectionCount: Int64
+
+    static let empty = JiukongDefaultRankingStatistics(
+        characterEntryCount: 0,
+        phraseEntryCount: 0,
+        characterSelectionCount: 0,
+        phraseSelectionCount: 0
+    )
+}
+
+enum JiukongDefaultRankingError: LocalizedError, Equatable {
+    case invalidTextEncoding(file: String)
+    case malformedLine(file: String, line: Int)
+    case invalidEntry(file: String, line: Int, reason: String)
+    case duplicateEntry(file: String, line: Int)
+    case entryNotFound(file: String, line: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case let .invalidTextEncoding(file):
+            return "The Jiukong default-ranking source is not valid UTF-8: \(file)"
+        case let .malformedLine(file, line):
+            return "Malformed Jiukong default-ranking row at \(file):\(line)."
+        case let .invalidEntry(file, line, reason):
+            return "Invalid Jiukong default-ranking row at \(file):\(line): \(reason)"
+        case let .duplicateEntry(file, line):
+            return "Duplicate Jiukong default-ranking row at \(file):\(line)."
+        case let .entryNotFound(file, line):
+            return "Jiukong default-ranking row at \(file):\(line) is absent from the built dictionary."
+        }
+    }
+}
+
+/// First-party selection counts captured from Jiukong's own use.
+/// They are a timeless built-in prior, not mutable user data: runtime learning
+/// remains separate and can immediately override the baseline by recency or a
+/// pin. Every row must resolve to an entry already accepted by this build, so
+/// this data can never introduce a new character reading or phrase.
+struct JiukongDefaultRankingResolver {
+    private struct CharacterKey: Hashable {
+        let character: String
+        let pronunciation: String
+    }
+
+    private struct PhraseKey: Hashable {
+        let phrase: String
+        let pronunciationKey: String
+    }
+
+    private let characterCounts: [CharacterKey: Int64]
+    private let phraseCounts: [PhraseKey: Int64]
+    let statistics: JiukongDefaultRankingStatistics
+
+    static let empty = JiukongDefaultRankingResolver(
+        characterCounts: [:],
+        phraseCounts: [:]
+    )
+
+    static func make(
+        characterSourceURL: URL?,
+        phraseSourceURL: URL?,
+        characterDataset: CNS11643Dataset,
+        phraseDataset: JiukongPhraseDataset
+    ) throws -> JiukongDefaultRankingResolver {
+        let knownCharacters = Set(characterDataset.entries.map {
+            CharacterKey(
+                character: $0.character,
+                pronunciation: $0.pronunciation
+            )
+        })
+        let knownPhrases = Set(phraseDataset.entries.map {
+            PhraseKey(
+                phrase: $0.phrase,
+                pronunciationKey: $0.pronunciationKey
+            )
+        })
+
+        let characterCounts = try parseCharacters(
+            sourceURL: characterSourceURL,
+            knownEntries: knownCharacters
+        )
+        let phraseCounts = try parsePhrases(
+            sourceURL: phraseSourceURL,
+            knownEntries: knownPhrases
+        )
+        return JiukongDefaultRankingResolver(
+            characterCounts: characterCounts,
+            phraseCounts: phraseCounts
+        )
+    }
+
+    private init(
+        characterCounts: [CharacterKey: Int64],
+        phraseCounts: [PhraseKey: Int64]
+    ) {
+        self.characterCounts = characterCounts
+        self.phraseCounts = phraseCounts
+        statistics = JiukongDefaultRankingStatistics(
+            characterEntryCount: characterCounts.count,
+            phraseEntryCount: phraseCounts.count,
+            characterSelectionCount: characterCounts.values.reduce(0, +),
+            phraseSelectionCount: phraseCounts.values.reduce(0, +)
+        )
+    }
+
+    func count(character: String, pronunciation: String) -> Int64 {
+        characterCounts[
+            CharacterKey(
+                character: character,
+                pronunciation: pronunciation
+            ),
+            default: 0
+        ]
+    }
+
+    func count(phrase: String, pronunciationKey: String) -> Int64 {
+        phraseCounts[
+            PhraseKey(phrase: phrase, pronunciationKey: pronunciationKey),
+            default: 0
+        ]
+    }
+
+    private static func parseCharacters(
+        sourceURL: URL?,
+        knownEntries: Set<CharacterKey>
+    ) throws -> [CharacterKey: Int64] {
+        guard let sourceURL else { return [:] }
+        var result: [CharacterKey: Int64] = [:]
+        try forEachRow(in: sourceURL) { fields, lineNumber in
+            guard fields.count == 3 else {
+                throw JiukongDefaultRankingError.malformedLine(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber
+                )
+            }
+            let character = fields[0].precomposedStringWithCanonicalMapping
+            let pronunciation = fields[1]
+                .precomposedStringWithCanonicalMapping
+            guard character.count == 1,
+                  CanonicalBopomofoReading.isValid(pronunciation),
+                  let count = positiveCount(fields[2]) else {
+                throw JiukongDefaultRankingError.invalidEntry(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber,
+                    reason: "expected one character, one canonical reading, and a positive count"
+                )
+            }
+            let key = CharacterKey(
+                character: character,
+                pronunciation: pronunciation
+            )
+            guard knownEntries.contains(key) else {
+                throw JiukongDefaultRankingError.entryNotFound(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber
+                )
+            }
+            guard result.updateValue(count, forKey: key) == nil else {
+                throw JiukongDefaultRankingError.duplicateEntry(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber
+                )
+            }
+        }
+        return result
+    }
+
+    private static func parsePhrases(
+        sourceURL: URL?,
+        knownEntries: Set<PhraseKey>
+    ) throws -> [PhraseKey: Int64] {
+        guard let sourceURL else { return [:] }
+        var result: [PhraseKey: Int64] = [:]
+        try forEachRow(in: sourceURL) { fields, lineNumber in
+            guard fields.count == 3 else {
+                throw JiukongDefaultRankingError.malformedLine(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber
+                )
+            }
+            let phrase = fields[0].precomposedStringWithCanonicalMapping
+            let readings = fields[1].split(separator: " ").map {
+                String($0).precomposedStringWithCanonicalMapping
+            }
+            guard phrase.count == readings.count,
+                  readings.allSatisfy(CanonicalBopomofoReading.isValid),
+                  let pronunciationKey = DictionaryPronunciationSequenceKey
+                    .encode(readings),
+                  let count = positiveCount(fields[2]) else {
+                throw JiukongDefaultRankingError.invalidEntry(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber,
+                    reason: "expected a valid phrase, matching canonical readings, and a positive count"
+                )
+            }
+            let key = PhraseKey(
+                phrase: phrase,
+                pronunciationKey: pronunciationKey
+            )
+            guard knownEntries.contains(key) else {
+                throw JiukongDefaultRankingError.entryNotFound(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber
+                )
+            }
+            guard result.updateValue(count, forKey: key) == nil else {
+                throw JiukongDefaultRankingError.duplicateEntry(
+                    file: sourceURL.lastPathComponent,
+                    line: lineNumber
+                )
+            }
+        }
+        return result
+    }
+
+    private static func forEachRow(
+        in sourceURL: URL,
+        _ body: ([String], Int) throws -> Void
+    ) throws {
+        guard let source = try? String(
+            contentsOf: sourceURL,
+            encoding: .utf8
+        ) else {
+            throw JiukongDefaultRankingError.invalidTextEncoding(
+                file: sourceURL.lastPathComponent
+            )
+        }
+        for (offset, rawLine) in source.split(
+            separator: "\n",
+            omittingEmptySubsequences: false
+        ).enumerated() {
+            let line = rawLine.last == "\r" ? rawLine.dropLast() : rawLine[...]
+            guard !line.isEmpty, line.first != "#" else { continue }
+            try body(
+                line.split(
+                    separator: "\t",
+                    omittingEmptySubsequences: false
+                ).map(String.init),
+                offset + 1
+            )
+        }
+    }
+
+    private static func positiveCount(_ value: String) -> Int64? {
+        guard let count = Int64(value), count > 0 else { return nil }
+        return count
+    }
+}
+
 enum JiukongPhraseParserError: LocalizedError, Equatable {
     case invalidTextEncoding(file: String)
     case malformedLine(line: Int)
@@ -865,6 +1119,8 @@ enum DictionaryDatabaseBuilder {
         commonCharacterTierURL: URL? = nil,
         semiCommonCharacterTierURL: URL? = nil,
         heteronymTierURL: URL? = nil,
+        defaultCharacterRankingURL: URL? = nil,
+        defaultPhraseRankingURL: URL? = nil,
         outputURL: URL
     ) throws -> DictionaryBuildSummary {
         try validateOutputURL(
@@ -873,7 +1129,9 @@ enum DictionaryDatabaseBuilder {
             characterSourceURL: characterSourceURL,
             phraseSourceURL: phraseSourceURL,
             idiomSourceURL: idiomSourceURL,
-            revisedDictionarySourceURL: revisedDictionarySourceURL
+            revisedDictionarySourceURL: revisedDictionarySourceURL,
+            defaultCharacterRankingURL: defaultCharacterRankingURL,
+            defaultPhraseRankingURL: defaultPhraseRankingURL
         )
         let manifest = try CNS11643Manifest.load(from: sourceDirectory)
         let dataset = try CNS11643Parser.parse(
@@ -952,6 +1210,12 @@ enum DictionaryDatabaseBuilder {
             ),
             governmentSourced: revisedDictionaryDataset
         )
+        let defaultRankingResolver = try JiukongDefaultRankingResolver.make(
+            characterSourceURL: defaultCharacterRankingURL,
+            phraseSourceURL: defaultPhraseRankingURL,
+            characterDataset: mergedDataset,
+            phraseDataset: combinedPhraseDataset
+        )
 
         let fileManager = FileManager.default
         try fileManager.createDirectory(
@@ -972,7 +1236,8 @@ enum DictionaryDatabaseBuilder {
                 idiomStatistics: idiomDataset.statistics,
                 revisedDictionaryStatistics: revisedDictionaryDataset.statistics,
                 frequencyTierResolver: frequencyTierResolver,
-                phraseAttestationResolver: phraseAttestationResolver
+                phraseAttestationResolver: phraseAttestationResolver,
+                defaultRankingResolver: defaultRankingResolver
             )
             guard Darwin.rename(temporaryURL.path, outputURL.path) == 0 else {
                 throw DictionaryDatabaseBuilderError.outputReplacementFailed(
@@ -993,7 +1258,8 @@ enum DictionaryDatabaseBuilder {
             idiomStatistics: idiomDataset.statistics,
             revisedDictionaryStatistics: revisedDictionaryDataset.statistics,
             frequencyTierStatistics: frequencyTierResolver.statistics,
-            phraseAttestationStatistics: phraseAttestationResolver.statistics
+            phraseAttestationStatistics: phraseAttestationResolver.statistics,
+            defaultRankingStatistics: defaultRankingResolver.statistics
         )
     }
 
@@ -1007,7 +1273,8 @@ enum DictionaryDatabaseBuilder {
         idiomStatistics: JiukongPhraseStatistics,
         revisedDictionaryStatistics: JiukongPhraseStatistics,
         frequencyTierResolver: FrequencyTierResolver,
-        phraseAttestationResolver: FirstPartyPhraseAttestationResolver
+        phraseAttestationResolver: FirstPartyPhraseAttestationResolver,
+        defaultRankingResolver: JiukongDefaultRankingResolver
     ) throws {
         let fileDescriptor = Darwin.open(
             outputURL.path,
@@ -1056,6 +1323,8 @@ enum DictionaryDatabaseBuilder {
                 usage_tier INTEGER NOT NULL CHECK(usage_tier IN (0, 1, 2)),
                 first_party_phrase_count INTEGER NOT NULL
                     CHECK(first_party_phrase_count >= 0),
+                default_selection_count INTEGER NOT NULL
+                    CHECK(default_selection_count >= 0),
                 PRIMARY KEY (pronunciation, character)
             ) WITHOUT ROWID;
 
@@ -1063,6 +1332,8 @@ enum DictionaryDatabaseBuilder {
                 pronunciation_key TEXT NOT NULL,
                 phrase TEXT NOT NULL,
                 source_order INTEGER NOT NULL CHECK(source_order >= 0),
+                default_selection_count INTEGER NOT NULL
+                    CHECK(default_selection_count >= 0),
                 PRIMARY KEY (pronunciation_key, phrase)
             ) WITHOUT ROWID;
             """
@@ -1078,8 +1349,9 @@ enum DictionaryDatabaseBuilder {
                     source_order,
                     cns_code,
                     usage_tier,
-                    first_party_phrase_count
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    first_party_phrase_count,
+                    default_selection_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """
             )
             for entry in dataset.entries {
@@ -1101,6 +1373,13 @@ enum DictionaryDatabaseBuilder {
                     ),
                     at: 6
                 )
+                try insertEntry.bind(
+                    defaultRankingResolver.count(
+                        character: entry.character,
+                        pronunciation: entry.pronunciation
+                    ),
+                    at: 7
+                )
                 guard try insertEntry.step() == .done else {
                     throw SQLiteDatabaseError.operation(
                         sql: "INSERT INTO dictionary_entries",
@@ -1115,14 +1394,22 @@ enum DictionaryDatabaseBuilder {
                 INSERT INTO phrase_entries (
                     pronunciation_key,
                     phrase,
-                    source_order
-                ) VALUES (?, ?, ?)
+                    source_order,
+                    default_selection_count
+                ) VALUES (?, ?, ?, ?)
                 """
             )
             for entry in phraseDataset.entries {
                 try insertPhrase.bind(entry.pronunciationKey, at: 1)
                 try insertPhrase.bind(entry.phrase, at: 2)
                 try insertPhrase.bind(entry.sourceOrder, at: 3)
+                try insertPhrase.bind(
+                    defaultRankingResolver.count(
+                        phrase: entry.phrase,
+                        pronunciationKey: entry.pronunciationKey
+                    ),
+                    at: 4
+                )
                 guard try insertPhrase.step() == .done else {
                     throw SQLiteDatabaseError.operation(
                         sql: "INSERT INTO phrase_entries",
@@ -1143,7 +1430,8 @@ enum DictionaryDatabaseBuilder {
                 idiomStatistics: idiomStatistics,
                 revisedDictionaryStatistics: revisedDictionaryStatistics,
                 frequencyTierStatistics: frequencyTierResolver.statistics,
-                phraseAttestationStatistics: phraseAttestationResolver.statistics
+                phraseAttestationStatistics: phraseAttestationResolver.statistics,
+                defaultRankingStatistics: defaultRankingResolver.statistics
             ).sorted(by: { $0.key < $1.key }) {
                 try insertMetadata.bind(key, at: 1)
                 try insertMetadata.bind(value, at: 2)
@@ -1196,7 +1484,8 @@ enum DictionaryDatabaseBuilder {
         idiomStatistics: JiukongPhraseStatistics,
         revisedDictionaryStatistics: JiukongPhraseStatistics,
         frequencyTierStatistics: JiukongFrequencyTierStatistics,
-        phraseAttestationStatistics: JiukongPhraseAttestationStatistics
+        phraseAttestationStatistics: JiukongPhraseAttestationStatistics,
+        defaultRankingStatistics: JiukongDefaultRankingStatistics
     ) -> [String: String] {
         var values: [String: String] = [
             "dataset_name": manifest.datasetName,
@@ -1233,6 +1522,12 @@ enum DictionaryDatabaseBuilder {
                 phraseAttestationStatistics.totalCharacterReadingCount
             ),
             "first_party_attestation_transformation": "Counted exact (character, reading) occurrences only in Jiukong's manually authored phrase TSV; excluded both government-sourced phrase datasets. Used only as a within-tier candidate-order signal, not represented as corpus frequency.",
+            "default_character_ranking_entries": String(defaultRankingStatistics.characterEntryCount),
+            "default_character_ranking_selections": String(defaultRankingStatistics.characterSelectionCount),
+            "default_phrase_ranking_entries": String(defaultRankingStatistics.phraseEntryCount),
+            "default_phrase_ranking_selections": String(defaultRankingStatistics.phraseSelectionCount),
+            "default_ranking_dataset_name": "Jiukong first-party default selection ranking",
+            "default_ranking_transformation": "Captured selection counts from Jiukong's own user-data snapshot; discarded timestamps, pins, sync state, and phrases absent from the reviewed built-in dictionaries. Used only as a timeless baseline ranking prior; introduces no dictionary entry.",
             "idiom_dataset_name": "MOE 《成語典》 government-sourced idiom lexicon (1,642 主條 four-character entries)",
             "idiom_entries": String(idiomStatistics.entryCount),
             "idiom_pronunciation_sequences": String(
@@ -1268,7 +1563,9 @@ enum DictionaryDatabaseBuilder {
         characterSourceURL: URL?,
         phraseSourceURL: URL?,
         idiomSourceURL: URL?,
-        revisedDictionarySourceURL: URL?
+        revisedDictionarySourceURL: URL?,
+        defaultCharacterRankingURL: URL?,
+        defaultPhraseRankingURL: URL?
     ) throws {
         let sourcePath = sourceDirectory.standardizedFileURL
             .resolvingSymlinksInPath()
@@ -1332,6 +1629,22 @@ enum DictionaryDatabaseBuilder {
                 throw DictionaryDatabaseBuilderError.unsafeOutput(
                     path: outputURL.path,
                     reason: "the output is the revised dictionary source file"
+                )
+            }
+        }
+
+        for (name, sourceURL) in [
+            ("default character-ranking source file", defaultCharacterRankingURL),
+            ("default phrase-ranking source file", defaultPhraseRankingURL),
+        ] {
+            guard let sourceURL else { continue }
+            let sourcePath = sourceURL.standardizedFileURL
+                .resolvingSymlinksInPath()
+                .path
+            if outputPath == sourcePath {
+                throw DictionaryDatabaseBuilderError.unsafeOutput(
+                    path: outputURL.path,
+                    reason: "the output is the \(name)"
                 )
             }
         }

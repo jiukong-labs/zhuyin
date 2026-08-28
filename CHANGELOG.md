@@ -6,6 +6,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- A project-owned default selection ranking captured from the maintainer's
+  current Jiukong history: 804 character-reading rows (7,066 selections) and
+  385 already-present built-in phrase rows (2,277 selections). The checked-in
+  source omits private timestamps, pins, identifiers, sync state, and every
+  phrase absent from the existing built-in dictionaries; personal learning
+  continues to layer on top.
+- First-party automatic update checks for complete stable GitHub Releases,
+  limited to once per day and surfaced through the input-source menu and
+  Update settings pane without sending input or learning data.
 - A release-blocking installed input-behavior matrix now covers Option ASCII,
   Shift language round trips, active-composition finalization, candidates,
   revision, punctuation, and phrase selection; CI locks its required manifest.

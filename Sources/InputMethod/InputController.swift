@@ -303,6 +303,32 @@ final class InputController: IMKInputController {
         )
         settingsItem.target = self
         menu.addItem(settingsItem)
+
+        menu.addItem(.separator())
+        let updateItem: NSMenuItem
+        switch UpdateController.shared.state {
+        case let .updateAvailable(release, _):
+            updateItem = NSMenuItem(
+                title: "有新版本 \(release.version)…",
+                action: #selector(checkForUpdates(_:)),
+                keyEquivalent: ""
+            )
+        case .checking:
+            updateItem = NSMenuItem(
+                title: "正在檢查更新…",
+                action: nil,
+                keyEquivalent: ""
+            )
+            updateItem.isEnabled = false
+        case .idle, .upToDate, .failed:
+            updateItem = NSMenuItem(
+                title: "檢查更新…",
+                action: #selector(checkForUpdates(_:)),
+                keyEquivalent: ""
+            )
+        }
+        updateItem.target = self
+        menu.addItem(updateItem)
         return menu
     }
 
@@ -312,6 +338,20 @@ final class InputController: IMKInputController {
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: client())
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        resetTransientInputState()
+        finishComposition(reason: .lifecycle, using: client())
+
+        let updater = UpdateController.shared
+        if case .updateAvailable = updater.state {
+            UpdatePrompt.present(updater.state)
+            return
+        }
+        updater.checkNow { state in
+            UpdatePrompt.present(state)
+        }
     }
 
     override func activateServer(_ sender: Any!) {

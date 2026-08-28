@@ -179,6 +179,30 @@ final class CandidateRankerTests: XCTestCase {
         )
     }
 
+    func testLongerExactPhraseOutranksMoreFrequentShorterPhrase() {
+        let longer = Candidate(
+            text: "久空輸入",
+            pronunciationSequence: ["ㄐㄧㄡˇ", "ㄎㄨㄥ", "ㄕㄨ", "ㄖㄨˋ"],
+            type: .phrase,
+            baseRank: 0,
+            baseFrequency: 0
+        )
+        let shorter = Candidate(
+            text: "輸入",
+            pronunciationSequence: ["ㄕㄨ", "ㄖㄨˋ"],
+            type: .phrase,
+            baseRank: 1,
+            baseFrequency: 10_000,
+            userFrequency: 10_000,
+            lastUsed: now
+        )
+
+        XCTAssertEqual(
+            ranker.ranked([shorter, longer], at: now).map(\.text),
+            ["久空輸入", "輸入"]
+        )
+    }
+
     func testBaseFrequencyOverridesRankWhenAvailable() {
         let frequencyCandidate = Candidate(
             text: "頻",

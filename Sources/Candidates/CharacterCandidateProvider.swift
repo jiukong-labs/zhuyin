@@ -88,19 +88,24 @@ final class CharacterCandidateProvider {
             .map { index, entry in
                 let learningRecord = learningRecords[entry.text]
                 let phraseCount = max(0, entry.firstPartyPhraseCount)
-                // Keep the three usage tiers strict while ranking entries
-                // within a tier by evidence from Jiukong's own reviewed
-                // phrase lexicon. count / (count + 1) stays below one, so it
-                // can never cross a tier boundary.
+                // The phrase-attestation component orders entries within an
+                // MOE tier: count / (count + 1) stays below one, so that
+                // component alone cannot cross a tier boundary. The captured
+                // first-party selection prior is deliberately stronger and
+                // may promote a repeatedly chosen entry across tiers.
                 let firstPartyPhraseBonus = Double(phraseCount)
                     / (Double(phraseCount) + 1)
+                let defaultSelectionBonus = ranker.frequencyBonus(
+                    selectionCount: entry.defaultSelectionCount
+                )
                 return Candidate(
                     text: entry.text,
                     pronunciation: pronunciation,
                     baseRank: rankOffset + index,
                     sourceOrder: entry.sourceOrder,
                     baseFrequency: Double(2 - entry.usageTier)
-                        + firstPartyPhraseBonus,
+                        + firstPartyPhraseBonus
+                        + defaultSelectionBonus,
                     userFrequency: learningRecord?.selectionCount ?? 0,
                     lastUsed: learningRecord?.lastSelectedAt,
                     pinned: learningRecord?.pinned ?? false
@@ -208,6 +213,11 @@ final class CharacterCandidateProvider {
                 continue
             }
 
+            let dictionaryEntries = try dictionary.phraseEntries(for: readings)
+            let dictionaryEntriesByText = Dictionary(
+                uniqueKeysWithValues: dictionaryEntries.map { ($0.text, $0) }
+            )
+
             for record in learning?.phraseRecords(for: readings) ?? [] {
                 guard record.pronunciationSequence == readings,
                       let identity = try? UserPhraseValidator.validate(
@@ -223,7 +233,11 @@ final class CharacterCandidateProvider {
                     type: .phrase,
                     baseRank: result.count,
                     sourceOrder: record.phraseID,
-                    baseFrequency: 0,
+                    baseFrequency: ranker.frequencyBonus(
+                        selectionCount: dictionaryEntriesByText[
+                            record.phrase
+                        ]?.defaultSelectionCount ?? 0
+                    ),
                     userFrequency: record.selectionCount,
                     lastUsed: record.lastUsedAt,
                     pinned: record.pinned,
@@ -235,7 +249,7 @@ final class CharacterCandidateProvider {
                 result.append(candidate)
             }
 
-            for entry in try dictionary.phraseEntries(for: readings) {
+            for entry in dictionaryEntries {
                 guard entry.pronunciationSequence == readings,
                       entry.text.count == readings.count else {
                     continue
@@ -246,7 +260,9 @@ final class CharacterCandidateProvider {
                     type: .phrase,
                     baseRank: result.count,
                     sourceOrder: entry.sourceOrder,
-                    baseFrequency: 0
+                    baseFrequency: ranker.frequencyBonus(
+                        selectionCount: entry.defaultSelectionCount
+                    )
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue

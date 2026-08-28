@@ -94,7 +94,7 @@ final class UserDataClearingTests: XCTestCase {
         )
     }
 
-    func testClearingResetsRankingToTheBaseDictionaryOrder() throws {
+    func testClearingResetsRankingToTheBuiltInDefaultOrder() throws {
         let (_, store) = try makePopulatedStore()
         let service = UserLearningService(store: store)
         let dictionary = try CharacterDictionary(databaseURL: databaseURL)
@@ -109,19 +109,9 @@ final class UserDataClearingTests: XCTestCase {
         )
         XCTAssertTrue(service.clearAllUserData())
 
-        let expectedOrder = try dictionary.candidateEntries(for: "ㄐㄧㄢˋ")
-            .filter(\.isInGeneralCandidateRepertoire)
-            .sorted { lhs, rhs in
-                if lhs.usageTier != rhs.usageTier {
-                    return lhs.usageTier < rhs.usageTier
-                }
-                if lhs.firstPartyPhraseCount != rhs.firstPartyPhraseCount {
-                    return lhs.firstPartyPhraseCount
-                        > rhs.firstPartyPhraseCount
-                }
-                return lhs.sourceOrder < rhs.sourceOrder
-            }
-            .map(\.text)
+        let expectedOrder = try CharacterCandidateProvider(
+            dictionary: dictionary
+        ).candidates(for: "ㄐㄧㄢˋ").map(\.text)
         XCTAssertEqual(
             try provider.candidates(for: "ㄐㄧㄢˋ").map(\.text),
             expectedOrder

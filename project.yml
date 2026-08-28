@@ -61,6 +61,7 @@ targets:
       - path: Sources/Overlay
       - path: Sources/Preferences
       - path: Sources/Settings
+      - path: Sources/Update
       - path: Resources/Assets/JiukongZhuyin.icns
         buildPhase: resources
       - path: Resources/Assets/JiukongZhuyin.tiff
@@ -186,6 +187,7 @@ targets:
       - path: Sources/Overlay/CursorIndicatorSettings.swift
       - path: Sources/Overlay/CursorIndicatorAppearance.swift
       - path: Sources/Preferences
+      - path: Sources/Update
       - path: Tools/DictionaryBuilder/CNS11643Manifest.swift
       - path: Tools/DictionaryBuilder/CNS11643Parser.swift
       - path: Tools/DictionaryBuilder/DictionaryDatabaseBuilder.swift

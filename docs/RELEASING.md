@@ -102,7 +102,9 @@ For each release:
 3. Create a draft GitHub Release for that existing tag.
 4. Run **Build signed release** and enter the tag.
 5. Review the attached `.pkg`, checksum, and release notes before publishing
-   the draft.
+   the draft. The installed update checker ignores drafts, prereleases, and a
+   release missing either exact asset name, so both artifacts must be present
+   before publication.
 
 The workflow will not create or publish a release. It only accepts an existing
 draft whose tag is the checked-out commit. It reruns the test suite and
