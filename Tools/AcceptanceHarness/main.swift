@@ -98,10 +98,12 @@ struct Keystroke {
     }
 }
 
+let eventSource = CGEventSource(stateID: .privateState)
+
 func post(_ keystroke: Keystroke, to pid: pid_t) {
     for isDown in [true, false] {
         guard let event = CGEvent(
-            keyboardEventSource: CGEventSource(stateID: .privateState),
+            keyboardEventSource: eventSource,
             virtualKey: CGKeyCode(keystroke.keyCode),
             keyDown: isDown
         ) else {
@@ -233,16 +235,18 @@ let scripts: [String: AcceptanceScript] = [
     ),
     // A complete Chinese → English → Chinese round trip proves both the
     // standalone modifier gesture and direct English-mode event pass-through.
+    // Use a digit because TextEdit can automatically capitalize the first
+    // Latin letter according to the developer's own substitution settings.
     "shift-round-trip": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
             .modifierTap(kVK_Shift, flag: .maskShift),
-            Keystroke(kVK_ANSI_A),
-            .modifierTap(kVK_Shift, flag: .maskShift),
+            Keystroke(kVK_ANSI_1),
+            .modifierTap(kVK_RightShift, flag: .maskShift),
             Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I),
             Keystroke(kVK_ANSI_3), Keystroke(kVK_Return),
         ],
-        expectation: "a我"
+        expectation: "1我"
     ),
     // ㄘㄜˋ initially falls back to CNS source-order 冊. Completing ㄕˋ
     // must offer the first-party exact phrase and replace that suffix with 測試.
@@ -388,7 +392,7 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_LeftArrow, .maskShift),
             Keystroke(kVK_Return),
         ],
-        expectation: "九空"
+        expectation: "久空"
     ),
     // Locates the first reading, then extends right from that focus. This is
     // the mirror path of the Shift-Left phrase acceptance above.
@@ -405,7 +409,7 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_RightArrow, .maskShift),
             Keystroke(kVK_Return),
         ],
-        expectation: "九空"
+        expectation: "久空"
     ),
     // Requires JiukongKeyboardArrangement = eten before the process starts.
     "eten": AcceptanceScript(

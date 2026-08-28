@@ -3,10 +3,30 @@ import Foundation
 struct UpdateRelease: Equatable {
     let version: AppVersion
     let pageURL: URL
+    let packageURL: URL
+    let checksumURL: URL
 
     init(version: AppVersion, pageURL: URL) {
+        let packageURL = Self.canonicalAssetURL(
+            version: version,
+            fileName: Self.packageName(for: version)
+        )
         self.version = version
         self.pageURL = pageURL
+        self.packageURL = packageURL
+        checksumURL = packageURL.appendingPathExtension("sha256")
+    }
+
+    init(
+        version: AppVersion,
+        pageURL: URL,
+        packageURL: URL,
+        checksumURL: URL
+    ) {
+        self.version = version
+        self.pageURL = pageURL
+        self.packageURL = packageURL
+        self.checksumURL = checksumURL
     }
 
     init?(cachedVersion: String, pageURL: URL) {
@@ -22,9 +42,29 @@ struct UpdateRelease: Equatable {
             && url.path.hasPrefix("/jiukong-labs/zhuyin/releases/")
     }
 
-    static func isTrustedDownload(_ url: URL) -> Bool {
+    static func isTrustedDownload(
+        _ url: URL,
+        version: AppVersion,
+        fileName: String
+    ) -> Bool {
         isHTTPSGitHubURL(url)
-            && url.path.hasPrefix("/jiukong-labs/zhuyin/releases/download/")
+            && url.path
+                == "/jiukong-labs/zhuyin/releases/download/v\(version)/\(fileName)"
+            && url.query == nil
+            && url.fragment == nil
+    }
+
+    static func packageName(for version: AppVersion) -> String {
+        "Jiukong-Zhuyin-\(version).pkg"
+    }
+
+    private static func canonicalAssetURL(
+        version: AppVersion,
+        fileName: String
+    ) -> URL {
+        URL(
+            string: "https://github.com/jiukong-labs/zhuyin/releases/download/v\(version)/\(fileName)"
+        )!
     }
 
     private static func isHTTPSGitHubURL(_ url: URL) -> Bool {
@@ -103,20 +143,30 @@ enum UpdateReleaseDecoder {
             throw UpdateReleaseDecodingError.untrustedURL
         }
 
-        let packageName = "Jiukong-Zhuyin-\(version).pkg"
+        let packageName = UpdateRelease.packageName(for: version)
         let checksumName = "\(packageName).sha256"
         guard let package = payload.assets.first(where: { $0.name == packageName }),
               let checksum = payload.assets.first(where: { $0.name == checksumName }) else {
             throw UpdateReleaseDecodingError.missingReleaseAssets
         }
-        guard UpdateRelease.isTrustedDownload(package.browserDownloadURL),
-              UpdateRelease.isTrustedDownload(checksum.browserDownloadURL) else {
+        guard UpdateRelease.isTrustedDownload(
+            package.browserDownloadURL,
+            version: version,
+            fileName: packageName
+        ),
+        UpdateRelease.isTrustedDownload(
+            checksum.browserDownloadURL,
+            version: version,
+            fileName: checksumName
+        ) else {
             throw UpdateReleaseDecodingError.untrustedURL
         }
 
         return UpdateRelease(
             version: version,
-            pageURL: payload.htmlURL
+            pageURL: payload.htmlURL,
+            packageURL: package.browserDownloadURL,
+            checksumURL: checksum.browserDownloadURL
         )
     }
 }

@@ -239,7 +239,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "軟體更新",
                     controls: [updateButton, statusLabel],
-                    note: "久空每天最多向 GitHub 檢查一次正式版本。只傳送一般的版本查詢，不會傳送輸入內容或使用者資料；安裝新版仍需 macOS 管理員授權。"
+                    note: "久空每天最多向 GitHub 檢查一次正式版本。發現新版後可自動下載、驗證並開啟 macOS 安裝程式；不會傳送輸入內容或使用者資料，安裝新版仍需管理員授權。"
                 ),
             ]
         )

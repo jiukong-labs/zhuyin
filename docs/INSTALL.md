@@ -42,12 +42,15 @@ not include composition text, learned selections, or user phrases.
 
 When a new version is available, its version appears under **Check for
 Updates…** in the input-source menu and in the **Software Update** settings
-pane. Open the release page, download and run the newer signed
-package. Administrator approval is still required because the package updates
-`/Library/Input Methods`. It replaces the application bundle but preserves
-preferences, learned selections, and user phrases under the current user's
-Library directory. macOS may continue running the previous process until the
-input method is restarted or the user signs out and back in.
+pane. Choose **Download and Install** to let 久空 download the `.pkg` and its
+checksum, verify SHA-256, the expected Developer ID Installer team, and
+Gatekeeper acceptance, then open the verified package in macOS Installer.
+The release-page button remains available as a manual fallback. Administrator
+approval is still required because the package updates `/Library/Input
+Methods`. It replaces the application bundle but preserves preferences,
+learned selections, and user phrases under the current user's Library
+directory. macOS may continue running the previous process until the input
+method is restarted or the user signs out and back in.
 
 Do not keep a second development copy at
 `~/Library/Input Methods/Jiukong Zhuyin.app`: two bundles with the same

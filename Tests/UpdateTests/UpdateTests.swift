@@ -31,6 +31,14 @@ final class UpdateReleaseDecoderTests: XCTestCase {
             release.pageURL.absoluteString,
             "https://github.com/jiukong-labs/zhuyin/releases/tag/v0.2.0"
         )
+        XCTAssertEqual(
+            release.packageURL.absoluteString,
+            "https://github.com/jiukong-labs/zhuyin/releases/download/v0.2.0/Jiukong-Zhuyin-0.2.0.pkg"
+        )
+        XCTAssertEqual(
+            release.checksumURL.absoluteString,
+            "https://github.com/jiukong-labs/zhuyin/releases/download/v0.2.0/Jiukong-Zhuyin-0.2.0.pkg.sha256"
+        )
     }
 
     func testRejectsDraftAndPrereleaseVersions() {
@@ -54,16 +62,23 @@ final class UpdateReleaseDecoderTests: XCTestCase {
         }
     }
 
+    func testRejectsAssetsFromAnotherReleaseTag() {
+        XCTAssertThrowsError(try UpdateReleaseDecoder.decode(payload(downloadTag: "v0.1.0"))) {
+            XCTAssertEqual($0 as? UpdateReleaseDecodingError, .untrustedURL)
+        }
+    }
+
     private func payload(
         draft: Bool = false,
         prerelease: Bool = false,
         hasChecksum: Bool = true,
-        downloadHost: String = "github.com"
+        downloadHost: String = "github.com",
+        downloadTag: String = "v0.2.0"
     ) -> Data {
         var assets = """
         {
           "name": "Jiukong-Zhuyin-0.2.0.pkg",
-          "browser_download_url": "https://\(downloadHost)/jiukong-labs/zhuyin/releases/download/v0.2.0/Jiukong-Zhuyin-0.2.0.pkg"
+          "browser_download_url": "https://\(downloadHost)/jiukong-labs/zhuyin/releases/download/\(downloadTag)/Jiukong-Zhuyin-0.2.0.pkg"
         }
         """
         if hasChecksum {
@@ -71,7 +86,7 @@ final class UpdateReleaseDecoderTests: XCTestCase {
             ,
             {
               "name": "Jiukong-Zhuyin-0.2.0.pkg.sha256",
-              "browser_download_url": "https://github.com/jiukong-labs/zhuyin/releases/download/v0.2.0/Jiukong-Zhuyin-0.2.0.pkg.sha256"
+              "browser_download_url": "https://github.com/jiukong-labs/zhuyin/releases/download/\(downloadTag)/Jiukong-Zhuyin-0.2.0.pkg.sha256"
             }
             """
         }
@@ -86,6 +101,90 @@ final class UpdateReleaseDecoderTests: XCTestCase {
               "assets": [\(assets)]
             }
             """.utf8
+        )
+    }
+}
+
+final class UpdatePackageChecksumTests: XCTestCase {
+    func testParsesExpectedChecksumAndPackageName() throws {
+        let data = Data(
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  Jiukong-Zhuyin-0.2.0.pkg\n".utf8
+        )
+
+        XCTAssertEqual(
+            try UpdatePackageChecksum.expectedDigest(
+                from: data,
+                packageName: "Jiukong-Zhuyin-0.2.0.pkg"
+            ),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        )
+    }
+
+    func testRejectsChecksumForAnotherPackage() {
+        let data = Data(
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  Other.pkg\n".utf8
+        )
+
+        XCTAssertThrowsError(
+            try UpdatePackageChecksum.expectedDigest(
+                from: data,
+                packageName: "Jiukong-Zhuyin-0.2.0.pkg"
+            )
+        ) {
+            XCTAssertEqual(
+                $0 as? UpdateInstallationError,
+                .checksumPackageNameMismatch
+            )
+        }
+    }
+
+    func testComputesFileSHA256WithoutLoadingReleaseIntoMemory() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "Jiukong-Update-Test-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("test.pkg")
+        try Data("abc".utf8).write(to: fileURL)
+
+        XCTAssertEqual(
+            try UpdatePackageChecksum.digest(of: fileURL),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        )
+    }
+}
+
+final class UpdatePackageVerifierTests: XCTestCase {
+    func testAcceptsOnlyExpectedDeveloperIDInstallerTeam() {
+        let valid = """
+        Status: signed by a certificate trusted by macOS
+        1. Developer ID Installer: Chih Ming Lin (6KW8YABG8T)
+        """
+
+        XCTAssertTrue(
+            UpdatePackageVerifier.hasExpectedInstallerSignature(
+                valid,
+                teamIdentifier: "6KW8YABG8T"
+            )
+        )
+        XCTAssertFalse(
+            UpdatePackageVerifier.hasExpectedInstallerSignature(
+                valid,
+                teamIdentifier: "AAAAAAAAAA"
+            )
+        )
+        XCTAssertFalse(
+            UpdatePackageVerifier.hasExpectedInstallerSignature(
+                "Developer ID Application: Chih Ming Lin (6KW8YABG8T)",
+                teamIdentifier: "6KW8YABG8T"
+            )
+        )
+        XCTAssertFalse(
+            UpdatePackageVerifier.hasExpectedInstallerSignature(
+                "Developer ID Installer: Another Developer (AAAAAAAAAA)\nApple Root CA (6KW8YABG8T)",
+                teamIdentifier: "6KW8YABG8T"
+            )
         )
     }
 }

@@ -203,9 +203,10 @@ development builds.
 After installation, 久空 checks GitHub for a complete published release at
 most once every 24 hours. The check sends no composition, learning, or user
 phrase data. When an update is available, the input-source menu and Update
-settings pane show the new version and link to its release page. The signed
-`.pkg` must still be installed with macOS Installer because updating
-`/Library/Input Methods` requires administrator approval.
+settings pane can download the `.pkg` and adjacent checksum, verify SHA-256,
+the expected Developer ID Installer team, and Gatekeeper acceptance, then
+open the verified package in macOS Installer. Installer still requests
+administrator approval because the package updates `/Library/Input Methods`.
 
 ## Build and test
 

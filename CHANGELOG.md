@@ -6,6 +6,10 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- The built-in updater can now download the release package and checksum,
+  verify SHA-256, the expected Developer ID Installer team, and Gatekeeper
+  acceptance, then open the verified package in macOS Installer. System
+  administrator approval remains required for `/Library/Input Methods`.
 - The public Installer completion screen now explicitly reminds users to save
   their work, then sign out of macOS and sign back in or restart the Mac after
   every install or update, so the cached input-method process is refreshed.

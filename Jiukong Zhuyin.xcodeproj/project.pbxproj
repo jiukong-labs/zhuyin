@@ -12,6 +12,7 @@
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		062DE77B1B3A7186707494E8 /* CharacterCandidateProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A684017D608CC4FA5BF19D4 /* CharacterCandidateProviderTests.swift */; };
 		06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
+		0953F6ECA2B01FF78B6B0628 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645337CF4873F583CF52DC03 /* UpdateInstaller.swift */; };
 		09A6C56FD11D94F7A555F1D5 /* ShiftToggleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E03D98756138B225E54A9B /* ShiftToggleController.swift */; };
 		09E3DE5DDF04573C662D9C6D /* UserDataLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390A747ED6D62564F6523EAB /* UserDataLocationTests.swift */; };
 		0F0FA0A3E6356E1AA6EC69C2 /* PunctuationLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */; };
@@ -92,6 +93,7 @@
 		7986DB8CBA3991C500C83732 /* UserDataArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94452FDF698E1AC4A512804 /* UserDataArchiveTests.swift */; };
 		7A1349070DEC486C81212436 /* CursorIndicatorGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4497D9BCA68975759C628228 /* CursorIndicatorGeometryTests.swift */; };
 		7CC53D7DA8D6E018675A5127 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32EFC11EAB2C94A893A2CB57 /* main.swift */; };
+		7E116391F827EC6CB00B98D0 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645337CF4873F583CF52DC03 /* UpdateInstaller.swift */; };
 		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
 		7FAC91725DD3BA0C1FD5A503 /* CloudKitUserDataTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */; };
 		8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */; };
@@ -237,6 +239,7 @@
 		5E02E22713564B559C471CEE /* ProcessEntitlements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessEntitlements.swift; sourceTree = "<group>"; };
 		5E22AD0F0E53E2614E50243E /* ZhuyinKeyboardArrangementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhuyinKeyboardArrangementTests.swift; sourceTree = "<group>"; };
 		5F65438CEE6A761F1DB886DD /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		645337CF4873F583CF52DC03 /* UpdateInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateInstaller.swift; sourceTree = "<group>"; };
 		64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayout.swift; sourceTree = "<group>"; };
 		66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayout.swift; sourceTree = "<group>"; };
 		67B50E28AEB4CF9B5FFC80AE /* idiomsdict_usage_note.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = idiomsdict_usage_note.txt; sourceTree = "<group>"; };
@@ -572,6 +575,7 @@
 			children = (
 				5F65438CEE6A761F1DB886DD /* AppVersion.swift */,
 				1F8DF5A2899531361D999647 /* UpdateController.swift */,
+				645337CF4873F583CF52DC03 /* UpdateInstaller.swift */,
 				3E134113536FB1FB0AC3B7E0 /* UpdateRelease.swift */,
 			);
 			path = Update;
@@ -1017,6 +1021,7 @@
 				AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */,
 				1F94381C74A7CB144051FCEF /* SystemInputSourceObserver.swift in Sources */,
 				E809D1E93C26198090007BA8 /* UpdateController.swift in Sources */,
+				7E116391F827EC6CB00B98D0 /* UpdateInstaller.swift in Sources */,
 				0221946AE3DE12AFE25C110C /* UpdatePrompt.swift in Sources */,
 				A3D1E30F3F998FC695A6D759 /* UpdateRelease.swift in Sources */,
 				EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */,
@@ -1102,6 +1107,7 @@
 				14C4230B00D5EC61B7A8901F /* StandardZhuyinLayout.swift in Sources */,
 				9026C8DCE02772769169E368 /* StandardZhuyinLayoutTests.swift in Sources */,
 				B11BA7A4A4CE188EFFBE8D6F /* UpdateController.swift in Sources */,
+				0953F6ECA2B01FF78B6B0628 /* UpdateInstaller.swift in Sources */,
 				28C87A93BE87685EF9970314 /* UpdateRelease.swift in Sources */,
 				0F69218859DCF22A1B408FE2 /* UpdateTests.swift in Sources */,
 				9D4AA24580EE764F6247165D /* UserDataArchive.swift in Sources */,
@@ -1153,7 +1159,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1162,7 +1168,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
@@ -1301,7 +1307,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1310,7 +1316,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
