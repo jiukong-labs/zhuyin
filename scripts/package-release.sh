@@ -13,6 +13,7 @@ scheme_name="Jiukong Zhuyin"
 bundle_identifier="tw.idv.jiukong.inputmethod.zhuyin"
 installation_directory="/Library/Input Methods"
 entitlements_path="$repository_root/Resources/JiukongZhuyin.entitlements"
+installer_resources_directory="$repository_root/Resources/Installer"
 output_directory="${OUTPUT_DIRECTORY:-$repository_root/dist}"
 
 usage() {
@@ -82,11 +83,15 @@ fi
     || fail "DEVELOPMENT_TEAM must be a 10-character Apple Team ID."
 [[ -f "$project_path/project.pbxproj" ]] || fail "Xcode project is missing: $project_path"
 [[ -f "$entitlements_path" ]] || fail "Entitlements file is missing: $entitlements_path"
+[[ -f "$installer_resources_directory/conclusion.html" ]] \
+    || fail "Installer conclusion is missing: $installer_resources_directory/conclusion.html"
 
 for required_command in \
     /usr/bin/codesign \
     /usr/bin/lipo \
+    /usr/bin/pkgbuild \
     /usr/bin/productbuild \
+    /usr/bin/sed \
     /usr/bin/security \
     /usr/bin/shasum \
     /usr/sbin/pkgutil \
@@ -111,6 +116,10 @@ export_path="$temporary_root/Export"
 export_options_path="$temporary_root/ExportOptions.plist"
 requirements_path="$temporary_root/InstallerRequirements.plist"
 signed_entitlements_path="$temporary_root/SignedEntitlements.plist"
+component_package="$temporary_root/JiukongZhuyinComponent.pkg"
+synthesized_distribution="$temporary_root/Distribution.generated.xml"
+distribution_path="$temporary_root/Distribution.xml"
+expanded_package="$temporary_root/ExpandedPackage"
 temporary_package="$temporary_root/Jiukong-Zhuyin.pkg"
 
 cleanup() {
@@ -254,11 +263,37 @@ checksum_path="$package_path.sha256"
 /usr/libexec/PlistBuddy -c 'Add :arch:0 string arm64' "$requirements_path"
 /usr/libexec/PlistBuddy -c 'Add :arch:1 string x86_64' "$requirements_path"
 
+/usr/bin/pkgbuild \
+    --component "$exported_application" \
+    --install-location "$installation_directory" \
+    --identifier "$bundle_identifier.installer" \
+    --version "$release_version" \
+    "$component_package"
+
+/usr/bin/productbuild \
+    --synthesize \
+    --product "$requirements_path" \
+    --package "$component_package" \
+    "$synthesized_distribution"
+
+# Keep productbuild's generated OS and architecture requirements, while adding
+# a conclusion page that tells users how to make macOS load the new input
+# method process after an install or update.
+/usr/bin/sed \
+    '/<installer-gui-script minSpecVersion="2">/a\
+    <title>久空輸入法</title>\
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+' \
+    "$synthesized_distribution" > "$distribution_path"
+
+/usr/bin/grep -Fq '<conclusion file="conclusion.html" mime-type="text/html"/>' \
+    "$distribution_path" \
+    || fail "Could not add the installer conclusion page to the distribution."
+
 productbuild_arguments=(
-    --product "$requirements_path"
-    --identifier "$bundle_identifier.installer"
-    --version "$release_version"
-    --component "$exported_application" "$installation_directory"
+    --distribution "$distribution_path"
+    --package-path "$temporary_root"
+    --resources "$installer_resources_directory"
     --sign "$DEVELOPER_ID_INSTALLER"
     --timestamp
 )
@@ -270,6 +305,12 @@ fi
 print "Creating signed installer package..."
 /usr/bin/productbuild "${productbuild_arguments[@]}" "$temporary_package"
 /usr/sbin/pkgutil --check-signature "$temporary_package"
+/usr/sbin/pkgutil --expand "$temporary_package" "$expanded_package"
+[[ -f "$expanded_package/Resources/conclusion.html" ]] \
+    || fail "Signed installer does not contain the conclusion page."
+/usr/bin/grep -Fq '<conclusion file="conclusion.html" mime-type="text/html"/>' \
+    "$expanded_package/Distribution" \
+    || fail "Signed installer does not reference the conclusion page."
 
 print "Submitting installer package to Apple's notary service..."
 xcrun notarytool submit \

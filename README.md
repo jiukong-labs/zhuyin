@@ -191,7 +191,9 @@ Public versions are distributed from [GitHub Releases](https://github.com/jiukon
 as universal, Developer ID-signed and Apple-notarized `.pkg` installers. The
 installer places 久空輸入法 in `/Library/Input Methods`; macOS still requires
 each user to approve and enable a newly installed input method in System
-Settings.
+Settings. After every install or update, sign out of macOS and sign back in,
+or restart the Mac, so macOS replaces its cached input-method process. Save
+your work first. The installer shows this reminder on its completion screen.
 
 See the [installation guide](docs/INSTALL.md) for verification, enablement,
 updates, and removal. Maintainers should use the guarded release process in

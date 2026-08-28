@@ -20,15 +20,18 @@ for every user of the Mac.
 3. Double-click the `.pkg`, confirm that macOS identifies the developer, and
    complete the installer. Administrator approval is required because the app
    is installed at `/Library/Input Methods/Jiukong Zhuyin.app`.
-4. Open **System Settings > Keyboard**. Under **Text Input**, click **Edit…**,
+4. Save your work, then sign out of macOS and sign back in, or restart the Mac.
+   Do this after every fresh install or update so macOS stops any cached
+   input-method process and loads the installed version. The Installer
+   completion screen also shows this reminder.
+5. Open **System Settings > Keyboard**. Under **Text Input**, click **Edit…**,
    then **+**. Select **Traditional Chinese**, add **久空輸入法**, and approve
    macOS's input-method prompt if it appears.
-5. Select 久空輸入法 from the menu-bar input menu. The installer never changes
+6. Select 久空輸入法 from the menu-bar input menu. The installer never changes
    the active input source automatically.
 
-If 久空輸入法 does not appear in System Settings immediately, sign out and
-back in once, then repeat step 4. This refreshes macOS's per-login input-source
-cache.
+If 久空輸入法 does not appear in System Settings after signing back in, repeat
+step 5. This refreshes macOS's per-login input-source registration.
 
 ## Update
 
@@ -50,6 +53,10 @@ Do not keep a second development copy at
 `~/Library/Input Methods/Jiukong Zhuyin.app`: two bundles with the same
 identifier can make macOS register the wrong copy. Remove the development copy
 with `scripts/uninstall.sh` before installing a public release.
+
+After the update finishes, save your work, then sign out of macOS and sign back
+in, or restart the Mac. This is the same refresh described in install step 4
+and prevents macOS from continuing to run the previous input-method process.
 
 ## Remove
 

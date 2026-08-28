@@ -65,7 +65,8 @@ dist/Jiukong-Zhuyin-0.1.0.pkg.sha256
 
 Before returning success it verifies the stable bundle identifier, both CPU
 architectures, Developer ID signature, Hardened Runtime, embedded provisioning
-profile, installer signature, notarization ticket, and Gatekeeper assessment.
+profile, installer completion reminder, installer signature, notarization
+ticket, and Gatekeeper assessment.
 
 Before creating the tag, install the exact working build and run the local
 source, unit, and installed-input preflight:
@@ -133,5 +134,7 @@ passing script count in the draft release notes; do not substitute a green
 unit-test run for the real InputMethodKit acceptance path.
 
 New input methods may require explicit approval in System Settings, and macOS
-may require one sign-out/sign-in before the input source appears. Document that
-normal platform behavior in every GitHub Release.
+may keep the previous input-method process for the current login session. The
+installer completion screen and every GitHub Release must tell users to save
+their work, then sign out and sign back in or restart the Mac after every
+install or update.

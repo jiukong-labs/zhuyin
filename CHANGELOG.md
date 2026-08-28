@@ -6,6 +6,9 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Added
 
+- The public Installer completion screen now explicitly reminds users to save
+  their work, then sign out of macOS and sign back in or restart the Mac after
+  every install or update, so the cached input-method process is refreshed.
 - A project-owned default selection ranking captured from the maintainer's
   current Jiukong history: 804 character-reading rows (7,066 selections) and
   385 already-present built-in phrase rows (2,277 selections). The checked-in
