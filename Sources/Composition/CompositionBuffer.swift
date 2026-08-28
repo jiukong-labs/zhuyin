@@ -160,6 +160,36 @@ struct CompositionBuffer: Equatable {
         units.last(where: { $0.kind == .reading })?.id
     }
 
+    /// Moves the insertion-caret anchor one displayed unit to the left.
+    ///
+    /// The anchor is the unit immediately following the caret; `nil` is the
+    /// text end. Punctuation is deliberately included because it occupies a
+    /// visible caret boundary even though it has no candidate reading.
+    func caretAnchorUnitID(movingLeftFrom followingUnitID: UUID?) -> UUID? {
+        guard let followingUnitID else {
+            return units.last?.id
+        }
+        guard let followingIndex = units.firstIndex(where: {
+            $0.id == followingUnitID
+        }), followingIndex > units.startIndex else {
+            return nil
+        }
+        return units[units.index(before: followingIndex)].id
+    }
+
+    /// Moves the insertion-caret anchor one displayed unit to the right.
+    /// Returning `nil` means the caret has reached the text end.
+    func caretAnchorUnitID(movingRightFrom followingUnitID: UUID?) -> UUID? {
+        guard let followingUnitID,
+              let followingIndex = units.firstIndex(where: {
+                  $0.id == followingUnitID
+              }),
+              followingIndex < units.index(before: units.endIndex) else {
+            return nil
+        }
+        return units[units.index(after: followingIndex)].id
+    }
+
     /// The AppKit marked-text selection, expressed in UTF-16 code units.
     /// When no phrase range is selected, this is a caret at the text end.
     var markedSelectionRange: NSRange {

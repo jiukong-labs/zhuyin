@@ -186,6 +186,132 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         }
     }
 
+    func testManualSynchronizationUsesUserInitiatedUrgency() throws {
+        let store = try makeStore()
+        let transport = ProbeCloudTransport()
+        let coordinator = makeCoordinator(store: store, transport: transport)
+
+        waitForSync(coordinator)
+
+        XCTAssertEqual(transport.fetchUrgencies, [.userInitiated])
+        XCTAssertEqual(transport.saveUrgencies, [.userInitiated])
+    }
+
+    func testAutomaticSynchronizationUsesAutomaticUrgency() throws {
+        let store = try makeStore()
+        let preference = LockedBoolean(true)
+        let fetchStarted = expectation(description: "automatic fetch started")
+        let transport = ProbeCloudTransport(
+            defersFetch: true,
+            onFetch: { fetchStarted.fulfill() }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: MemoryCloudSyncStateStore(),
+            isEnabled: { preference.value },
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+
+        coordinator.start()
+        wait(for: [fetchStarted], timeout: 2)
+
+        XCTAssertEqual(transport.fetchUrgencies, [.automatic])
+
+        preference.value = false
+        coordinator.preferenceDidChange()
+        drainDisabledCoordinator(coordinator)
+        XCTAssertTrue(transport.fetchWasCancelled)
+    }
+
+    func testManualSynchronizationPreemptsAutomaticFetch() throws {
+        let store = try makeStore()
+        let preference = LockedBoolean(true)
+        let firstFetchStarted = expectation(
+            description: "automatic fetch started"
+        )
+        let secondFetchStarted = expectation(
+            description: "manual fetch started"
+        )
+        let fetchCountLock = NSLock()
+        var fetchCount = 0
+        let transport = ProbeCloudTransport(
+            defersFetch: true,
+            onFetch: {
+                fetchCountLock.lock()
+                fetchCount += 1
+                let currentCount = fetchCount
+                fetchCountLock.unlock()
+                if currentCount == 1 {
+                    firstFetchStarted.fulfill()
+                } else if currentCount == 2 {
+                    secondFetchStarted.fulfill()
+                }
+            }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: MemoryCloudSyncStateStore(),
+            isEnabled: { preference.value },
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+        let stopped = expectation(description: "manual sync stopped")
+
+        coordinator.start()
+        wait(for: [firstFetchStarted], timeout: 2)
+        coordinator.synchronizeNow {
+            stopped.fulfill()
+        }
+        wait(for: [secondFetchStarted], timeout: 2)
+
+        XCTAssertEqual(
+            transport.fetchUrgencies,
+            [.automatic, .userInitiated]
+        )
+        XCTAssertEqual(transport.fetchCancellationStates, [true, false])
+
+        preference.value = false
+        coordinator.preferenceDidChange()
+        wait(for: [stopped], timeout: 2)
+        XCTAssertEqual(transport.fetchCancellationStates, [true, true])
+    }
+
+    func testManualSynchronizationTimesOutAndRetriesOnlyOnce() throws {
+        let store = try makeStore()
+        let transport = ProbeCloudTransport(defersFetch: true)
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: MemoryCloudSyncStateStore(),
+            isEnabled: { true },
+            debounceInterval: 0,
+            retryInterval: 60,
+            fetchTimeoutInterval: 0.02,
+            saveTimeoutInterval: 0.02,
+            userInitiatedRetryInterval: 0
+        )
+        let completed = expectation(description: "timed out sync completed")
+
+        coordinator.synchronizeNow {
+            completed.fulfill()
+        }
+        wait(for: [completed], timeout: 2)
+
+        XCTAssertEqual(transport.fetchCount, 2)
+        XCTAssertEqual(
+            transport.fetchUrgencies,
+            [.userInitiated, .userInitiated]
+        )
+        XCTAssertEqual(transport.fetchCancellationStates, [true, true])
+        guard case let .unavailable(message) = coordinator.status else {
+            return XCTFail("Expected unavailable status")
+        }
+        XCTAssertTrue(message.contains("連線逾時"))
+    }
+
     func testDisabledCoordinatorNeverTouchesTransport() throws {
         let store = try makeStore()
         let transport = ProbeCloudTransport()
@@ -338,7 +464,8 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
             isEnabled: { true },
             now: now,
             debounceInterval: 0,
-            retryInterval: 60
+            retryInterval: 60,
+            userInitiatedRetryInterval: 0
         )
     }
 
@@ -443,6 +570,9 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
     private var savedStorage: [CloudUserDataRecord] = []
     private var fetchCountStorage = 0
     private var saveCountStorage = 0
+    private var fetchUrgenciesStorage: [CloudUserDataSyncUrgency] = []
+    private var saveUrgenciesStorage: [CloudUserDataSyncUrgency] = []
+    private var fetchTransfersStorage: [ProbeCloudTransfer] = []
     private var fetchTransferStorage: ProbeCloudTransfer?
     private var saveTransferStorage: ProbeCloudTransfer?
     private var deferredFetchCompletion: (
@@ -486,6 +616,25 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
         return saveCountStorage
     }
 
+    var fetchUrgencies: [CloudUserDataSyncUrgency] {
+        lock.lock()
+        defer { lock.unlock() }
+        return fetchUrgenciesStorage
+    }
+
+    var saveUrgencies: [CloudUserDataSyncUrgency] {
+        lock.lock()
+        defer { lock.unlock() }
+        return saveUrgenciesStorage
+    }
+
+    var fetchCancellationStates: [Bool] {
+        lock.lock()
+        let transfers = fetchTransfersStorage
+        lock.unlock()
+        return transfers.map(\.isCancelled)
+    }
+
     var fetchWasCancelled: Bool {
         lock.lock()
         let transfer = fetchTransferStorage
@@ -501,11 +650,14 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
     }
 
     func fetchAll(
+        urgency: CloudUserDataSyncUrgency,
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
     ) -> CloudUserDataTransfer {
         let transfer = ProbeCloudTransfer()
         lock.lock()
         fetchCountStorage += 1
+        fetchUrgenciesStorage.append(urgency)
+        fetchTransfersStorage.append(transfer)
         fetchTransferStorage = transfer
         if defersFetch {
             deferredFetchCompletion = completion
@@ -525,11 +677,13 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
 
     func save(
         _ records: [CloudUserDataRecord],
+        urgency: CloudUserDataSyncUrgency,
         completion: @escaping (Result<Void, Error>) -> Void
     ) -> CloudUserDataTransfer {
         let transfer = ProbeCloudTransfer()
         lock.lock()
         saveCountStorage += 1
+        saveUrgenciesStorage.append(urgency)
         savedStorage.append(contentsOf: records)
         saveTransferStorage = transfer
         if defersSave {

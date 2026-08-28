@@ -58,14 +58,14 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
     func testPlainArrowsMoveTheCompositionRevisionCursor() {
         XCTAssertEqual(
             cursorCommand(kVK_LeftArrow, modifiers: [.function]),
-            .previousReading
+            .previousUnit
         )
         XCTAssertEqual(
             cursorCommand(
                 kVK_RightArrow,
                 modifiers: [.function, .numericPad, .capsLock]
             ),
-            .nextReading
+            .nextUnit
         )
     }
 

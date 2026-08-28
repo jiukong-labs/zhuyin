@@ -691,20 +691,22 @@ final class InputController: IMKInputController {
                 // it like any other positioned unit instead of assuming it
                 // landed at the buffer's end.
                 switch command {
-                case .previousReading:
-                    targetUnitID = compositionBuffer.readingUnitID(
-                        before: revisingUnitID
+                case .previousUnit:
+                    targetUnitID = compositionBuffer.caretAnchorUnitID(
+                        movingLeftFrom: revisingUnitID
                     ) ?? revisingUnitID
-                case .nextReading:
-                    targetUnitID = compositionBuffer.readingUnitID(
-                        after: revisingUnitID
+                case .nextUnit:
+                    targetUnitID = compositionBuffer.caretAnchorUnitID(
+                        movingRightFrom: revisingUnitID
                     )
                 }
             } else {
                 switch command {
-                case .previousReading:
-                    targetUnitID = compositionBuffer.lastReadingUnitID
-                case .nextReading:
+                case .previousUnit:
+                    targetUnitID = compositionBuffer.caretAnchorUnitID(
+                        movingLeftFrom: nil
+                    )
+                case .nextUnit:
                     targetUnitID = nil
                 }
             }
@@ -713,14 +715,14 @@ final class InputController: IMKInputController {
                 clearCandidatePresentation()
             }
             switch command {
-            case .previousReading:
-                targetUnitID = compositionBuffer.readingUnitID(
-                    before: revisingUnitID
+            case .previousUnit:
+                targetUnitID = compositionBuffer.caretAnchorUnitID(
+                    movingLeftFrom: revisingUnitID
                 ) ?? revisingUnitID
-            case .nextReading:
+            case .nextUnit:
                 if let revisingUnitID {
-                    targetUnitID = compositionBuffer.readingUnitID(
-                        after: revisingUnitID
+                    targetUnitID = compositionBuffer.caretAnchorUnitID(
+                        movingRightFrom: revisingUnitID
                     )
                 } else {
                     targetUnitID = nil
@@ -745,7 +747,7 @@ final class InputController: IMKInputController {
             clearCandidatePresentation()
         }
         if let unitID,
-           compositionBuffer.revisionFocus(for: unitID) == nil {
+           compositionBuffer.unit(withID: unitID) == nil {
             isRevisionCaretActive = false
             revisingUnitID = nil
             updateMarkedComposition(on: inputClient)
@@ -1388,7 +1390,7 @@ final class InputController: IMKInputController {
         to inputClient: any IMKTextInput
     ) {
         if let anchorUnitID = storeLiteralReading(pronunciation),
-           compositionBuffer.revisionFocus(for: anchorUnitID) != nil {
+           compositionBuffer.unit(withID: anchorUnitID) != nil {
             // The anchor keeps the caret; see the matching comment in
             // `acceptCandidate`.
             isRevisionCaretActive = true

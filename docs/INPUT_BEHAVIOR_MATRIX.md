@@ -41,6 +41,7 @@ leaving the default gate.
 | Forward Delete edits the reading right of the revision caret | `revision-forward-delete` | `測ㄕ` |
 | Escape cancels without leaking text | `escape` | empty document |
 | Shift punctuation stays Chinese | `punctuation` | `我，我` |
+| Revision caret stops immediately before punctuation | `punctuation-caret` | `測試？| → 測試|？`; Backspace commits `測ㄕ？` |
 | Direct bracket and slash punctuation mappings | `brackets` | `「我」、／` |
 | Shift-Left phrase selection | `phrase` | `九空` |
 | Shift-Right phrase selection | `phrase-right` | `九空` |

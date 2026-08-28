@@ -31,6 +31,7 @@ typeset -a required=(
   revision-forward-delete
   escape
   punctuation
+  punctuation-caret
   brackets
   phrase
   phrase-right

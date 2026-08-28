@@ -343,6 +343,22 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "我，我"
     ),
+    // Left from the text end must stop immediately before punctuation instead
+    // of skipping it and landing before the preceding reading. Backspace then
+    // reopens 試, removes its tone, and preserves the question mark.
+    "punctuation-caret": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_ANSI_Slash, .maskShift),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_Delete),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測ㄕ？"
+    ),
     "brackets": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [

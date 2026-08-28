@@ -120,6 +120,27 @@ final class CompositionPresentationTests: XCTestCase {
         )
     }
 
+    func testRevisionCaretCanStopImmediatelyBeforePunctuation() throws {
+        var buffer = CompositionBuffer()
+        buffer.append(text: "名", pronunciation: "ㄇㄧㄥˊ")
+        let questionMark = try XCTUnwrap(buffer.appendPunctuation("？"))
+
+        XCTAssertEqual(
+            CompositionPresentation.make(
+                buffer: buffer,
+                activeSuffix: nil,
+                focusedUnitID: questionMark.id
+            ),
+            CompositionPresentation(
+                text: "名？",
+                selectionRange: NSRange(
+                    location: "名".utf16.count,
+                    length: 0
+                )
+            )
+        )
+    }
+
     func testActiveSuffixTakesPriorityOverRevisionFocus() throws {
         var buffer = CompositionBuffer()
         buffer.append(text: "測", pronunciation: "ㄘㄜˋ")

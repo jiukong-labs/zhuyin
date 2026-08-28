@@ -33,6 +33,17 @@ enum UserDataCloudSyncStatus: Equatable {
     }()
 }
 
+private enum UserDataCloudSyncCoordinatorError: LocalizedError {
+    case timedOut
+
+    var errorDescription: String? {
+        switch self {
+        case .timedOut:
+            return "連線逾時。請確認 VPN 允許 iCloud 連線後再按「立即同步」。"
+        }
+    }
+}
+
 protocol UserDataCloudSyncing: AnyObject {
     var status: UserDataCloudSyncStatus { get }
     func start()
@@ -84,6 +95,9 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     private let debounceInterval: TimeInterval
     private let retryInterval: TimeInterval
     private let minimumRefreshInterval: TimeInterval
+    private let fetchTimeoutInterval: TimeInterval
+    private let saveTimeoutInterval: TimeInterval
+    private let userInitiatedRetryInterval: TimeInterval
 
     private let statusLock = NSLock()
     private var statusStorage: UserDataCloudSyncStatus
@@ -95,9 +109,12 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     private var synchronizeAgain = false
     private var synchronizationID: UInt = 0
     private var activeTransfer: CloudUserDataTransfer?
+    private var activeUrgency: CloudUserDataSyncUrgency = .automatic
+    private var userInitiatedRetriesRemaining = 0
     private var accountChangeObserver: NSObjectProtocol?
     private var debounceWorkItem: DispatchWorkItem?
     private var retryWorkItem: DispatchWorkItem?
+    private var timeoutWorkItem: DispatchWorkItem?
     private var completionHandlers: [() -> Void] = []
     private var lastAttemptAt: Date?
 
@@ -112,7 +129,10 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         queueLabel: String = "tw.idv.jiukong.cloud-user-data",
         debounceInterval: TimeInterval = 2,
         retryInterval: TimeInterval = 300,
-        minimumRefreshInterval: TimeInterval = 900
+        minimumRefreshInterval: TimeInterval = 900,
+        fetchTimeoutInterval: TimeInterval = 75,
+        saveTimeoutInterval: TimeInterval = 300,
+        userInitiatedRetryInterval: TimeInterval = 2
     ) {
         self.store = store
         self.transport = transport
@@ -124,6 +144,9 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         self.debounceInterval = debounceInterval
         self.retryInterval = retryInterval
         self.minimumRefreshInterval = minimumRefreshInterval
+        self.fetchTimeoutInterval = fetchTimeoutInterval
+        self.saveTimeoutInterval = saveTimeoutInterval
+        self.userInitiatedRetryInterval = userInitiatedRetryInterval
         queue = DispatchQueue(label: queueLabel, qos: .utility)
         persistedState = stateStore.load()
         statusStorage = isEnabled()
@@ -151,7 +174,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
             }
             started = true
             observeForAccountChanges()
-            requestSynchronization()
+            requestSynchronization(urgency: .automatic)
         }
     }
 
@@ -170,7 +193,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                now().timeIntervalSince(lastAttemptAt) < minimumRefreshInterval {
                 return
             }
-            requestSynchronization()
+            requestSynchronization(urgency: .automatic)
         }
     }
 
@@ -188,7 +211,11 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
             debounceWorkItem = nil
             retryWorkItem?.cancel()
             retryWorkItem = nil
-            requestSynchronization()
+            if !synchronizationInProgress
+                || activeUrgency != .userInitiated {
+                userInitiatedRetriesRemaining = 1
+            }
+            requestSynchronization(urgency: .userInitiated)
         }
     }
 
@@ -200,7 +227,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
             if isEnabled() {
                 requiresFreshConsent = false
                 setStatus(.idle(lastSuccessfulSync: nil))
-                requestSynchronization()
+                requestSynchronization(urgency: .automatic)
             } else {
                 stopSynchronization()
             }
@@ -243,28 +270,39 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     private func scheduleDebouncedSynchronization() {
         debounceWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            self?.requestSynchronization()
+            self?.requestSynchronization(urgency: .automatic)
         }
         debounceWorkItem = item
         queue.asyncAfter(deadline: .now() + debounceInterval, execute: item)
     }
 
-    private func requestSynchronization() {
+    private func requestSynchronization(
+        urgency: CloudUserDataSyncUrgency
+    ) {
         guard synchronizationIsEnabled else {
             stopSynchronization()
             return
         }
         if synchronizationInProgress {
-            synchronizeAgain = true
-            return
+            if urgency == .userInitiated,
+               activeUrgency == .automatic {
+                cancelActiveAttempt()
+            } else {
+                if urgency == .automatic {
+                    synchronizeAgain = true
+                }
+                return
+            }
         }
 
         synchronizationInProgress = true
+        activeUrgency = urgency
         synchronizationID &+= 1
         let currentSynchronizationID = synchronizationID
         lastAttemptAt = now()
         setStatus(.syncing)
-        activeTransfer = transport.fetchAll { [weak self] result in
+        activeTransfer = transport.fetchAll(urgency: urgency) {
+            [weak self] result in
             self?.queue.async {
                 self?.handleFetchResult(
                     result,
@@ -272,6 +310,10 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 )
             }
         }
+        scheduleTimeout(
+            after: fetchTimeoutInterval,
+            synchronizationID: currentSynchronizationID
+        )
     }
 
     private func handleFetchResult(
@@ -281,6 +323,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         guard completedSynchronizationID == synchronizationID else {
             return
         }
+        cancelTimeout()
         activeTransfer = nil
         guard synchronizationIsEnabled else {
             stopSynchronization()
@@ -297,7 +340,10 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 finishWithFailure(error)
                 return
             }
-            activeTransfer = transport.save(reconciliation.uploads) {
+            activeTransfer = transport.save(
+                reconciliation.uploads,
+                urgency: activeUrgency
+            ) {
                 [weak self] result in
                 self?.queue.async {
                     self?.handleSaveResult(
@@ -307,6 +353,10 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                     )
                 }
             }
+            scheduleTimeout(
+                after: saveTimeoutInterval,
+                synchronizationID: completedSynchronizationID
+            )
         }
     }
 
@@ -318,6 +368,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         guard completedSynchronizationID == synchronizationID else {
             return
         }
+        cancelTimeout()
         activeTransfer = nil
         guard synchronizationIsEnabled else {
             stopSynchronization()
@@ -514,10 +565,12 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     }
 
     private func finishSuccessfully() {
+        cancelTimeout()
         activeTransfer = nil
         retryWorkItem?.cancel()
         retryWorkItem = nil
         synchronizationInProgress = false
+        userInitiatedRetriesRemaining = 0
         guard synchronizationIsEnabled else {
             setStatus(.disabled)
             completeCurrentHandlers()
@@ -527,16 +580,34 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         completeCurrentHandlers()
         if synchronizeAgain || !persistedState.pending.isEmpty {
             synchronizeAgain = false
-            requestSynchronization()
+            requestSynchronization(urgency: .automatic)
         }
     }
 
     private func finishWithFailure(_ error: Error) {
+        cancelTimeout()
         activeTransfer = nil
         Self.logger.error(
             "iCloud user-data synchronization failed: \(error.localizedDescription, privacy: .public)"
         )
         synchronizationInProgress = false
+
+        if activeUrgency == .userInitiated,
+           userInitiatedRetriesRemaining > 0,
+           synchronizationIsEnabled {
+            userInitiatedRetriesRemaining -= 1
+            retryWorkItem?.cancel()
+            let item = DispatchWorkItem { [weak self] in
+                self?.requestSynchronization(urgency: .userInitiated)
+            }
+            retryWorkItem = item
+            queue.asyncAfter(
+                deadline: .now() + userInitiatedRetryInterval,
+                execute: item
+            )
+            return
+        }
+
         setStatus(.unavailable(error.localizedDescription))
         completeCurrentHandlers()
 
@@ -545,7 +616,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         }
         retryWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            self?.requestSynchronization()
+            self?.requestSynchronization(urgency: .automatic)
         }
         retryWorkItem = item
         queue.asyncAfter(deadline: .now() + retryInterval, execute: item)
@@ -582,12 +653,51 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         activeTransfer = nil
         synchronizationInProgress = false
         synchronizeAgain = false
+        userInitiatedRetriesRemaining = 0
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
         retryWorkItem?.cancel()
         retryWorkItem = nil
+        cancelTimeout()
         setStatus(.disabled)
         completeCurrentHandlers()
+    }
+
+    private func cancelActiveAttempt() {
+        synchronizationID &+= 1
+        activeTransfer?.cancel()
+        activeTransfer = nil
+        synchronizationInProgress = false
+        synchronizeAgain = false
+        cancelTimeout()
+    }
+
+    private func scheduleTimeout(
+        after interval: TimeInterval,
+        synchronizationID expectedSynchronizationID: UInt
+    ) {
+        cancelTimeout()
+        guard interval > 0 else {
+            return
+        }
+        let item = DispatchWorkItem { [weak self] in
+            guard let self,
+                  synchronizationInProgress,
+                  synchronizationID == expectedSynchronizationID else {
+                return
+            }
+            synchronizationID &+= 1
+            activeTransfer?.cancel()
+            activeTransfer = nil
+            finishWithFailure(UserDataCloudSyncCoordinatorError.timedOut)
+        }
+        timeoutWorkItem = item
+        queue.asyncAfter(deadline: .now() + interval, execute: item)
+    }
+
+    private func cancelTimeout() {
+        timeoutWorkItem?.cancel()
+        timeoutWorkItem = nil
     }
 
     private func setStatus(_ status: UserDataCloudSyncStatus) {

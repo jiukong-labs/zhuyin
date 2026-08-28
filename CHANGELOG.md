@@ -176,3 +176,12 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
   keystroke; Space accepts the first candidate without submitting the buffer.
 - Runtime dictionary schema 2 adds first-party exact phrase entries without an
   imported corpus or frequency score.
+
+### Fixed
+
+- Manual iCloud synchronization now preempts a stalled automatic attempt,
+  permits cellular-network access, uses user-initiated CloudKit operations,
+  and reports a clear timeout after one retry instead of waiting indefinitely.
+- Left and Right now stop at both sides of punctuation inside an uncommitted
+  composition instead of skipping the mark while positioning the revision
+  caret.

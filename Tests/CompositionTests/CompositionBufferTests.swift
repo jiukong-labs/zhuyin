@@ -489,6 +489,34 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertNil(buffer.unitID(immediatelyAfter: second.id))
     }
 
+    func testCaretNavigationStopsOnBothSidesOfPunctuation() throws {
+        var buffer = CompositionBuffer()
+        let name = try XCTUnwrap(
+            buffer.append(text: "名", pronunciation: "ㄇㄧㄥˊ")
+        )
+        let questionMark = try XCTUnwrap(buffer.appendPunctuation("？"))
+
+        // 名？| -> 名|？ -> |名？
+        XCTAssertEqual(
+            buffer.caretAnchorUnitID(movingLeftFrom: nil),
+            questionMark.id
+        )
+        XCTAssertEqual(
+            buffer.caretAnchorUnitID(movingLeftFrom: questionMark.id),
+            name.id
+        )
+        XCTAssertNil(buffer.caretAnchorUnitID(movingLeftFrom: name.id))
+
+        // |名？ -> 名|？ -> 名？|
+        XCTAssertEqual(
+            buffer.caretAnchorUnitID(movingRightFrom: name.id),
+            questionMark.id
+        )
+        XCTAssertNil(
+            buffer.caretAnchorUnitID(movingRightFrom: questionMark.id)
+        )
+    }
+
     func testRevisionFocusReportsTheVisibleReadingPosition() throws {
         var buffer = CompositionBuffer()
         let first = try XCTUnwrap(

@@ -6,15 +6,31 @@ protocol CloudUserDataTransfer: AnyObject {
     func cancel()
 }
 
+enum CloudUserDataSyncUrgency: Equatable {
+    case automatic
+    case userInitiated
+
+    var qualityOfService: QualityOfService {
+        switch self {
+        case .automatic:
+            return .utility
+        case .userInitiated:
+            return .userInitiated
+        }
+    }
+}
+
 protocol CloudUserDataTransporting: AnyObject {
     @discardableResult
     func fetchAll(
+        urgency: CloudUserDataSyncUrgency,
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
     ) -> CloudUserDataTransfer
 
     @discardableResult
     func save(
         _ records: [CloudUserDataRecord],
+        urgency: CloudUserDataSyncUrgency,
         completion: @escaping (Result<Void, Error>) -> Void
     ) -> CloudUserDataTransfer
 }
@@ -79,6 +95,8 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
 
     private static let recordSchemaVersion: Int64 = 1
     private static let maximumBatchSize = 100
+    private static let requestTimeout: TimeInterval = 60
+    private static let resourceTimeout: TimeInterval = 300
 
     private static let logger = Logger(
         subsystem: "tw.idv.jiukong.inputmethod.zhuyin",
@@ -105,9 +123,32 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     }
 
     func fetchAll(
+        urgency: CloudUserDataSyncUrgency,
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
     ) -> CloudUserDataTransfer {
         let transfer = CloudKitUserDataTransfer()
+        if urgency == .userInitiated {
+            ensureZone(
+                urgency: urgency,
+                transfer: transfer
+            ) { [weak self, weak transfer] result in
+                guard let self, let transfer, transfer.isActive else {
+                    return
+                }
+                switch result {
+                case .success:
+                    fetchZoneChanges(
+                        urgency: urgency,
+                        transfer: transfer,
+                        completion: completion
+                    )
+                case let .failure(error):
+                    transfer.deliver(.failure(error), to: completion)
+                }
+            }
+            return transfer
+        }
+
         container.accountStatus { [weak self, weak transfer] status, error in
             guard let self, let transfer, transfer.isActive else {
                 return
@@ -123,13 +164,14 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 )
                 return
             }
-            ensureZone(transfer: transfer) { result in
+            ensureZone(urgency: urgency, transfer: transfer) { result in
                 guard transfer.isActive else {
                     return
                 }
                 switch result {
                 case .success:
                     self.fetchZoneChanges(
+                        urgency: urgency,
                         transfer: transfer,
                         completion: completion
                     )
@@ -143,6 +185,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
 
     func save(
         _ records: [CloudUserDataRecord],
+        urgency: CloudUserDataSyncUrgency,
         completion: @escaping (Result<Void, Error>) -> Void
     ) -> CloudUserDataTransfer {
         let transfer = CloudKitUserDataTransfer()
@@ -156,6 +199,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             saveBatches(
                 Array(cloudRecords.chunked(maximumCount: Self.maximumBatchSize)),
                 at: 0,
+                urgency: urgency,
                 transfer: transfer,
                 completion: completion
             )
@@ -166,13 +210,14 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     }
 
     private func ensureZone(
+        urgency: CloudUserDataSyncUrgency,
         transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         let operation = CKFetchRecordZonesOperation(
             recordZoneIDs: [zoneID]
         )
-        operation.qualityOfService = .utility
+        configure(operation, urgency: urgency)
 
         let resultLock = NSLock()
         var fetchedZoneResult: Result<CKRecordZone, Error>?
@@ -200,6 +245,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 case let .failure(error):
                     if Self.isMissingZone(error) {
                         createZone(
+                            urgency: urgency,
                             transfer: transfer,
                             completion: completion
                         )
@@ -214,6 +260,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             case let .failure(error):
                 if Self.isMissingZone(error) {
                     createZone(
+                        urgency: urgency,
                         transfer: transfer,
                         completion: completion
                     )
@@ -233,6 +280,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     }
 
     private func createZone(
+        urgency: CloudUserDataSyncUrgency,
         transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
@@ -241,7 +289,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             recordZonesToSave: [zone],
             recordZoneIDsToDelete: nil
         )
-        operation.qualityOfService = .utility
+        configure(operation, urgency: urgency)
 
         let resultLock = NSLock()
         var savedZoneResult: Result<CKRecordZone, Error>?
@@ -283,6 +331,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     }
 
     private func fetchZoneChanges(
+        urgency: CloudUserDataSyncUrgency,
         transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
     ) {
@@ -293,7 +342,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             configurationsByRecordZoneID: [zoneID: configuration]
         )
         operation.fetchAllChanges = true
-        operation.qualityOfService = .utility
+        configure(operation, urgency: urgency)
 
         let resultLock = NSLock()
         var fetched: [String: CKRecord] = [:]
@@ -375,6 +424,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     private func saveBatches(
         _ batches: [[CKRecord]],
         at index: Int,
+        urgency: CloudUserDataSyncUrgency,
         transfer: CloudKitUserDataTransfer,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
@@ -392,7 +442,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
         )
         operation.savePolicy = .ifServerRecordUnchanged
         operation.isAtomic = false
-        operation.qualityOfService = .utility
+        configure(operation, urgency: urgency)
         operation.perRecordSaveBlock = {
             [weak self, weak transfer] recordID, result in
             guard let self,
@@ -417,6 +467,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 saveBatches(
                     batches,
                     at: index + 1,
+                    urgency: urgency,
                     transfer: transfer,
                     completion: completion
                 )
@@ -426,6 +477,18 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             return
         }
         database.add(operation)
+    }
+
+    private func configure(
+        _ operation: CKOperation,
+        urgency: CloudUserDataSyncUrgency
+    ) {
+        let configuration = CKOperation.Configuration()
+        configuration.qualityOfService = urgency.qualityOfService
+        configuration.allowsCellularAccess = true
+        configuration.timeoutIntervalForRequest = Self.requestTimeout
+        configuration.timeoutIntervalForResource = Self.resourceTimeout
+        operation.configuration = configuration
     }
 
     private func makeCloudRecord(_ value: CloudUserDataRecord) throws -> CKRecord {

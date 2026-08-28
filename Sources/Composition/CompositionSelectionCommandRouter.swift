@@ -40,8 +40,8 @@ enum CompositionSelectionCommandRouter {
 }
 
 enum CompositionCursorCommand: Equatable {
-    case previousReading
-    case nextReading
+    case previousUnit
+    case nextUnit
 }
 
 enum CompositionRevisionCandidateCommand: Equatable {
@@ -83,7 +83,8 @@ enum CompositionRevisionCandidateCommandRouter {
     }
 }
 
-/// Plain left/right arrows move through uncommitted reading units. Function,
+/// Plain left/right arrows move through every uncommitted displayed unit,
+/// including punctuation. Function,
 /// numeric-pad, and Caps Lock flags are inherent/non-semantic; actual shortcut
 /// modifiers remain available to the client application.
 enum CompositionCursorCommandRouter {
@@ -105,9 +106,9 @@ enum CompositionCursorCommandRouter {
 
         switch Int(keyCode) {
         case kVK_LeftArrow:
-            return .previousReading
+            return .previousUnit
         case kVK_RightArrow:
-            return .nextReading
+            return .nextUnit
         default:
             return nil
         }
