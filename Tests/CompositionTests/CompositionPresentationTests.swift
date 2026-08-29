@@ -223,13 +223,72 @@ final class CompositionPresentationTests: XCTestCase {
             highlightedRange: presentation.selectionRange
         )
 
-        XCTAssertNil(rendered.attribute(.backgroundColor, at: 0, effectiveRange: nil))
+        XCTAssertEqual(
+            rendered.attribute(.backgroundColor, at: 0, effectiveRange: nil)
+                as? NSColor,
+            NSColor.clear
+        )
+        XCTAssertEqual(
+            rendered.attribute(.underlineStyle, at: 0, effectiveRange: nil)
+                as? Int,
+            NSUnderlineStyle.single.rawValue
+        )
         XCTAssertNotNil(rendered.attribute(.backgroundColor, at: 1, effectiveRange: nil))
         XCTAssertEqual(
             rendered.attribute(.underlineStyle, at: 1, effectiveRange: nil) as? Int,
             NSUnderlineStyle.thick.rawValue
         )
-        XCTAssertNil(rendered.attribute(.backgroundColor, at: 3, effectiveRange: nil))
+        XCTAssertEqual(
+            rendered.attribute(.backgroundColor, at: 3, effectiveRange: nil)
+                as? NSColor,
+            NSColor.clear
+        )
+    }
+
+    func testOrdinaryMarkedTextUsesUnderlineWithoutSelectionFill() {
+        let presentation = CompositionPresentation(
+            text: "輸入字",
+            selectionRange: NSRange(location: 3, length: 0)
+        )
+
+        let rendered = CompositionMarkedTextRenderer.makeUnderlined(
+            presentation: presentation
+        )
+
+        for index in 0 ..< rendered.length {
+            XCTAssertEqual(
+                rendered.attribute(
+                    .backgroundColor,
+                    at: index,
+                    effectiveRange: nil
+                ) as? NSColor,
+                NSColor.clear
+            )
+            XCTAssertEqual(
+                rendered.attribute(
+                    .underlineColor,
+                    at: index,
+                    effectiveRange: nil
+                ) as? NSColor,
+                NSColor.systemGreen
+            )
+            XCTAssertEqual(
+                rendered.attribute(
+                    .underlineStyle,
+                    at: index,
+                    effectiveRange: nil
+                ) as? Int,
+                NSUnderlineStyle.single.rawValue
+            )
+            XCTAssertEqual(
+                rendered.attribute(
+                    .markedClauseSegment,
+                    at: index,
+                    effectiveRange: nil
+                ) as? Int,
+                Int(kTSMHiliteNoHilite)
+            )
+        }
     }
 
     func testRevisionMarkedTextSuppressesDefaultFillAndUnderline() {
@@ -291,7 +350,22 @@ final class CompositionPresentationTests: XCTestCase {
             )
             XCTAssertEqual(rendered.string, "測試")
             XCTAssertEqual(rendered.length, 2)
-            XCTAssertTrue(rendered.attributes(at: 0, effectiveRange: nil).isEmpty)
+            XCTAssertEqual(
+                rendered.attribute(
+                    .backgroundColor,
+                    at: 0,
+                    effectiveRange: nil
+                ) as? NSColor,
+                NSColor.clear
+            )
+            XCTAssertEqual(
+                rendered.attribute(
+                    .underlineStyle,
+                    at: 0,
+                    effectiveRange: nil
+                ) as? Int,
+                NSUnderlineStyle.single.rawValue
+            )
         }
     }
 
@@ -306,8 +380,10 @@ final class CompositionPresentationTests: XCTestCase {
             highlightedRange: presentation.selectionRange
         )
 
-        XCTAssertNil(
+        XCTAssertEqual(
             rendered.attribute(.backgroundColor, at: 0, effectiveRange: nil)
+                as? NSColor,
+            NSColor.clear
         )
         XCTAssertEqual(
             rendered.attribute(.backgroundColor, at: 1, effectiveRange: nil)

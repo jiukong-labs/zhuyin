@@ -4,6 +4,12 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Ordinary marked-text composition now requests a transparent background and
+  green underline across applications; explicit phrase selection still uses
+  the selected-text highlight.
+
 ### Added
 
 - The built-in updater can now download the release package and checksum,

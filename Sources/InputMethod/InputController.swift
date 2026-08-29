@@ -1713,7 +1713,9 @@ final class InputController: IMKInputController {
                 presentation: presentation
             )
         } else {
-            markedText = presentation.text as NSString
+            markedText = CompositionMarkedTextRenderer.makeUnderlined(
+                presentation: presentation
+            )
         }
         let clientSelectionRange = phraseRange == nil
             ? presentation.selectionRange
