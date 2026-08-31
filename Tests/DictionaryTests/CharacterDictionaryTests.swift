@@ -49,6 +49,13 @@ final class CharacterDictionaryTests: XCTestCase {
         }
     }
 
+    func testTiFourthToneContainsTi() throws {
+        let dictionary = try makeDictionary()
+
+        XCTAssertTrue(try dictionary.candidates(for: "ㄊㄧˋ").contains("剔"))
+        XCTAssertTrue(try dictionary.pronunciations(for: "剔").contains("ㄊㄧˋ"))
+    }
+
     func testNeutralMoOffersMeAsTheFirstCandidate() throws {
         let dictionary = try makeDictionary()
 
@@ -119,11 +126,11 @@ final class CharacterDictionaryTests: XCTestCase {
         let dictionary = try makeDictionary()
 
         XCTAssertEqual(try dictionary.metadataValue(for: "source_version"), "20260805")
-        XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94711")
+        XCTAssertEqual(try dictionary.metadataValue(for: "dictionary_entries"), "94712")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_characters"), "76373")
         XCTAssertEqual(
             try dictionary.metadataValue(for: "first_party_character_entries"),
-            "3"
+            "4"
         )
         XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "1965")
         XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "1964")

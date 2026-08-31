@@ -317,7 +317,7 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     }
 
     private func handleFetchResult(
-        _ result: Result<[CloudUserDataRecord], Error>,
+        _ result: Result<CloudUserDataSnapshot, Error>,
         synchronizationID completedSynchronizationID: UInt
     ) {
         guard completedSynchronizationID == synchronizationID else {
@@ -332,10 +332,18 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
         switch result {
         case let .failure(error):
             finishWithFailure(error)
-        case let .success(remoteRecords):
+        case let .success(snapshot):
+            do {
+                guard try authorize(snapshot.accountIdentifier) else {
+                    return
+                }
+            } catch {
+                finishWithFailure(error)
+                return
+            }
             let reconciliation: Reconciliation
             do {
-                reconciliation = try reconcile(remoteRecords)
+                reconciliation = try reconcile(snapshot.records)
             } catch {
                 finishWithFailure(error)
                 return
@@ -358,6 +366,32 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 synchronizationID: completedSynchronizationID
             )
         }
+    }
+
+    /// Records the account used for first consent and rejects only a genuine
+    /// account switch. CloudKit can post `CKAccountChanged` while rebuilding
+    /// its local cache after an app update or reinstall, even when the active
+    /// Apple Account is unchanged.
+    private func authorize(
+        _ currentIdentifier: CloudAccountIdentifier
+    ) throws -> Bool {
+        if let authorizedIdentifier = persistedState.accountIdentifier,
+           authorizedIdentifier != currentIdentifier {
+            persistedState.accountIdentifier = nil
+            try? stateStore.save(persistedState)
+            requiresFreshConsent = true
+            turnOffSyncAfterAccountChange()
+            stopSynchronization()
+            return false
+        }
+        guard persistedState.accountIdentifier == nil else {
+            return true
+        }
+        var savedState = persistedState
+        savedState.accountIdentifier = currentIdentifier
+        try stateStore.save(savedState)
+        persistedState = savedState
+        return true
     }
 
     private func handleSaveResult(
@@ -642,9 +676,14 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
     }
 
     private func handleAccountChange() {
-        requiresFreshConsent = true
-        turnOffSyncAfterAccountChange()
-        stopSynchronization()
+        guard synchronizationIsEnabled else {
+            return
+        }
+        let urgency = synchronizationInProgress
+            ? activeUrgency
+            : .automatic
+        cancelActiveAttempt()
+        requestSynchronization(urgency: urgency)
     }
 
     private func stopSynchronization() {

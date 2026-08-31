@@ -45,9 +45,11 @@
 		2D54DEC94A02BCE037FB0E6A /* Candidate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8896906B6EED89C1949CC6BF /* Candidate.swift */; };
 		2E2ECD47C774027B14A28B1A /* CloudUserDataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65E2ED9B9B0619D268501FA /* CloudUserDataModels.swift */; };
 		2EE85E7821596FF3CE7BB318 /* CandidateCommandRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B1F700E2EDCFBED4603FCD0 /* CandidateCommandRouterTests.swift */; };
+		2F66E75A81D33E2746EA031D /* UserDataListSortingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AAB18A026A29F9DFBEDB120 /* UserDataListSortingTests.swift */; };
 		32FFACF4D57F4C6532DE149F /* UserLearningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */; };
 		33951357A88B3EE63C0D5F31 /* UserDataCloudSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443AFD224DBEF6F890A10793 /* UserDataCloudSyncCoordinator.swift */; };
 		345D014A7644CB35C17E2839 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
+		3571119C2455DF67BEC83B27 /* UserDataListSorting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CD0B1E6E9D416A5928F87F /* UserDataListSorting.swift */; };
 		394E4846ED45546A9D38566D /* UserDataCloudSyncCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 279222F74CF4F2ECF3B1FB0C /* UserDataCloudSyncCoordinatorTests.swift */; };
 		3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */; };
 		3C0828692509355D82A1D4EE /* CompositionPunctuationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F621FE5FB032FDAD27EBC2B0 /* CompositionPunctuationTests.swift */; };
@@ -152,6 +154,7 @@
 		C246AB747EDFD6E92B592CF2 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		C68A40019CFABADFB86AFB8F /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
 		C784F5A3F57A6FB557A6B56E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE5DFE6245A13D720524505 /* main.swift */; };
+		C7906F10CB967DEFEBDF4FF9 /* UserDataListSorting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CD0B1E6E9D416A5928F87F /* UserDataListSorting.swift */; };
 		C79D565EE382F7DF72B0B86E /* PreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4EAFAF400FF306E24BD9EE /* PreferencesStore.swift */; };
 		C916E036900B4B6FDD26D113 /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
 		CA9939E6A9E47F07A760DF9C /* LanguageMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFB253696548963758C54D3 /* LanguageMode.swift */; };
@@ -247,6 +250,7 @@
 		64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardZhuyinLayout.swift; sourceTree = "<group>"; };
 		66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayout.swift; sourceTree = "<group>"; };
 		67B50E28AEB4CF9B5FFC80AE /* idiomsdict_usage_note.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = idiomsdict_usage_note.txt; sourceTree = "<group>"; };
+		68CD0B1E6E9D416A5928F87F /* UserDataListSorting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataListSorting.swift; sourceTree = "<group>"; };
 		6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducerTests.swift; sourceTree = "<group>"; };
 		6B19ADC9CB48766F2114ADEA /* UserLearningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningService.swift; sourceTree = "<group>"; };
 		6B33CE5FC1C0E74BBF4DB33B /* UserLearningStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningStoreTests.swift; sourceTree = "<group>"; };
@@ -259,6 +263,7 @@
 		75066D454F50C29C343823FA /* CandidateRankerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateRankerTests.swift; sourceTree = "<group>"; };
 		7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceRegistrar.swift; sourceTree = "<group>"; };
 		7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDictionaryTests.swift; sourceTree = "<group>"; };
+		7AAB18A026A29F9DFBEDB120 /* UserDataListSortingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataListSortingTests.swift; sourceTree = "<group>"; };
 		7B186CA5B924FBF653433399 /* UserDataClearingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataClearingTests.swift; sourceTree = "<group>"; };
 		7D12FCF239B86FEA58145D48 /* CursorIndicatorSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorSettings.swift; sourceTree = "<group>"; };
 		7EF0A148BBADCC93D8DADC8A /* UpdateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateTests.swift; sourceTree = "<group>"; };
@@ -408,6 +413,14 @@
 				C0B8DDB6D74CA6EAD87FDDCF /* UserPhraseRecord.swift */,
 			);
 			path = Learning;
+			sourceTree = "<group>";
+		};
+		2466A93FD2D3C4610D09D4AD /* SettingsTests */ = {
+			isa = PBXGroup;
+			children = (
+				7AAB18A026A29F9DFBEDB120 /* UserDataListSortingTests.swift */,
+			);
+			path = SettingsTests;
 			sourceTree = "<group>";
 		};
 		291540DD7C2E9E1EF0F44F5F /* CompositionTests */ = {
@@ -623,6 +636,7 @@
 				C5F39349259F1AB560B2117D /* SettingsWindowController.swift */,
 				E1E0343E61DE79606410917D /* UpdatePrompt.swift */,
 				C4AF04406192C10379BCF682 /* UserDataListController.swift */,
+				68CD0B1E6E9D416A5928F87F /* UserDataListSorting.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -687,6 +701,7 @@
 				64D21D615D606C1C4AF69116 /* LearningTests */,
 				9F9791A897A9386D24C2236A /* OverlayTests */,
 				B09062B6A4360112D2A625BE /* PreferencesTests */,
+				2466A93FD2D3C4610D09D4AD /* SettingsTests */,
 				DE6C138832C583DE28DCA6E0 /* UpdateTests */,
 			);
 			path = Tests;
@@ -1034,6 +1049,7 @@
 				EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */,
 				33951357A88B3EE63C0D5F31 /* UserDataCloudSyncCoordinator.swift in Sources */,
 				7554A9A75EB55F73616FD4E3 /* UserDataListController.swift in Sources */,
+				3571119C2455DF67BEC83B27 /* UserDataListSorting.swift in Sources */,
 				1456C798D4B7A0C1F6ED8AEE /* UserDataLocation.swift in Sources */,
 				84FAFD8A15D9C4EAB7774211 /* UserLearningService.swift in Sources */,
 				32FFACF4D57F4C6532DE149F /* UserLearningStore.swift in Sources */,
@@ -1123,6 +1139,8 @@
 				649EFD22D39CABBFDFC713E0 /* UserDataClearingTests.swift in Sources */,
 				D6481FE4F6A1F6757C1446A3 /* UserDataCloudSyncCoordinator.swift in Sources */,
 				394E4846ED45546A9D38566D /* UserDataCloudSyncCoordinatorTests.swift in Sources */,
+				C7906F10CB967DEFEBDF4FF9 /* UserDataListSorting.swift in Sources */,
+				2F66E75A81D33E2746EA031D /* UserDataListSortingTests.swift in Sources */,
 				978D9B4587E3BA9520629731 /* UserDataLocation.swift in Sources */,
 				09E3DE5DDF04573C662D9C6D /* UserDataLocationTests.swift in Sources */,
 				911BE00DEAF2D048893B9BE4 /* UserDataManagementTests.swift in Sources */,
@@ -1167,7 +1185,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1176,7 +1194,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.5;
+				MARKETING_VERSION = 0.1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
@@ -1315,7 +1333,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1324,7 +1342,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.5;
+				MARKETING_VERSION = 0.1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";

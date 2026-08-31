@@ -1,23 +1,5 @@
 import AppKit
 
-/// One row of the settings list, shared by the character and phrase tabs.
-struct UserDataListRow: Equatable {
-    enum Identity: Equatable {
-        case character(text: String, pronunciation: String)
-        case phrase(text: String, readings: [String])
-    }
-
-    let identity: Identity
-    let text: String
-    let reading: String
-    let selectionCount: Int64
-    let pinned: Bool
-
-    var searchText: String {
-        text + " " + reading
-    }
-}
-
 /// A read-and-edit list over one of the two learned data sets.
 ///
 /// The rows are a snapshot: every edit re-reads the store, so a list can never
@@ -168,30 +150,68 @@ final class UserDataListController: NSObject,
         tableView.rowSizeStyle = .default
         tableView.style = .inset
 
-        let columns: [(NSUserInterfaceItemIdentifier, String, CGFloat)] = [
-            (ColumnID.text, kind.textColumnTitle, 90),
-            (ColumnID.reading, "注音", 170),
-            (ColumnID.count, "次數", 50),
-            (ColumnID.pinned, "置頂", 40),
+        let columns: [(
+            NSUserInterfaceItemIdentifier,
+            String,
+            CGFloat,
+            UserDataListSortColumn
+        )] = [
+            (ColumnID.text, kind.textColumnTitle, 90, .text),
+            (ColumnID.reading, "注音", 170, .reading),
+            (ColumnID.count, "次數", 50, .count),
+            (ColumnID.pinned, "置頂", 40, .pinned),
         ]
-        for (identifier, title, width) in columns {
+        for (identifier, title, width, sortColumn) in columns {
             let column = NSTableColumn(identifier: identifier)
             column.title = title
             column.width = width
+            column.sortDescriptorPrototype = NSSortDescriptor(
+                key: sortColumn.rawValue,
+                ascending: sortColumn.initialAscending
+            )
             tableView.addTableColumn(column)
         }
     }
 
     private func applyFilter() {
+        let selectedIdentity = selectedRow()?.identity
         let query = filterText.trimmingCharacters(in: .whitespacesAndNewlines)
-        visibleRows = query.isEmpty
+        let filteredRows = query.isEmpty
             ? allRows
             : allRows.filter {
                 $0.searchText.localizedCaseInsensitiveContains(query)
             }
+        visibleRows = UserDataListSorter.sorted(filteredRows, by: activeSort)
         tableView.reloadData()
+        restoreSelection(for: selectedIdentity)
         updateStatus()
         updateButtons()
+    }
+
+    private var activeSort: UserDataListSort? {
+        guard let descriptor = tableView.sortDescriptors.first,
+              let key = descriptor.key,
+              let column = UserDataListSortColumn(rawValue: key) else {
+            return nil
+        }
+        return UserDataListSort(
+            column: column,
+            ascending: descriptor.ascending
+        )
+    }
+
+    private func restoreSelection(for identity: UserDataListRow.Identity?) {
+        guard let identity,
+              let index = visibleRows.firstIndex(where: {
+                  $0.identity == identity
+              }) else {
+            tableView.deselectAll(nil)
+            return
+        }
+        tableView.selectRowIndexes(
+            IndexSet(integer: index),
+            byExtendingSelection: false
+        )
     }
 
     private func updateStatus() {
@@ -330,5 +350,12 @@ final class UserDataListController: NSObject,
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         updateButtons()
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
+    ) {
+        applyFilter()
     }
 }

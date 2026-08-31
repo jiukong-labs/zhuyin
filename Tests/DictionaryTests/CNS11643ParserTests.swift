@@ -14,8 +14,8 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(
             dataset.statistics,
             JiukongCharacterStatistics(
-                entryCount: 3,
-                uniqueCharacterCount: 3
+                entryCount: 4,
+                uniqueCharacterCount: 4
             )
         )
         XCTAssertEqual(
@@ -32,6 +32,10 @@ final class CNS11643ParserTests: XCTestCase {
                 JiukongCharacterEntry(
                     character: "框",
                     pronunciation: "ㄎㄨㄤ"
+                ),
+                JiukongCharacterEntry(
+                    character: "剔",
+                    pronunciation: "ㄊㄧˋ"
                 ),
             ]
         )

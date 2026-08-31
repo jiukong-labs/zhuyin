@@ -4,6 +4,20 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-31
+
+### Added
+
+- Typing `ㄊㄧˋ` now offers 「剔」 as a selectable character candidate.
+- Learned characters and phrases in Data settings can be sorted by text,
+  pronunciation, selection count, or pinned state.
+
+### Fixed
+
+- Spurious CloudKit account-change notifications after an update or reinstall
+  no longer disable sync when the active Apple Account is unchanged; a genuine
+  account switch still turns sync off and requires fresh consent.
+
 ## [0.1.5] - 2026-08-31
 
 ### Added

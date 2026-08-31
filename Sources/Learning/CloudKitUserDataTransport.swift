@@ -24,7 +24,7 @@ protocol CloudUserDataTransporting: AnyObject {
     @discardableResult
     func fetchAll(
         urgency: CloudUserDataSyncUrgency,
-        completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
+        completion: @escaping (Result<CloudUserDataSnapshot, Error>) -> Void
     ) -> CloudUserDataTransfer
 
     @discardableResult
@@ -40,6 +40,7 @@ enum CloudKitUserDataTransportError: LocalizedError {
     case accountRestricted
     case accountTemporarilyUnavailable
     case accountStatusUnknown
+    case missingAccountIdentifier
     case missingZoneResult
 
     var errorDescription: String? {
@@ -52,6 +53,8 @@ enum CloudKitUserDataTransportError: LocalizedError {
             return "iCloud 帳號目前暫時無法使用。"
         case .accountStatusUnknown:
             return "目前無法確認 iCloud 帳號狀態。"
+        case .missingAccountIdentifier:
+            return "iCloud 沒有回傳目前帳號的識別資料。"
         case .missingZoneResult:
             return "iCloud 沒有回傳久空同步區的建立結果。"
         }
@@ -126,31 +129,9 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
 
     func fetchAll(
         urgency: CloudUserDataSyncUrgency,
-        completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
+        completion: @escaping (Result<CloudUserDataSnapshot, Error>) -> Void
     ) -> CloudUserDataTransfer {
         let transfer = CloudKitUserDataTransfer()
-        if urgency == .userInitiated {
-            ensureZone(
-                urgency: urgency,
-                transfer: transfer
-            ) { [weak self, weak transfer] result in
-                guard let self, let transfer, transfer.isActive else {
-                    return
-                }
-                switch result {
-                case .success:
-                    fetchZoneChanges(
-                        urgency: urgency,
-                        transfer: transfer,
-                        completion: completion
-                    )
-                case let .failure(error):
-                    transfer.deliver(.failure(error), to: completion)
-                }
-            }
-            return transfer
-        }
-
         container.accountStatus { [weak self, weak transfer] status, error in
             guard let self, let transfer, transfer.isActive else {
                 return
@@ -166,19 +147,46 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 )
                 return
             }
-            ensureZone(urgency: urgency, transfer: transfer) { result in
-                guard transfer.isActive else {
+            self.container.fetchUserRecordID {
+                [weak self, weak transfer] recordID, error in
+                guard let self, let transfer, transfer.isActive else {
                     return
                 }
-                switch result {
-                case .success:
-                    self.fetchZoneChanges(
-                        urgency: urgency,
-                        transfer: transfer,
-                        completion: completion
-                    )
-                case let .failure(error):
+                if let error {
                     transfer.deliver(.failure(error), to: completion)
+                    return
+                }
+                guard let recordID else {
+                    transfer.deliver(
+                        .failure(
+                            CloudKitUserDataTransportError
+                                .missingAccountIdentifier
+                        ),
+                        to: completion
+                    )
+                    return
+                }
+                let accountIdentifier = CloudAccountIdentifier(
+                    stableIdentifier: recordID.recordName
+                )
+                self.ensureZone(
+                    urgency: urgency,
+                    transfer: transfer
+                ) { result in
+                    guard transfer.isActive else {
+                        return
+                    }
+                    switch result {
+                    case .success:
+                        self.fetchZoneChanges(
+                            urgency: urgency,
+                            transfer: transfer,
+                            accountIdentifier: accountIdentifier,
+                            completion: completion
+                        )
+                    case let .failure(error):
+                        transfer.deliver(.failure(error), to: completion)
+                    }
                 }
             }
         }
@@ -335,7 +343,8 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
     private func fetchZoneChanges(
         urgency: CloudUserDataSyncUrgency,
         transfer: CloudKitUserDataTransfer,
-        completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
+        accountIdentifier: CloudAccountIdentifier,
+        completion: @escaping (Result<CloudUserDataSnapshot, Error>) -> Void
     ) {
         let configuration = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
         configuration.previousServerChangeToken = nil
@@ -415,7 +424,15 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             cacheLock.lock()
             cachedRecords = validCloudRecords
             cacheLock.unlock()
-            transfer.deliver(.success(decoded), to: completion)
+            transfer.deliver(
+                .success(
+                    CloudUserDataSnapshot(
+                        accountIdentifier: accountIdentifier,
+                        records: decoded
+                    )
+                ),
+                to: completion
+            )
         }
         guard transfer.track(operation) else {
             return

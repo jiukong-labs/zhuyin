@@ -35,6 +35,14 @@ final class CharacterCandidateProviderTests: XCTestCase {
         })
     }
 
+    func testTiFourthToneOffersTiAsASelectableCandidate() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+
+        XCTAssertTrue(try provider.candidates(for: "ㄊㄧˋ").contains { candidate in
+            candidate.text == "剔" && candidate.pronunciation == "ㄊㄧˋ"
+        })
+    }
+
     func testOneCommittedSelectionMovesCharacterToFirst() throws {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let learning = LearningSpy()

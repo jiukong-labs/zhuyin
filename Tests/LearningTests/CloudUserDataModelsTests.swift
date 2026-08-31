@@ -78,6 +78,9 @@ final class CloudUserDataModelsTests: XCTestCase {
             pronunciation: "ㄐㄧㄢˋ"
         )
         var state = CloudSyncPersistedState()
+        state.accountIdentifier = CloudAccountIdentifier(
+            stableIdentifier: "account-a"
+        )
         state.completedInitialMerge = true
         state.note(.upsert, identity: identity)
 
@@ -91,6 +94,25 @@ final class CloudUserDataModelsTests: XCTestCase {
             (attributes[.posixPermissions] as? NSNumber)?.intValue,
             0o600
         )
+    }
+
+    func testStateWrittenBeforeAccountTrackingStillLoads() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true
+        )
+        temporaryDirectories.append(root)
+        let location = UserDataLocation(applicationSupportRootURL: root)
+        try location.prepareDirectory()
+        let previousState = """
+        {"completedInitialMerge":true,"nextRevision":1,"pending":{},"version":1}
+        """
+        try Data(previousState.utf8).write(to: location.cloudSyncStateURL)
+
+        let loaded = FileCloudSyncStateStore(location: location).load()
+
+        XCTAssertTrue(loaded.completedInitialMerge)
+        XCTAssertNil(loaded.accountIdentifier)
     }
 
     func testMalformedStateFallsBackWithoutThrowing() throws {

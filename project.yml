@@ -153,11 +153,11 @@ targets:
         CODE_SIGN_ENTITLEMENTS: $(JIUKONG_CLOUDKIT_ENTITLEMENTS)
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
-        CURRENT_PROJECT_VERSION: 13
+        CURRENT_PROJECT_VERSION: 14
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO
-        MARKETING_VERSION: 0.1.5
+        MARKETING_VERSION: 0.1.6
         PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.inputmethod.zhuyin
         PRODUCT_MODULE_NAME: JiukongZhuyin
         PRODUCT_NAME: Jiukong Zhuyin
@@ -187,6 +187,7 @@ targets:
       - path: Sources/Overlay/CursorIndicatorSettings.swift
       - path: Sources/Overlay/CursorIndicatorAppearance.swift
       - path: Sources/Preferences
+      - path: Sources/Settings/UserDataListSorting.swift
       - path: Sources/Update
       - path: Tools/DictionaryBuilder/CNS11643Manifest.swift
       - path: Tools/DictionaryBuilder/CNS11643Parser.swift

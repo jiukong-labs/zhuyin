@@ -208,10 +208,41 @@ struct CloudSyncPendingMutation: Codable, Equatable {
     let revision: Int64
 }
 
+/// A one-way identifier for the Apple Account currently authorized to sync.
+///
+/// CloudKit's user-record name is stable within this container, but it is not
+/// persisted verbatim. Keeping only a namespaced digest is enough to
+/// distinguish a real account switch from a spurious `CKAccountChanged`
+/// notification after an app update or reinstall.
+struct CloudAccountIdentifier: Codable, Equatable {
+    let digest: String
+
+    init(stableIdentifier: String) {
+        let data = Data(
+            ("jiukong-cloud-account-v1\u{0}" + stableIdentifier).utf8
+        )
+        digest = SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+
+    fileprivate var isValid: Bool {
+        digest.count == 64 && digest.allSatisfy {
+            "0123456789abcdef".contains($0)
+        }
+    }
+}
+
+struct CloudUserDataSnapshot {
+    let accountIdentifier: CloudAccountIdentifier
+    let records: [CloudUserDataRecord]
+}
+
 struct CloudSyncPersistedState: Codable, Equatable {
     static let currentVersion = 1
 
     var version = currentVersion
+    var accountIdentifier: CloudAccountIdentifier?
     var completedInitialMerge = false
     var nextRevision: Int64 = 1
     var pending: [String: CloudSyncPendingMutation] = [:]
@@ -241,6 +272,7 @@ struct CloudSyncPersistedState: Codable, Equatable {
     func validated() -> CloudSyncPersistedState? {
         guard version == Self.currentVersion,
               nextRevision >= 1,
+              accountIdentifier?.isValid != false,
               pending.allSatisfy({ key, mutation in
                   key == mutation.identity.recordName && mutation.revision >= 1
               }) else {

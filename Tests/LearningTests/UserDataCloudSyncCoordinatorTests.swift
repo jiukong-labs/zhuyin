@@ -407,20 +407,97 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(stateStore.load().pending.count, 1)
     }
 
-    func testAppleAccountChangeTurnsOffSyncAndRequiresFreshConsent() throws {
+    func testAccountNotificationKeepsSyncEnabledForSameAccount() throws {
         let store = try makeStore()
         let notificationCenter = NotificationCenter()
         let preference = LockedBoolean(true)
-        let fetchStarted = expectation(description: "fetch started")
-        let settingTurnedOff = expectation(description: "setting turned off")
-        let transport = ProbeCloudTransport(
+        let firstFetchStarted = expectation(description: "first fetch started")
+        let secondFetchStarted = expectation(description: "second fetch started")
+        let synchronized = expectation(description: "same account synchronized")
+        let account = CloudAccountIdentifier(stableIdentifier: "account-a")
+        var state = CloudSyncPersistedState()
+        state.accountIdentifier = account
+        let stateStore = MemoryCloudSyncStateStore(state: state)
+        var transport: ProbeCloudTransport!
+        transport = ProbeCloudTransport(
+            accountIdentifier: account,
             defersFetch: true,
-            onFetch: { fetchStarted.fulfill() }
+            onFetch: {
+                if transport.fetchCount == 1 {
+                    firstFetchStarted.fulfill()
+                } else if transport.fetchCount == 2 {
+                    secondFetchStarted.fulfill()
+                }
+            }
         )
         let coordinator = UserDataCloudSyncCoordinator(
             store: store,
             transport: transport,
-            stateStore: MemoryCloudSyncStateStore(),
+            stateStore: stateStore,
+            isEnabled: { preference.value },
+            turnOffSyncAfterAccountChange: {
+                preference.value = false
+            },
+            notificationCenter: notificationCenter,
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+        let statusObserver = notificationCenter.addObserver(
+            forName: UserDataCloudSyncCoordinator
+                .statusDidChangeNotification,
+            object: coordinator,
+            queue: nil
+        ) { _ in
+            if case .idle = coordinator.status {
+                synchronized.fulfill()
+            }
+        }
+        defer { notificationCenter.removeObserver(statusObserver) }
+
+        coordinator.start()
+        wait(for: [firstFetchStarted], timeout: 2)
+        notificationCenter.post(name: .CKAccountChanged, object: nil)
+        wait(for: [secondFetchStarted], timeout: 2)
+        transport.completeDeferredFetch()
+        wait(for: [synchronized], timeout: 2)
+
+        XCTAssertTrue(preference.value)
+        XCTAssertEqual(stateStore.load().accountIdentifier, account)
+        XCTAssertEqual(transport.fetchCancellationStates, [true, false])
+    }
+
+    func testRealAppleAccountChangeTurnsOffSyncAndRequiresFreshConsent() throws {
+        let store = try makeStore()
+        let notificationCenter = NotificationCenter()
+        let preference = LockedBoolean(true)
+        let firstFetchStarted = expectation(description: "first fetch started")
+        let secondFetchStarted = expectation(description: "second fetch started")
+        let settingTurnedOff = expectation(description: "setting turned off")
+        let firstAccount = CloudAccountIdentifier(
+            stableIdentifier: "account-a"
+        )
+        let secondAccount = CloudAccountIdentifier(
+            stableIdentifier: "account-b"
+        )
+        var state = CloudSyncPersistedState()
+        state.accountIdentifier = firstAccount
+        let stateStore = MemoryCloudSyncStateStore(state: state)
+        var transport: ProbeCloudTransport!
+        transport = ProbeCloudTransport(
+            accountIdentifier: firstAccount,
+            defersFetch: true,
+            onFetch: {
+                if transport.fetchCount == 1 {
+                    firstFetchStarted.fulfill()
+                } else if transport.fetchCount == 2 {
+                    secondFetchStarted.fulfill()
+                }
+            }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: stateStore,
             isEnabled: { preference.value },
             turnOffSyncAfterAccountChange: {
                 preference.value = false
@@ -432,22 +509,18 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         )
 
         coordinator.start()
-        wait(for: [fetchStarted], timeout: 2)
+        wait(for: [firstFetchStarted], timeout: 2)
+        transport.setAccountIdentifier(secondAccount)
         notificationCenter.post(name: .CKAccountChanged, object: nil)
+        wait(for: [secondFetchStarted], timeout: 2)
+        transport.completeDeferredFetch()
         wait(for: [settingTurnedOff], timeout: 2)
         drainDisabledCoordinator(coordinator)
 
         XCTAssertFalse(preference.value)
-        XCTAssertTrue(transport.fetchWasCancelled)
+        XCTAssertEqual(transport.fetchCancellationStates, [true, false])
         XCTAssertEqual(coordinator.status, .disabled)
-
-        preference.value = true
-        drainDisabledCoordinator(coordinator)
-        XCTAssertEqual(transport.fetchCount, 1)
-        preference.value = false
-
-        transport.completeDeferredFetch()
-        drainDisabledCoordinator(coordinator)
+        XCTAssertNil(stateStore.load().accountIdentifier)
         XCTAssertEqual(transport.saveCount, 0)
     }
 
@@ -568,6 +641,7 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
     private let onFetch: (() -> Void)?
     private let onSave: (() -> Void)?
     private var savedStorage: [CloudUserDataRecord] = []
+    private var accountIdentifierStorage: CloudAccountIdentifier
     private var fetchCountStorage = 0
     private var saveCountStorage = 0
     private var fetchUrgenciesStorage: [CloudUserDataSyncUrgency] = []
@@ -576,12 +650,15 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
     private var fetchTransferStorage: ProbeCloudTransfer?
     private var saveTransferStorage: ProbeCloudTransfer?
     private var deferredFetchCompletion: (
-        (Result<[CloudUserDataRecord], Error>) -> Void
+        (Result<CloudUserDataSnapshot, Error>) -> Void
     )?
     private var deferredSaveCompletion: ((Result<Void, Error>) -> Void)?
 
     init(
         records: [CloudUserDataRecord] = [],
+        accountIdentifier: CloudAccountIdentifier = CloudAccountIdentifier(
+            stableIdentifier: "probe-account"
+        ),
         fetchError: Error? = nil,
         saveError: Error? = nil,
         defersFetch: Bool = false,
@@ -590,6 +667,7 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
         onSave: (() -> Void)? = nil
     ) {
         self.records = records
+        accountIdentifierStorage = accountIdentifier
         self.fetchError = fetchError
         self.saveError = saveError
         self.defersFetch = defersFetch
@@ -651,7 +729,7 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
 
     func fetchAll(
         urgency: CloudUserDataSyncUrgency,
-        completion: @escaping (Result<[CloudUserDataRecord], Error>) -> Void
+        completion: @escaping (Result<CloudUserDataSnapshot, Error>) -> Void
     ) -> CloudUserDataTransfer {
         let transfer = ProbeCloudTransfer()
         lock.lock()
@@ -670,7 +748,13 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
         if let fetchError {
             completion(.failure(fetchError))
         } else {
-            completion(.success(records))
+            lock.lock()
+            let accountIdentifier = accountIdentifierStorage
+            lock.unlock()
+            completion(.success(CloudUserDataSnapshot(
+                accountIdentifier: accountIdentifier,
+                records: records
+            )))
         }
         return transfer
     }
@@ -706,12 +790,22 @@ private final class ProbeCloudTransport: CloudUserDataTransporting {
         lock.lock()
         let completion = deferredFetchCompletion
         deferredFetchCompletion = nil
+        let accountIdentifier = accountIdentifierStorage
         lock.unlock()
         if let fetchError {
             completion?(.failure(fetchError))
         } else {
-            completion?(.success(records))
+            completion?(.success(CloudUserDataSnapshot(
+                accountIdentifier: accountIdentifier,
+                records: records
+            )))
         }
+    }
+
+    func setAccountIdentifier(_ accountIdentifier: CloudAccountIdentifier) {
+        lock.lock()
+        accountIdentifierStorage = accountIdentifier
+        lock.unlock()
     }
 
     func completeDeferredSave() {
