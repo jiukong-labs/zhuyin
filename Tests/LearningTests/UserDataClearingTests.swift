@@ -83,7 +83,10 @@ final class UserDataClearingTests: XCTestCase {
         )
 
         let database = try openDatabase(at: location.databaseURL)
-        XCTAssertEqual(try pragma("user_version", database: database), 2)
+        XCTAssertEqual(
+            try pragma("user_version", database: database),
+            Int64(UserLearningStore.schemaVersion)
+        )
         XCTAssertEqual(
             try pragma("application_id", database: database),
             UserLearningStore.applicationID

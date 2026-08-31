@@ -12,6 +12,12 @@ protocol UserLearningProviding: AnyObject {
     func records(for pronunciation: String) -> [String: CharacterLearningRecord]
     func recordSelection(character: String, pronunciation: String)
 
+    func setPinned(
+        _ pinned: Bool,
+        character: String,
+        pronunciation: String
+    )
+
     func phraseRecords(
         for pronunciationSequence: [String]
     ) -> [UserPhraseRecord]
@@ -20,6 +26,14 @@ protocol UserLearningProviding: AnyObject {
     func addPhrase(
         phrase: String,
         pronunciationSequence: [String],
+        createdAt: Date
+    ) -> Bool
+
+    @discardableResult
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern,
         createdAt: Date
     ) -> Bool
 
@@ -43,6 +57,12 @@ protocol UserLearningProviding: AnyObject {
 }
 
 extension UserLearningProviding {
+    func setPinned(
+        _ pinned: Bool,
+        character: String,
+        pronunciation: String
+    ) {}
+
     func phraseRecords(
         for pronunciationSequence: [String]
     ) -> [UserPhraseRecord] {
@@ -56,6 +76,20 @@ extension UserLearningProviding {
         createdAt: Date
     ) -> Bool {
         false
+    }
+
+    @discardableResult
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern,
+        createdAt: Date
+    ) -> Bool {
+        addPhrase(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence,
+            createdAt: createdAt
+        )
     }
 
     func recordPhraseSelection(
@@ -106,6 +140,13 @@ protocol UserLearningStoring: AnyObject {
         createdAt: Date
     ) throws
 
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern,
+        createdAt: Date
+    ) throws
+
     func recordPhraseSelection(
         phrase: String,
         pronunciationSequence: [String],
@@ -151,6 +192,19 @@ extension UserLearningStoring {
         pronunciationSequence: [String],
         createdAt: Date
     ) throws {}
+
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern,
+        createdAt: Date
+    ) throws {
+        try addPhrase(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence,
+            createdAt: createdAt
+        )
+    }
 
     func recordPhraseSelection(
         phrase: String,

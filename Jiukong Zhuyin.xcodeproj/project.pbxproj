@@ -12,6 +12,7 @@
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
 		062DE77B1B3A7186707494E8 /* CharacterCandidateProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A684017D608CC4FA5BF19D4 /* CharacterCandidateProviderTests.swift */; };
 		06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
+		0900B59259AD85876B14603A /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		0953F6ECA2B01FF78B6B0628 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645337CF4873F583CF52DC03 /* UpdateInstaller.swift */; };
 		09A6C56FD11D94F7A555F1D5 /* ShiftToggleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E03D98756138B225E54A9B /* ShiftToggleController.swift */; };
 		09E3DE5DDF04573C662D9C6D /* UserDataLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390A747ED6D62564F6523EAB /* UserDataLocationTests.swift */; };
@@ -163,6 +164,7 @@
 		D7E75B586FA82EAACCF6E0D8 /* CandidateCommandReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */; };
 		D89C42F7906FC7C49B80820E /* CursorIndicatorAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6CBF81B08691090230C695 /* CursorIndicatorAppearanceTests.swift */; };
 		D8F7B09EB7E71F6893ACE77A /* UserLearningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */; };
+		D967AA5CB44D782534A667D9 /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		D967BA129A655FE1FDD923CC /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
 		DAB7E6162D556C7F816BEB2F /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E38BA26E2A742FE938ED829 /* CryptoKit.framework */; };
 		DD83C944DB869BC12A8E613E /* CharacterLearningRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */; };
@@ -176,6 +178,7 @@
 		E28F248C99C7DF51EDAF39E1 /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
 		E59BB2EACE8615C94B5986A1 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3956B2AE2EBC770F628C9DB3 /* Security.framework */; };
 		E809D1E93C26198090007BA8 /* UpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8DF5A2899531361D999647 /* UpdateController.swift */; };
+		E81211C53220DB0622314336 /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
 		EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
@@ -200,6 +203,7 @@
 		119722559BC5DEFC2BB0D86C /* PreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesTests.swift; sourceTree = "<group>"; };
 		1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataLocation.swift; sourceTree = "<group>"; };
 		15074F31AE6BAC12F61FA8C2 /* ShiftToggleControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftToggleControllerTests.swift; sourceTree = "<group>"; };
+		16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseOutputPattern.swift; sourceTree = "<group>"; };
 		18908D66BF59A103E6375944 /* SystemInputSourceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInputSourceObserver.swift; sourceTree = "<group>"; };
 		18AC85D7F620408F5BBAE571 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		1E38BA26E2A742FE938ED829 /* CryptoKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CryptoKit.framework; path = System/Library/Frameworks/CryptoKit.framework; sourceTree = SDKROOT; };
@@ -505,6 +509,7 @@
 			isa = PBXGroup;
 			children = (
 				9554CAC0E5E9F4B0AB9592A4 /* CharacterDictionary.swift */,
+				16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */,
 				AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */,
 			);
 			path = Dictionary;
@@ -957,6 +962,7 @@
 				5947BC0113949558CB27C050 /* CNS11643Parser.swift in Sources */,
 				6ABAB42F3756D9078A3AB55D /* CharacterDictionary.swift in Sources */,
 				2538A2B3C7B9A89AE53CC398 /* DictionaryDatabaseBuilder.swift in Sources */,
+				D967AA5CB44D782534A667D9 /* PhraseOutputPattern.swift in Sources */,
 				748A37EAEF698053462FED9C /* SQLiteDatabase.swift in Sources */,
 				7CC53D7DA8D6E018675A5127 /* main.swift in Sources */,
 			);
@@ -1009,6 +1015,7 @@
 				BCCCAB446FCD3FF1FCEC7ABB /* LanguageMode.swift in Sources */,
 				8BD01F9CBA8CF49E13B52119 /* LanguageModeHUD.swift in Sources */,
 				B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */,
+				0900B59259AD85876B14603A /* PhraseOutputPattern.swift in Sources */,
 				A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */,
 				10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */,
 				C79D565EE382F7DF72B0B86E /* PreferencesStore.swift in Sources */,
@@ -1092,6 +1099,7 @@
 				F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */,
 				CA9939E6A9E47F07A760DF9C /* LanguageMode.swift in Sources */,
 				DFAB5EC9BDD65F6D06466116 /* MacVirtualKeyResolver.swift in Sources */,
+				E81211C53220DB0622314336 /* PhraseOutputPattern.swift in Sources */,
 				24AB213BDD66DFC7BFAF095A /* Preferences.swift in Sources */,
 				8956540EC92A556EE2F15536 /* PreferencesController.swift in Sources */,
 				48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */,
@@ -1159,7 +1167,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1168,7 +1176,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
@@ -1307,7 +1315,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1316,7 +1324,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";

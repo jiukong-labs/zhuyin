@@ -15,6 +15,7 @@ struct CloudUserDataIdentity: Codable, Equatable, Hashable {
     let kind: Kind
     let text: String
     let readings: [String]
+    let outputPattern: PhraseOutputPattern?
 
     init(character: String, pronunciation: String) throws {
         let normalizedCharacter = character.precomposedStringWithCanonicalMapping
@@ -27,16 +28,23 @@ struct CloudUserDataIdentity: Codable, Equatable, Hashable {
         kind = .character
         text = normalizedCharacter
         readings = [normalizedPronunciation]
+        outputPattern = nil
     }
 
-    init(phrase: String, readings: [String]) throws {
+    init(
+        phrase: String,
+        readings: [String],
+        outputPattern: PhraseOutputPattern? = nil
+    ) throws {
         let validated = try UserPhraseValidator.validate(
             phrase: phrase,
-            pronunciationSequence: readings
+            pronunciationSequence: readings,
+            outputPattern: outputPattern
         )
         kind = .phrase
         text = validated.phrase
         self.readings = validated.pronunciationSequence
+        self.outputPattern = validated.outputPattern
     }
 
     /// Bounded, deterministic, and opaque enough to use as a CloudKit name and
@@ -124,7 +132,8 @@ struct CloudUserDataRecord: Equatable {
     static func phrase(_ record: UserPhraseRecord) throws -> Self {
         let identity = try CloudUserDataIdentity(
             phrase: record.phrase,
-            readings: record.pronunciationSequence
+            readings: record.pronunciationSequence,
+            outputPattern: record.outputPattern
         )
         return try Self(
             identity: identity,
@@ -132,6 +141,7 @@ struct CloudUserDataRecord: Equatable {
                 ArchivedPhrase(
                     phrase: record.phrase,
                     readings: record.pronunciationSequence,
+                    unitPattern: record.outputPattern.rawValue,
                     selectionCount: record.selectionCount,
                     createdAt: milliseconds(record.createdAt),
                     lastUsedAt: record.lastUsedAt.map(milliseconds),

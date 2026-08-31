@@ -566,6 +566,25 @@ struct JiukongPhraseEntry: Equatable {
     let pronunciationSequence: [String]
     let pronunciationKey: String
     let sourceOrder: Int64
+    let outputPattern: PhraseOutputPattern
+
+    init(
+        phrase: String,
+        pronunciationSequence: [String],
+        pronunciationKey: String,
+        sourceOrder: Int64,
+        outputPattern: PhraseOutputPattern? = nil
+    ) {
+        self.phrase = phrase
+        self.pronunciationSequence = pronunciationSequence
+        self.pronunciationKey = pronunciationKey
+        self.sourceOrder = sourceOrder
+        self.outputPattern = outputPattern
+            ?? PhraseOutputPattern.inferred(
+                from: phrase,
+                readingCount: pronunciationSequence.count
+            )!
+    }
 }
 
 struct JiukongPhraseStatistics: Equatable {
@@ -621,10 +640,12 @@ struct FirstPartyPhraseAttestationResolver {
         var counts: [Key: Int64] = [:]
         var totalCharacterReadingCount: Int64 = 0
         for entry in phraseDataset.entries {
-            for (character, pronunciation) in zip(
-                entry.phrase,
-                entry.pronunciationSequence
-            ) {
+            var readingIndex = 0
+            for (character, marker) in zip(
+                entry.phrase, entry.outputPattern.markers
+            ) where marker == PhraseOutputPattern.readingMarker {
+                let pronunciation = entry.pronunciationSequence[readingIndex]
+                readingIndex += 1
                 let key = Key(
                     character: String(character),
                     pronunciation: pronunciation
@@ -836,7 +857,11 @@ struct JiukongDefaultRankingResolver {
             let readings = fields[1].split(separator: " ").map {
                 String($0).precomposedStringWithCanonicalMapping
             }
-            guard phrase.count == readings.count,
+            guard let pattern = PhraseOutputPattern.inferred(
+                      from: phrase,
+                      readingCount: readings.count
+                  ),
+                  pattern.validates(text: phrase, readingCount: readings.count),
                   readings.allSatisfy(CanonicalBopomofoReading.isValid),
                   let pronunciationKey = DictionaryPronunciationSequenceKey
                     .encode(readings),
@@ -954,7 +979,7 @@ enum JiukongPhraseParser {
                 separator: "\t",
                 omittingEmptySubsequences: false
             )
-            guard fields.count == 2 else {
+            guard fields.count == 2 || fields.count == 3 else {
                 throw JiukongPhraseParserError.malformedLine(line: lineNumber)
             }
 
@@ -965,16 +990,30 @@ enum JiukongPhraseParser {
             ).map {
                 String($0).precomposedStringWithCanonicalMapping
             }
+            let outputPattern: PhraseOutputPattern?
+            if fields.count == 3 {
+                outputPattern = PhraseOutputPattern(rawValue: String(fields[2]))
+            } else {
+                outputPattern = PhraseOutputPattern.allReadings(
+                    count: phrase.count
+                )
+            }
             guard !phrase.isEmpty else {
                 throw JiukongPhraseParserError.invalidPhrase(
                     line: lineNumber,
                     reason: "the phrase is empty"
                 )
             }
-            guard phrase.count == readings.count else {
+            guard let outputPattern,
+                  outputPattern.validates(
+                      text: phrase,
+                      readingCount: readings.count
+                  ),
+                  readings.count >= (outputPattern.containsPunctuation ? 1 : 2)
+            else {
                 throw JiukongPhraseParserError.invalidPhrase(
                     line: lineNumber,
-                    reason: "\(phrase.count) text units do not match \(readings.count) readings"
+                    reason: "the phrase text, readings, and output pattern do not match"
                 )
             }
             guard readings.allSatisfy(CanonicalBopomofoReading.isValid) else {
@@ -1008,7 +1047,8 @@ enum JiukongPhraseParser {
                     phrase: phrase,
                     pronunciationSequence: readings,
                     pronunciationKey: pronunciationKey,
-                    sourceOrder: Int64(entries.count)
+                    sourceOrder: Int64(entries.count),
+                    outputPattern: outputPattern
                 )
             )
         }
@@ -1074,7 +1114,8 @@ extension JiukongPhraseDataset {
                     phrase: entry.phrase,
                     pronunciationSequence: entry.pronunciationSequence,
                     pronunciationKey: entry.pronunciationKey,
-                    sourceOrder: Int64(mergedEntries.count)
+                    sourceOrder: Int64(mergedEntries.count),
+                    outputPattern: entry.outputPattern
                 )
             )
         }
@@ -1331,6 +1372,7 @@ enum DictionaryDatabaseBuilder {
             CREATE TABLE phrase_entries (
                 pronunciation_key TEXT NOT NULL,
                 phrase TEXT NOT NULL,
+                unit_pattern TEXT NOT NULL,
                 source_order INTEGER NOT NULL CHECK(source_order >= 0),
                 default_selection_count INTEGER NOT NULL
                     CHECK(default_selection_count >= 0),
@@ -1394,21 +1436,23 @@ enum DictionaryDatabaseBuilder {
                 INSERT INTO phrase_entries (
                     pronunciation_key,
                     phrase,
+                    unit_pattern,
                     source_order,
                     default_selection_count
-                ) VALUES (?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?)
                 """
             )
             for entry in phraseDataset.entries {
                 try insertPhrase.bind(entry.pronunciationKey, at: 1)
                 try insertPhrase.bind(entry.phrase, at: 2)
-                try insertPhrase.bind(entry.sourceOrder, at: 3)
+                try insertPhrase.bind(entry.outputPattern.rawValue, at: 3)
+                try insertPhrase.bind(entry.sourceOrder, at: 4)
                 try insertPhrase.bind(
                     defaultRankingResolver.count(
                         phrase: entry.phrase,
                         pronunciationKey: entry.pronunciationKey
                     ),
-                    at: 4
+                    at: 5
                 )
                 guard try insertPhrase.step() == .done else {
                     throw SQLiteDatabaseError.operation(

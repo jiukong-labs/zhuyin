@@ -62,17 +62,24 @@ struct DictionaryPhrase: Equatable {
     let pronunciationSequence: [String]
     let sourceOrder: Int64
     let defaultSelectionCount: Int64
+    let outputPattern: PhraseOutputPattern
 
     init(
         text: String,
         pronunciationSequence: [String],
         sourceOrder: Int64,
-        defaultSelectionCount: Int64 = 0
+        defaultSelectionCount: Int64 = 0,
+        outputPattern: PhraseOutputPattern? = nil
     ) {
         self.text = text
         self.pronunciationSequence = pronunciationSequence
         self.sourceOrder = sourceOrder
         self.defaultSelectionCount = defaultSelectionCount
+        self.outputPattern = outputPattern
+            ?? PhraseOutputPattern.inferred(
+                from: text,
+                readingCount: pronunciationSequence.count
+            )!
     }
 }
 
@@ -82,7 +89,7 @@ struct DictionaryPhrase: Equatable {
 /// shared with user-data persistence: either format may evolve independently.
 enum DictionaryPronunciationSequenceKey {
     static let currentVersion = 1
-    static let allowedUnitCount = 2 ... 64
+    static let allowedUnitCount = 1 ... 64
 
     static func encode(_ pronunciationSequence: [String]) -> String? {
         guard allowedUnitCount.contains(pronunciationSequence.count) else {
@@ -181,7 +188,7 @@ final class CharacterDictionary {
     static let resourceName = "JiukongZhuyin"
     static let resourceExtension = "sqlite3"
     static let applicationID: Int64 = 0x4A4B5A59
-    static let schemaVersion = 5
+    static let schemaVersion = 6
 
     private let database: SQLiteDatabase
 
@@ -226,7 +233,7 @@ final class CharacterDictionary {
                 "SELECT pronunciation, source_order FROM dictionary_entries LIMIT 0"
             )
             _ = try database.prepare(
-                "SELECT pronunciation_key, phrase, source_order, default_selection_count FROM phrase_entries LIMIT 0"
+                "SELECT pronunciation_key, phrase, source_order, default_selection_count, unit_pattern FROM phrase_entries LIMIT 0"
             )
             _ = try database.prepare("SELECT value FROM metadata LIMIT 0")
         } catch {
@@ -305,7 +312,7 @@ final class CharacterDictionary {
         }
         let statement = try database.prepare(
             """
-            SELECT phrase, source_order, default_selection_count
+            SELECT phrase, source_order, default_selection_count, unit_pattern
             FROM phrase_entries
             WHERE pronunciation_key = ?
             ORDER BY source_order, phrase
@@ -315,12 +322,23 @@ final class CharacterDictionary {
 
         var values: [DictionaryPhrase] = []
         while try statement.step() == .row {
+            guard let outputPattern = PhraseOutputPattern(
+                rawValue: try statement.text(at: 3)
+            ), outputPattern.validates(
+                text: try statement.text(at: 0),
+                readingCount: normalizedReadings.count
+            ) else {
+                throw CharacterDictionaryError.invalidSchema(
+                    "a phrase has an invalid output pattern"
+                )
+            }
             values.append(
                 DictionaryPhrase(
                     text: try statement.text(at: 0),
                     pronunciationSequence: normalizedReadings,
                     sourceOrder: statement.integer(at: 1),
-                    defaultSelectionCount: statement.integer(at: 2)
+                    defaultSelectionCount: statement.integer(at: 2),
+                    outputPattern: outputPattern
                 )
             )
         }

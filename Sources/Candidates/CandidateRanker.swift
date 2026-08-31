@@ -60,15 +60,30 @@ struct CandidateRanker {
                     > rhs.pronunciationSequence.count
             }
 
+            // A one-reading punctuated shortcut must not silently replace the
+            // ordinary character candidate. An explicit pin can still put it
+            // first because pinning is handled above.
+            if lhs.pronunciationSequence.count == 1,
+               rhs.pronunciationSequence.count == 1,
+               lhs.type != rhs.type {
+                return lhs.type == .character
+            }
+
             // A deliberate character choice should be useful on the very next
             // lookup, even when that character was far down the CNS source
-            // order. Phrases keep their independent tier, and an explicit pin
-            // remains stronger than automatic learning.
+            // order. Among learned characters, explicit usage count is the
+            // primary order and recency only breaks equal-count ties. Phrases
+            // keep their independent tier, and an explicit pin remains
+            // stronger than automatic learning.
             if lhs.type == .character, rhs.type == .character {
                 let lhsWasSelected = hasCommittedSelection(lhs)
                 let rhsWasSelected = hasCommittedSelection(rhs)
                 if lhsWasSelected != rhsWasSelected {
                     return lhsWasSelected
+                }
+                if lhsWasSelected,
+                   lhs.userFrequency != rhs.userFrequency {
+                    return lhs.userFrequency > rhs.userFrequency
                 }
                 if lhsWasSelected,
                    lhs.lastUsed != rhs.lastUsed {

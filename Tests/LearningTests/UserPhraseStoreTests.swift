@@ -13,14 +13,14 @@ final class UserPhraseStoreTests: XCTestCase {
         try super.tearDownWithError()
     }
 
-    func testFreshSchemaUsesVersionTwoAndEnablesForeignKeys() throws {
+    func testFreshSchemaUsesVersionThreeAndEnablesForeignKeys() throws {
         let (location, store) = try makeStore()
 
-        XCTAssertEqual(UserLearningStore.schemaVersion, 2)
+        XCTAssertEqual(UserLearningStore.schemaVersion, 3)
         XCTAssertTrue(store.foreignKeyEnforcementEnabled)
 
         let database = try openDatabase(at: location.databaseURL)
-        XCTAssertEqual(try pragma("user_version", database: database), 2)
+        XCTAssertEqual(try pragma("user_version", database: database), 3)
         XCTAssertEqual(
             try userTables(database: database),
             [
@@ -68,7 +68,7 @@ final class UserPhraseStoreTests: XCTestCase {
         )
 
         let database = try openDatabase(at: location.databaseURL)
-        XCTAssertEqual(try pragma("user_version", database: database), 2)
+        XCTAssertEqual(try pragma("user_version", database: database), 3)
         XCTAssertEqual(
             try userTables(database: database),
             [

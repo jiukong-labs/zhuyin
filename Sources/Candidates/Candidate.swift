@@ -9,15 +9,18 @@ struct CandidateID: Equatable, Hashable {
     let text: String
     let pronunciationSequence: [String]
     let type: CandidateType
+    let outputPattern: PhraseOutputPattern
 
     init(
         text: String,
         pronunciationSequence: [String],
-        type: CandidateType
+        type: CandidateType,
+        outputPattern: PhraseOutputPattern
     ) {
         self.text = text
         self.pronunciationSequence = pronunciationSequence
         self.type = type
+        self.outputPattern = outputPattern
     }
 
     var pronunciation: String {
@@ -40,6 +43,7 @@ struct Candidate: Identifiable, Equatable, Hashable {
     /// store. The candidate window uses it to expose an exact delete action;
     /// built-in phrases and character candidates are never deletable there.
     let isUserPhrase: Bool
+    let outputPattern: PhraseOutputPattern
 
     init(
         text: String,
@@ -51,7 +55,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
         userFrequency: Int64 = 0,
         lastUsed: Date? = nil,
         pinned: Bool = false,
-        isUserPhrase: Bool = false
+        isUserPhrase: Bool = false,
+        outputPattern: PhraseOutputPattern? = nil
     ) {
         self.init(
             text: text,
@@ -63,7 +68,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
             userFrequency: userFrequency,
             lastUsed: lastUsed,
             pinned: pinned,
-            isUserPhrase: isUserPhrase
+            isUserPhrase: isUserPhrase,
+            outputPattern: outputPattern
         )
     }
 
@@ -77,12 +83,20 @@ struct Candidate: Identifiable, Equatable, Hashable {
         userFrequency: Int64 = 0,
         lastUsed: Date? = nil,
         pinned: Bool = false,
-        isUserPhrase: Bool = false
+        isUserPhrase: Bool = false,
+        outputPattern: PhraseOutputPattern? = nil
     ) {
+        let resolvedPattern = outputPattern
+            ?? PhraseOutputPattern.inferred(
+                from: text,
+                readingCount: pronunciationSequence.count
+            )
+            ?? PhraseOutputPattern(rawValue: "R")!
         self.id = CandidateID(
             text: text,
             pronunciationSequence: pronunciationSequence,
-            type: type
+            type: type,
+            outputPattern: resolvedPattern
         )
         self.text = text
         self.pronunciationSequence = pronunciationSequence
@@ -94,6 +108,7 @@ struct Candidate: Identifiable, Equatable, Hashable {
         self.lastUsed = lastUsed
         self.pinned = pinned
         self.isUserPhrase = type == .phrase && isUserPhrase
+        self.outputPattern = resolvedPattern
     }
 
     var pronunciation: String {

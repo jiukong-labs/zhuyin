@@ -5,16 +5,43 @@ struct UserPhraseRecord: Equatable, Hashable {
     let phraseID: Int64
     let phrase: String
     let pronunciationSequence: [String]
+    let outputPattern: PhraseOutputPattern
     let createdAt: Date
     let lastUsedAt: Date?
     let selectionCount: Int64
     let pinned: Bool
+
+    init(
+        phraseID: Int64,
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern? = nil,
+        createdAt: Date,
+        lastUsedAt: Date?,
+        selectionCount: Int64,
+        pinned: Bool
+    ) {
+        self.phraseID = phraseID
+        self.phrase = phrase
+        self.pronunciationSequence = pronunciationSequence
+        self.outputPattern = outputPattern
+            ?? PhraseOutputPattern.inferred(
+                from: phrase,
+                readingCount: pronunciationSequence.count
+            )!
+        self.createdAt = createdAt
+        self.lastUsedAt = lastUsedAt
+        self.selectionCount = selectionCount
+        self.pinned = pinned
+    }
 }
 
 enum UserPhraseValidationError: LocalizedError, Equatable {
     case invalidUnitCount(Int)
     case emptyPhrase
     case textReadingCountMismatch(textCount: Int, readingCount: Int)
+    case invalidOutputPattern
+    case unsupportedPunctuation(index: Int)
     case emptyPronunciation(index: Int)
     case invalidPronunciation(index: Int)
 
@@ -26,6 +53,10 @@ enum UserPhraseValidationError: LocalizedError, Equatable {
             return "A user phrase cannot be empty."
         case let .textReadingCountMismatch(textCount, readingCount):
             return "A user phrase has \(textCount) text units but \(readingCount) readings."
+        case .invalidOutputPattern:
+            return "A user phrase has an invalid reading/punctuation pattern."
+        case let .unsupportedPunctuation(index):
+            return "User phrase punctuation \(index) is not supported."
         case let .emptyPronunciation(index):
             return "User phrase reading \(index) cannot be empty."
         case let .invalidPronunciation(index):
@@ -39,6 +70,7 @@ struct ValidatedUserPhrase: Equatable {
     let phrase: String
     let pronunciationSequence: [String]
     let pronunciationKey: String
+    let outputPattern: PhraseOutputPattern
 }
 
 enum UserPhraseValidator {
@@ -46,23 +78,69 @@ enum UserPhraseValidator {
 
     static func validate(
         phrase: String,
-        pronunciationSequence: [String]
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern? = nil
     ) throws -> ValidatedUserPhrase {
         let normalizedPhrase = phrase.precomposedStringWithCanonicalMapping
         let normalizedReadings = pronunciationSequence.map {
             $0.precomposedStringWithCanonicalMapping
         }
 
-        guard allowedUnitCount.contains(normalizedReadings.count) else {
+        guard !normalizedPhrase.isEmpty else {
+            throw UserPhraseValidationError.emptyPhrase
+        }
+        guard (1 ... allowedUnitCount.upperBound).contains(
+            normalizedReadings.count
+        ) else {
             throw UserPhraseValidationError.invalidUnitCount(
                 normalizedReadings.count
             )
         }
-        guard !normalizedPhrase.isEmpty else {
-            throw UserPhraseValidationError.emptyPhrase
+
+        let resolvedPattern: PhraseOutputPattern
+        if let outputPattern {
+            resolvedPattern = outputPattern
+        } else if let inferred = PhraseOutputPattern(
+            rawValue: String(normalizedPhrase.map { character in
+                PhraseOutputPattern.supportedPunctuation.contains(character)
+                    ? PhraseOutputPattern.punctuationMarker
+                    : PhraseOutputPattern.readingMarker
+            })
+        ) {
+            resolvedPattern = inferred
+        } else {
+            throw UserPhraseValidationError.invalidOutputPattern
+        }
+
+        let minimumReadingCount = resolvedPattern.containsPunctuation ? 1 : 2
+        guard (minimumReadingCount ... allowedUnitCount.upperBound)
+            .contains(normalizedReadings.count) else {
+            throw UserPhraseValidationError.invalidUnitCount(
+                normalizedReadings.count
+            )
         }
         let textUnitCount = normalizedPhrase.count
-        guard textUnitCount == normalizedReadings.count else {
+        guard resolvedPattern.unitCount == textUnitCount,
+              resolvedPattern.readingCount == normalizedReadings.count else {
+            if outputPattern == nil {
+                throw UserPhraseValidationError.textReadingCountMismatch(
+                    textCount: textUnitCount,
+                    readingCount: normalizedReadings.count
+                )
+            }
+            throw UserPhraseValidationError.invalidOutputPattern
+        }
+        for (index, pair) in zip(
+            Array(normalizedPhrase), resolvedPattern.markers
+        ).enumerated() where pair.1 == PhraseOutputPattern.punctuationMarker {
+            guard PhraseOutputPattern.supportedPunctuation.contains(pair.0) else {
+                throw UserPhraseValidationError.unsupportedPunctuation(index: index)
+            }
+        }
+        guard resolvedPattern.validates(
+            text: normalizedPhrase,
+            readingCount: normalizedReadings.count
+        ) else {
             throw UserPhraseValidationError.textReadingCountMismatch(
                 textCount: textUnitCount,
                 readingCount: normalizedReadings.count
@@ -82,9 +160,8 @@ enum UserPhraseValidator {
         return ValidatedUserPhrase(
             phrase: normalizedPhrase,
             pronunciationSequence: normalizedReadings,
-            pronunciationKey: try UserPhrasePronunciationKey.encode(
-                normalizedReadings
-            )
+            pronunciationKey: try UserPhrasePronunciationKey.encode(normalizedReadings),
+            outputPattern: resolvedPattern
         )
     }
 }
@@ -98,7 +175,7 @@ enum UserPhrasePronunciationKey {
     private static let prefix = "v\(currentVersion)|"
 
     static func encode(_ pronunciationSequence: [String]) throws -> String {
-        guard UserPhraseValidator.allowedUnitCount.contains(
+        guard (1 ... UserPhraseValidator.allowedUnitCount.upperBound).contains(
             pronunciationSequence.count
         ) else {
             throw UserPhraseValidationError.invalidUnitCount(

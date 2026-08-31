@@ -4,6 +4,22 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-31
+
+### Added
+
+- User-created phrases can include supported Chinese punctuation while
+  preserving the exact reading-to-output mapping.
+- Pinned candidates display `★ ×` in the candidate panel; clicking `×`
+  removes only the pin and keeps the learned selection count.
+
+### Changed
+
+- Same-reading characters sort by explicit pin, selection count descending,
+  recency for equal counts, and finally the built-in deterministic order.
+- User-learning schema v3 stores phrase output patterns and migrates existing
+  schema v2 phrases without losing readings or usage metadata.
+
 ### Changed
 
 - Ordinary marked-text composition now requests a transparent background and

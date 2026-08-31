@@ -86,7 +86,7 @@ final class UserPhraseRecordTests: XCTestCase {
         }
     }
 
-    func testValidatorRequiresTwoThroughSixtyFourMatchingUnits() throws {
+    func testValidatorRequiresTwoReadingsUnlessPunctuatedAndCapsAt64() throws {
         XCTAssertThrowsError(
             try UserPhraseValidator.validate(
                 phrase: "甲",
@@ -98,6 +98,12 @@ final class UserPhraseRecordTests: XCTestCase {
                 .invalidUnitCount(1)
             )
         }
+
+        let punctuated = try UserPhraseValidator.validate(
+            phrase: "嗎？",
+            pronunciationSequence: ["ㄇㄚ"]
+        )
+        XCTAssertEqual(punctuated.outputPattern.rawValue, "RP")
 
         let maximumPhrase = String(repeating: "甲", count: 64)
         let maximumReadings = Array(repeating: "ㄅ", count: 64)

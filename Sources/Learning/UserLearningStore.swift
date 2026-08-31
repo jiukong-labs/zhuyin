@@ -21,7 +21,7 @@ enum UserLearningStoreError: LocalizedError {
 
 final class UserLearningStore: UserLearningStoring {
     static let applicationID: Int64 = 0x4A5A5955
-    static let schemaVersion = 2
+    static let schemaVersion = 3
 
     private static let maximumSelectionCount = Int64.max
 
@@ -198,16 +198,39 @@ final class UserLearningStore: UserLearningStoring {
         pronunciationSequence: [String],
         createdAt: Date = Date()
     ) throws {
+        guard let outputPattern = PhraseOutputPattern.inferred(
+            from: phrase,
+            readingCount: pronunciationSequence.count
+        ) else {
+            throw UserPhraseValidationError.invalidOutputPattern
+        }
+        try addPhrase(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence,
+            outputPattern: outputPattern,
+            createdAt: createdAt
+        )
+    }
+
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern,
+        createdAt: Date = Date()
+    ) throws {
         let identity = try UserPhraseValidator.validate(
             phrase: phrase,
-            pronunciationSequence: pronunciationSequence
+            pronunciationSequence: pronunciationSequence,
+            outputPattern: outputPattern
         )
 
         try withOperationLock {
             try withImmediateTransaction {
                 if let phraseID = try phraseIDLocked(for: identity) {
                     guard try phraseReadingsLocked(phraseID: phraseID)
-                        == identity.pronunciationSequence else {
+                        == identity.pronunciationSequence,
+                          try phrasePatternLocked(phraseID: phraseID)
+                            == identity.outputPattern else {
                         throw UserLearningStoreError.invalidSchema(
                             "an existing user phrase has inconsistent readings"
                         )
@@ -474,6 +497,19 @@ final class UserLearningStore: UserLearningStoring {
                 }
                 try validateCharacterSchema()
                 try migrateVersionOneToCurrent()
+            case 2:
+                guard userTables == [
+                    "character_learning",
+                    "user_phrases",
+                    "user_phrase_readings",
+                ] else {
+                    throw UserLearningStoreError.invalidSchema(
+                        "version 2 contains unexpected tables"
+                    )
+                }
+                try validateCharacterSchema()
+                try validatePhraseSchema(expectsOutputPattern: false)
+                try migrateVersionTwoToCurrent()
             case Self.schemaVersion:
                 try validateSchema()
             default:
@@ -508,6 +544,41 @@ final class UserLearningStore: UserLearningStoring {
         }
     }
 
+    private func migrateVersionTwoToCurrent() throws {
+        try withImmediateTransaction {
+            try database.execute(
+                "ALTER TABLE user_phrases ADD COLUMN unit_pattern TEXT NOT NULL DEFAULT ''"
+            )
+            let select = try database.prepare(
+                "SELECT phrase_id, phrase FROM user_phrases ORDER BY phrase_id"
+            )
+            let update = try database.prepare(
+                "UPDATE user_phrases SET unit_pattern = ? WHERE phrase_id = ?"
+            )
+            while try select.step() == .row {
+                let phraseID = select.integer(at: 0)
+                let phrase = try select.text(at: 1)
+                guard let pattern = PhraseOutputPattern.allReadings(
+                    count: phrase.count
+                ) else {
+                    throw UserLearningStoreError.invalidSchema(
+                        "a version 2 phrase cannot be migrated"
+                    )
+                }
+                try update.bind(pattern.rawValue, at: 1)
+                try update.bind(phraseID, at: 2)
+                guard try update.step() == .done else {
+                    throw UserLearningStoreError.invalidSchema(
+                        "a version 2 phrase pattern could not be migrated"
+                    )
+                }
+                try update.reset()
+            }
+            try validateSchema()
+            try database.execute("PRAGMA user_version = \(Self.schemaVersion)")
+        }
+    }
+
     private func createCharacterSchema() throws {
         try database.execute(
             """
@@ -533,6 +604,7 @@ final class UserLearningStore: UserLearningStoring {
                 phrase TEXT NOT NULL CHECK(length(phrase) > 0),
                 pronunciation_key TEXT NOT NULL
                     CHECK(length(pronunciation_key) > 0),
+                unit_pattern TEXT NOT NULL CHECK(length(unit_pattern) > 0),
                 created_at INTEGER NOT NULL,
                 last_used_at INTEGER,
                 selection_count INTEGER NOT NULL DEFAULT 0
@@ -582,7 +654,7 @@ final class UserLearningStore: UserLearningStoring {
             )
         }
         try validateCharacterSchema()
-        try validatePhraseSchema()
+        try validatePhraseSchema(expectsOutputPattern: true)
     }
 
     private func validateCharacterSchema() throws {
@@ -658,9 +730,11 @@ final class UserLearningStore: UserLearningStoring {
         )
     }
 
-    private func validatePhraseSchema() throws {
+    private func validatePhraseSchema(
+        expectsOutputPattern: Bool
+    ) throws {
         let phraseColumns = try columnDefinitions(for: "user_phrases")
-        let expectedPhraseColumns: [String: ColumnDefinition] = [
+        var expectedPhraseColumns: [String: ColumnDefinition] = [
             "phrase_id": ColumnDefinition(
                 type: "INTEGER",
                 isNotNull: false,
@@ -697,6 +771,13 @@ final class UserLearningStore: UserLearningStoring {
                 primaryKeyPosition: 0
             ),
         ]
+        if expectsOutputPattern {
+            expectedPhraseColumns["unit_pattern"] = ColumnDefinition(
+                type: "TEXT",
+                isNotNull: true,
+                primaryKeyPosition: 0
+            )
+        }
         guard phraseColumns == expectedPhraseColumns else {
             throw UserLearningStoreError.invalidSchema(
                 "user_phrases has unexpected columns"
@@ -770,11 +851,12 @@ final class UserLearningStore: UserLearningStoring {
             )
         }
 
+        let patternColumn = expectsOutputPattern ? ", p.unit_pattern" : ""
         _ = try database.prepare(
             """
             SELECT p.phrase_id, p.phrase, p.pronunciation_key,
                    p.created_at, p.last_used_at, p.selection_count, p.pinned,
-                   r.reading_index, r.pronunciation
+                   r.reading_index, r.pronunciation\(patternColumn)
             FROM user_phrases AS p
             JOIN user_phrase_readings AS r ON r.phrase_id = p.phrase_id
             LIMIT 0
@@ -890,7 +972,7 @@ final class UserLearningStore: UserLearningStoring {
         let statement = try database.prepare(
             """
             SELECT p.phrase_id, p.phrase, p.created_at, p.last_used_at,
-                   p.selection_count, p.pinned,
+                   p.selection_count, p.pinned, p.unit_pattern,
                    r.reading_index, r.pronunciation
             FROM user_phrases AS p
             LEFT JOIN user_phrase_readings AS r
@@ -924,18 +1006,19 @@ final class UserLearningStore: UserLearningStoring {
                         ? nil
                         : statement.integer(at: 3),
                     selectionCount: statement.integer(at: 4),
-                    pinned: statement.integer(at: 5) == 1
+                    pinned: statement.integer(at: 5) == 1,
+                    outputPatternRawValue: try statement.text(at: 6)
                 )
                 orderedPhraseIDs.append(phraseID)
                 readingsByID[phraseID] = []
             }
 
-            guard !statement.isNull(at: 6), !statement.isNull(at: 7) else {
+            guard !statement.isNull(at: 7), !statement.isNull(at: 8) else {
                 throw UserLearningStoreError.invalidSchema(
                     "a user phrase has no readings"
                 )
             }
-            let readingIndex = statement.integer(at: 6)
+            let readingIndex = statement.integer(at: 7)
             let expectedIndex = Int64(readingsByID[phraseID]?.count ?? 0)
             guard readingIndex == expectedIndex else {
                 throw UserLearningStoreError.invalidSchema(
@@ -943,7 +1026,7 @@ final class UserLearningStore: UserLearningStoring {
                 )
             }
             readingsByID[phraseID, default: []].append(
-                try statement.text(at: 7)
+                try statement.text(at: 8)
             )
         }
 
@@ -954,12 +1037,21 @@ final class UserLearningStore: UserLearningStoring {
                     "a user phrase query returned incomplete data"
                 )
             }
+            guard let outputPattern = PhraseOutputPattern(
+                rawValue: metadata.outputPatternRawValue
+            ) else {
+                throw UserLearningStoreError.invalidSchema(
+                    "a user phrase has an invalid output pattern"
+                )
+            }
             let identity = try UserPhraseValidator.validate(
                 phrase: metadata.phrase,
-                pronunciationSequence: readings
+                pronunciationSequence: readings,
+                outputPattern: outputPattern
             )
             guard identity.phrase == metadata.phrase,
                   identity.pronunciationSequence == readings,
+                  identity.outputPattern == outputPattern,
                   pronunciationKey == nil
                     || identity.pronunciationKey == pronunciationKey else {
                 throw UserLearningStoreError.invalidSchema(
@@ -970,6 +1062,7 @@ final class UserLearningStore: UserLearningStoring {
                 phraseID: metadata.phraseID,
                 phrase: metadata.phrase,
                 pronunciationSequence: readings,
+                outputPattern: outputPattern,
                 createdAt: Self.date(
                     millisecondsSince1970: metadata.createdAtMilliseconds
                 ),
@@ -995,23 +1088,25 @@ final class UserLearningStore: UserLearningStoring {
             INSERT INTO user_phrases (
                 phrase,
                 pronunciation_key,
+                unit_pattern,
                 created_at,
                 last_used_at,
                 selection_count,
                 pinned
-            ) VALUES (?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """
         )
         try insertPhrase.bind(identity.phrase, at: 1)
         try insertPhrase.bind(identity.pronunciationKey, at: 2)
-        try insertPhrase.bind(createdAtMilliseconds, at: 3)
+        try insertPhrase.bind(identity.outputPattern.rawValue, at: 3)
+        try insertPhrase.bind(createdAtMilliseconds, at: 4)
         if let lastUsedAtMilliseconds {
-            try insertPhrase.bind(lastUsedAtMilliseconds, at: 4)
+            try insertPhrase.bind(lastUsedAtMilliseconds, at: 5)
         } else {
-            try insertPhrase.bindNull(at: 4)
+            try insertPhrase.bindNull(at: 5)
         }
-        try insertPhrase.bind(max(0, selectionCount), at: 5)
-        try insertPhrase.bind(pinned ? 1 : 0, at: 6)
+        try insertPhrase.bind(max(0, selectionCount), at: 6)
+        try insertPhrase.bind(pinned ? 1 : 0, at: 7)
         guard try insertPhrase.step() == .done else {
             throw UserLearningStoreError.invalidSchema(
                 "user phrase insertion returned an unexpected row"
@@ -1109,9 +1204,19 @@ final class UserLearningStore: UserLearningStoring {
     }
 
     private func mergePhraseLocked(_ entry: ArchivedPhrase) throws {
+        let outputPattern = entry.unitPattern.flatMap(
+            PhraseOutputPattern.init(rawValue:)
+        ) ?? PhraseOutputPattern.inferred(
+            from: entry.phrase,
+            readingCount: entry.readings.count
+        )
+        guard let outputPattern else {
+            throw UserPhraseValidationError.invalidOutputPattern
+        }
         let identity = try UserPhraseValidator.validate(
             phrase: entry.phrase,
-            pronunciationSequence: entry.readings
+            pronunciationSequence: entry.readings,
+            outputPattern: outputPattern
         )
         guard let phraseID = try phraseIDLocked(for: identity) else {
             try insertPhraseLocked(
@@ -1125,7 +1230,9 @@ final class UserLearningStore: UserLearningStoring {
         }
 
         guard try phraseReadingsLocked(phraseID: phraseID)
-            == identity.pronunciationSequence else {
+            == identity.pronunciationSequence,
+              try phrasePatternLocked(phraseID: phraseID)
+                == identity.outputPattern else {
             throw UserLearningStoreError.invalidSchema(
                 "an existing user phrase has inconsistent readings"
             )
@@ -1207,6 +1314,25 @@ final class UserLearningStore: UserLearningStoring {
             readings.append(try statement.text(at: 1))
         }
         return readings
+    }
+
+    private func phrasePatternLocked(
+        phraseID: Int64
+    ) throws -> PhraseOutputPattern {
+        let statement = try database.prepare(
+            "SELECT unit_pattern FROM user_phrases WHERE phrase_id = ?"
+        )
+        try statement.bind(phraseID, at: 1)
+        guard try statement.step() == .row,
+              let pattern = PhraseOutputPattern(
+                  rawValue: try statement.text(at: 0)
+              ),
+              try statement.step() == .done else {
+            throw UserLearningStoreError.invalidSchema(
+                "a user phrase has an invalid output pattern"
+            )
+        }
+        return pattern
     }
 
     private func withImmediateTransaction<T>(
@@ -1317,4 +1443,5 @@ private struct PhraseRowMetadata {
     let lastUsedAtMilliseconds: Int64?
     let selectionCount: Int64
     let pinned: Bool
+    let outputPatternRawValue: String
 }

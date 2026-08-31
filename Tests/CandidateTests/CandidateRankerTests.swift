@@ -34,17 +34,37 @@ final class CandidateRankerTests: XCTestCase {
         XCTAssertEqual(ranker.ranked(candidates, at: now).first?.text, "鍵")
     }
 
-    func testMostRecentlySelectedCharacterLeadsLearnedCharacters() {
+    func testMostFrequentlySelectedCharacterLeadsLearnedCharacters() {
+        let frequent = makeCandidate(
+            "多",
+            baseRank: 0,
+            userFrequency: 100,
+            lastUsed: now.addingTimeInterval(-60)
+        )
+        let recent = makeCandidate(
+            "少",
+            baseRank: 30,
+            userFrequency: 1,
+            lastUsed: now
+        )
+
+        XCTAssertEqual(
+            ranker.ranked([frequent, recent], at: now).map(\.text),
+            ["多", "少"]
+        )
+    }
+
+    func testRecencyBreaksTiesBetweenEquallyFrequentCharacters() {
         let older = makeCandidate(
             "舊",
             baseRank: 0,
-            userFrequency: 100,
+            userFrequency: 3,
             lastUsed: now.addingTimeInterval(-60)
         )
         let latest = makeCandidate(
             "新",
             baseRank: 30,
-            userFrequency: 1,
+            userFrequency: 3,
             lastUsed: now
         )
 

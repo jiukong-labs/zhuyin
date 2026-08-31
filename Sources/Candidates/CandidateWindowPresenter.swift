@@ -38,7 +38,7 @@ protocol CandidateWindowPresenterDelegate: AnyObject {
 
     func candidateWindowPresenter(
         _ presenter: CandidateWindowPresenter,
-        requestsDeletionOfCandidateAt index: Int,
+        requestsActionForCandidateAt index: Int,
         sessionID: UUID
     )
 
@@ -85,7 +85,7 @@ private final class SavedPhraseDeleteButton: NSButton {
     }
 }
 
-private final class CandidatePhraseDeleteButton: NSButton {
+private final class CandidateActionButton: NSButton {
     let candidateIndex: Int
     let sessionID: UUID
 
@@ -98,7 +98,7 @@ private final class CandidatePhraseDeleteButton: NSButton {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError(
-            "CandidatePhraseDeleteButton does not support NSCoder initialization."
+            "CandidateActionButton does not support NSCoder initialization."
         )
     }
 
@@ -111,24 +111,29 @@ private final class CandidatePhraseDeleteButton: NSButton {
 }
 
 private enum CandidateWindowPresentationText {
-    /// Nonbreaking spaces keep a visible gap between the phrase and its delete
+    /// Nonbreaking spaces keep a visible gap between the candidate and its
     /// control. The ideographic space reserves the slot occupied by the
-    /// overlaid button, keeping the complete phrase-gap-× group centered.
-    static let deletionGap = "\u{00A0}\u{00A0}"
-    static let deletionSlot = "　"
+    /// overlaid button, keeping the complete candidate-gap-× group centered.
+    static let actionGap = "\u{00A0}\u{00A0}"
+    static let actionSlot = "　"
+
+    static func hasInlineAction(_ candidate: Candidate) -> Bool {
+        candidate.pinned || candidate.isUserPhrase
+    }
 
     static func sizingText(for candidate: Candidate) -> String {
         candidate.text
-            + (candidate.isUserPhrase ? deletionGap + deletionSlot : "")
+            + (candidate.pinned ? "\u{00A0}★" : "")
+            + (hasInlineAction(candidate) ? actionGap + actionSlot : "")
     }
 }
 
 private final class CandidateGridView: NSView {
     var onChoose: ((UUID, Int) -> Void)?
-    var onDelete: ((UUID, Int) -> Void)?
+    var onAction: ((UUID, Int) -> Void)?
 
     private var buttons: [Int: CandidateButton] = [:]
-    private var deleteButtons: [Int: CandidatePhraseDeleteButton] = [:]
+    private var actionButtons: [Int: CandidateActionButton] = [:]
     private var representedIndices: [Int] = []
     private var representedSizingTexts: [String] = []
     private var representedSessionID: UUID?
@@ -172,9 +177,9 @@ private final class CandidateGridView: NSView {
 
     func clear() {
         buttons.values.forEach { $0.removeFromSuperview() }
-        deleteButtons.values.forEach { $0.removeFromSuperview() }
+        actionButtons.values.forEach { $0.removeFromSuperview() }
         buttons.removeAll()
-        deleteButtons.removeAll()
+        actionButtons.removeAll()
         representedIndices.removeAll()
         representedSizingTexts.removeAll()
         representedSessionID = nil
@@ -188,9 +193,9 @@ private final class CandidateGridView: NSView {
         session: CandidateSession
     ) {
         buttons.values.forEach { $0.removeFromSuperview() }
-        deleteButtons.values.forEach { $0.removeFromSuperview() }
+        actionButtons.values.forEach { $0.removeFromSuperview() }
         buttons.removeAll()
-        deleteButtons.removeAll()
+        actionButtons.removeAll()
         representedIndices = indices
         representedSizingTexts = sizingTexts
         representedSessionID = session.id
@@ -221,21 +226,22 @@ private final class CandidateGridView: NSView {
             addSubview(button)
             buttons[candidateIndex] = button
 
-            guard session.candidate(at: candidateIndex)?.isUserPhrase == true
+            guard let candidate = session.candidate(at: candidateIndex),
+                  CandidateWindowPresentationText.hasInlineAction(candidate)
             else {
                 continue
             }
-            let deleteButton = CandidatePhraseDeleteButton(
+            let actionButton = CandidateActionButton(
                 candidateIndex: candidateIndex,
                 sessionID: session.id
             )
-            deleteButton.target = self
-            deleteButton.action = #selector(candidateDeleteClicked(_:))
-            deleteButton.isBordered = false
-            deleteButton.focusRingType = .none
-            deleteButton.alignment = .center
-            addSubview(deleteButton)
-            deleteButtons[candidateIndex] = deleteButton
+            actionButton.target = self
+            actionButton.action = #selector(candidateActionClicked(_:))
+            actionButton.isBordered = false
+            actionButton.focusRingType = .none
+            actionButton.alignment = .center
+            addSubview(actionButton)
+            actionButtons[candidateIndex] = actionButton
         }
     }
 
@@ -278,12 +284,12 @@ private final class CandidateGridView: NSView {
             )
             button.setAccessibilityValue(isSelected ? "已選取" : nil)
 
-            if let deleteButton = deleteButtons[candidateIndex] {
+            if let actionButton = actionButtons[candidateIndex] {
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: font,
                     .foregroundColor: foregroundColor
                 ]
-                deleteButton.attributedTitle = NSAttributedString(
+                actionButton.attributedTitle = NSAttributedString(
                     string: "×",
                     attributes: attributes
                 )
@@ -291,22 +297,23 @@ private final class CandidateGridView: NSView {
                     withAttributes: attributes
                 ).width
                 let reservedWidth = (CandidateWindowPresentationText
-                    .deletionSlot as NSString).size(
+                    .actionSlot as NSString).size(
                     withAttributes: attributes
                 ).width
-                let deleteWidth = max(24, reservedWidth)
+                let actionWidth = max(24, reservedWidth)
                 let titleMaxX = button.frame.midX + (titleWidth / 2)
-                deleteButton.frame = NSRect(
+                actionButton.frame = NSRect(
                     x: titleMaxX - reservedWidth
-                        - ((deleteWidth - reservedWidth) / 2),
+                        - ((actionWidth - reservedWidth) / 2),
                     y: button.frame.minY,
-                    width: deleteWidth,
+                    width: actionWidth,
                     height: button.frame.height
                 )
-                deleteButton.toolTip = "刪除使用者詞「\(candidate.text)」"
-                deleteButton.setAccessibilityLabel(
-                    "刪除使用者詞「\(candidate.text)」"
-                )
+                let actionLabel = candidate.pinned
+                    ? "取消置頂「\(candidate.text)」"
+                    : "刪除使用者詞「\(candidate.text)」"
+                actionButton.toolTip = actionLabel
+                actionButton.setAccessibilityLabel(actionLabel)
             }
         }
 
@@ -320,10 +327,10 @@ private final class CandidateGridView: NSView {
         onChoose?(sender.sessionID, sender.candidateIndex)
     }
 
-    @objc private func candidateDeleteClicked(
-        _ sender: CandidatePhraseDeleteButton
+    @objc private func candidateActionClicked(
+        _ sender: CandidateActionButton
     ) {
-        onDelete?(sender.sessionID, sender.candidateIndex)
+        onAction?(sender.sessionID, sender.candidateIndex)
     }
 }
 
@@ -432,7 +439,7 @@ final class CandidateWindowPresenter {
                 sessionID: sessionID
             )
         }
-        gridView.onDelete = { [weak self] sessionID, candidateIndex in
+        gridView.onAction = { [weak self] sessionID, candidateIndex in
             guard let self,
                   self.presentedSessionID == sessionID else {
                 return
@@ -440,7 +447,7 @@ final class CandidateWindowPresenter {
 
             self.delegate?.candidateWindowPresenter(
                 self,
-                requestsDeletionOfCandidateAt: candidateIndex,
+                requestsActionForCandidateAt: candidateIndex,
                 sessionID: sessionID
             )
         }

@@ -76,6 +76,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
         static let deleted = "deleted"
         static let text = "text"
         static let readings = "readings"
+        static let unitPattern = "unitPattern"
         static let selectionCount = "selectionCount"
         static let lastSelectedAt = "lastSelectedAt"
         static let createdAt = "createdAt"
@@ -85,6 +86,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
         static let encrypted = [
             text,
             readings,
+            unitPattern,
             selectionCount,
             lastSelectedAt,
             createdAt,
@@ -513,6 +515,8 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
         }
         record.encryptedValues[Field.text] = value.identity.text
         record.encryptedValues[Field.readings] = value.identity.readings
+        record.encryptedValues[Field.unitPattern] = value.identity
+            .outputPattern?.rawValue
 
         switch value.payload {
         case let .character(character):
@@ -565,9 +569,20 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 pronunciation: readings[0]
             )
         case .phrase:
+            let rawPattern: String? = record.encryptedValues[Field.unitPattern]
+            let outputPattern = rawPattern.flatMap(
+                PhraseOutputPattern.init(rawValue:)
+            ) ?? PhraseOutputPattern.inferred(
+                from: text,
+                readingCount: readings.count
+            )
+            guard let outputPattern else {
+                throw CloudUserDataModelError.invalidPayload
+            }
             identity = try CloudUserDataIdentity(
                 phrase: text,
-                readings: readings
+                readings: readings,
+                outputPattern: outputPattern
             )
         }
         guard record.recordID.recordName == identity.recordName else {
@@ -614,6 +629,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                     ArchivedPhrase(
                         phrase: identity.text,
                         readings: identity.readings,
+                        unitPattern: identity.outputPattern?.rawValue,
                         selectionCount: selectionCount,
                         createdAt: createdAt,
                         lastUsedAt: integer(

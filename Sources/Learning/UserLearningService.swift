@@ -185,6 +185,27 @@ final class UserLearningService: UserLearningProviding {
         pronunciationSequence: [String],
         createdAt: Date
     ) -> Bool {
+        guard let pattern = PhraseOutputPattern.inferred(
+            from: phrase,
+            readingCount: pronunciationSequence.count
+        ) else {
+            return false
+        }
+        return addPhrase(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence,
+            outputPattern: pattern,
+            createdAt: createdAt
+        )
+    }
+
+    @discardableResult
+    func addPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern,
+        createdAt: Date
+    ) -> Bool {
         queue.sync {
             guard let store else {
                 return false
@@ -193,6 +214,7 @@ final class UserLearningService: UserLearningProviding {
                 try store.addPhrase(
                     phrase: phrase,
                     pronunciationSequence: pronunciationSequence,
+                    outputPattern: outputPattern,
                     createdAt: createdAt
                 )
                 notePhraseUpsert(

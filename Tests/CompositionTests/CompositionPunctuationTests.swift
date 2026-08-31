@@ -13,19 +13,27 @@ final class CompositionPunctuationTests: XCTestCase {
         XCTAssertEqual(buffer.units.map(\.kind), [.reading, .punctuation])
     }
 
-    func testPhraseLookupStopsAtPunctuation() {
+    func testPhraseLookupCarriesPunctuationContext() throws {
         var buffer = CompositionBuffer()
         buffer.append(text: "久", pronunciation: "ㄐㄧㄡˇ")
         buffer.appendPunctuation("，")
 
-        XCTAssertEqual(buffer.phraseLookupQueries(appending: "ㄎㄨㄥ"), [])
+        let punctuatedQuery = try XCTUnwrap(
+            buffer.phraseLookupQueries(appending: "ㄎㄨㄥ").first
+        )
+        XCTAssertEqual(
+            punctuatedQuery.pronunciationSequence,
+            ["ㄐㄧㄡˇ", "ㄎㄨㄥ"]
+        )
+        XCTAssertEqual(punctuatedQuery.existingOutputPattern?.rawValue, "RP")
+        XCTAssertEqual(punctuatedQuery.existingPunctuationText, "，")
 
         buffer.append(text: "空", pronunciation: "ㄎㄨㄥ")
         let queries = buffer.phraseLookupQueries(appending: "ㄕㄨ")
 
         XCTAssertEqual(
             queries.map(\.pronunciationSequence),
-            [["ㄎㄨㄥ", "ㄕㄨ"]]
+            [["ㄐㄧㄡˇ", "ㄎㄨㄥ", "ㄕㄨ"], ["ㄎㄨㄥ", "ㄕㄨ"]]
         )
     }
 
@@ -52,7 +60,7 @@ final class CompositionPunctuationTests: XCTestCase {
         XCTAssertEqual(buffer.text, "久，")
     }
 
-    func testSelectedRangeCoveringPunctuationIsNotAPhrase() {
+    func testSelectedRangeCoveringPunctuationIsAPhrase() throws {
         var buffer = CompositionBuffer()
         buffer.append(text: "久", pronunciation: "ㄐㄧㄡˇ")
         buffer.append(text: "空", pronunciation: "ㄎㄨㄥ")
@@ -62,10 +70,15 @@ final class CompositionPunctuationTests: XCTestCase {
         buffer.expandSelectionBackward()
 
         XCTAssertTrue(buffer.hasSelection)
-        XCTAssertNil(buffer.selectedPhrase)
+        let shortPhrase = try XCTUnwrap(buffer.selectedPhrase)
+        XCTAssertEqual(shortPhrase.text, "空，")
+        XCTAssertEqual(shortPhrase.pronunciationSequence, ["ㄎㄨㄥ"])
+        XCTAssertEqual(shortPhrase.outputPattern.rawValue, "RP")
 
         buffer.expandSelectionBackward()
-        XCTAssertNil(buffer.selectedPhrase)
+        let longPhrase = try XCTUnwrap(buffer.selectedPhrase)
+        XCTAssertEqual(longPhrase.text, "久空，")
+        XCTAssertEqual(longPhrase.outputPattern.rawValue, "RRP")
     }
 
     func testPhraseStillWorksForReadingsBeforePunctuation() throws {

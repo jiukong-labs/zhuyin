@@ -84,6 +84,48 @@ final class CharacterCandidateProviderTests: XCTestCase {
         )
     }
 
+    func testRemovePinFromCharacterKeepsItsLearningRecord() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        let candidate = Candidate(
+            text: "鍵",
+            pronunciation: "ㄐㄧㄢˋ",
+            userFrequency: 12,
+            pinned: true
+        )
+
+        XCTAssertTrue(provider.removePin(from: candidate))
+        XCTAssertEqual(
+            learning.characterPins,
+            [
+                CharacterPin(
+                    character: "鍵",
+                    pronunciation: "ㄐㄧㄢˋ",
+                    pinned: false
+                ),
+            ]
+        )
+        XCTAssertTrue(learning.recordedSelections.isEmpty)
+    }
+
+    func testRemovePinRejectsCandidateThatIsNotPinned() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+
+        XCTAssertFalse(
+            provider.removePin(
+                from: Candidate(text: "鍵", pronunciation: "ㄐㄧㄢˋ")
+            )
+        )
+        XCTAssertTrue(learning.characterPins.isEmpty)
+    }
+
     func testLearningRecordsForUnknownCharactersAreIgnored() throws {
         let learning = LearningSpy()
         learning.recordsByPronunciation["ㄨㄛˇ"] = [
@@ -663,6 +705,12 @@ final class CharacterCandidateProviderTests: XCTestCase {
         let pronunciation: String
     }
 
+    private struct CharacterPin: Equatable {
+        let character: String
+        let pronunciation: String
+        let pinned: Bool
+    }
+
     private struct PhraseOperation: Equatable {
         let phrase: String
         let readings: [String]
@@ -678,6 +726,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
         var recordsByPronunciation: [String: [String: CharacterLearningRecord]] = [:]
         var phraseRecordsByPronunciation: [[String]: [UserPhraseRecord]] = [:]
         var recordedSelections: [Selection] = []
+        var characterPins: [CharacterPin] = []
         var requestedPhraseReadings: [[String]] = []
         var addedPhrases: [PhraseOperation] = []
         var recordedPhraseSelections: [PhraseOperation] = []
@@ -694,6 +743,20 @@ final class CharacterCandidateProviderTests: XCTestCase {
                 Selection(
                     character: character,
                     pronunciation: pronunciation
+                )
+            )
+        }
+
+        func setPinned(
+            _ pinned: Bool,
+            character: String,
+            pronunciation: String
+        ) {
+            characterPins.append(
+                CharacterPin(
+                    character: character,
+                    pronunciation: pronunciation,
+                    pinned: pinned
                 )
             )
         }

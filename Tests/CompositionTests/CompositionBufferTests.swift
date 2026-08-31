@@ -138,7 +138,7 @@ final class CompositionBufferTests: XCTestCase {
 
         XCTAssertTrue(buffer.phraseLookupQueries(appending: "").isEmpty)
         XCTAssertTrue(
-            buffer.phraseLookupQueries(
+            !buffer.phraseLookupQueries(
                 appending: "final",
                 minimumUnitCount: 1
             ).isEmpty
@@ -324,7 +324,7 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.phraseSelectionStatus?.displayText,
-            "造詞範圍 1 字：【輸】　⇧←／→ 擴張　至少選 2 字"
+            "造詞範圍 1 音／1 字：【輸】　⇧←／→ 擴張　至少選 2 音，或 1 音加標點"
         )
 
         buffer.clearSelection()
@@ -335,7 +335,7 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.phraseSelectionStatus?.displayText,
-            "造詞範圍 2 字：【入法】　⇧←／→ 擴張"
+            "造詞範圍 2 音／2 字：【入法】　⇧←／→ 擴張"
         )
     }
 
@@ -387,7 +387,7 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertFalse(buffer.hasSelection)
     }
 
-    func testDirectionalPhraseSelectionDoesNotCrossPunctuation() throws {
+    func testDirectionalPhraseSelectionCanIncludePunctuation() throws {
         var buffer = CompositionBuffer()
         let first = try XCTUnwrap(
             buffer.append(text: "測", pronunciation: "ㄘㄜˋ")
@@ -401,7 +401,8 @@ final class CompositionBufferTests: XCTestCase {
             )
         )
         XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 1)
-        XCTAssertFalse(buffer.extendSelectionRight(from: .bufferEdge))
+        XCTAssertTrue(buffer.extendSelectionRight(from: .bufferEdge))
+        XCTAssertEqual(buffer.selectedUnitRange, 0 ..< 2)
 
         buffer.clearSelection()
         XCTAssertTrue(
@@ -410,7 +411,8 @@ final class CompositionBufferTests: XCTestCase {
             )
         )
         XCTAssertEqual(buffer.selectedUnitRange, 2 ..< 3)
-        XCTAssertFalse(buffer.extendSelectionLeft(from: .bufferEdge))
+        XCTAssertTrue(buffer.extendSelectionLeft(from: .bufferEdge))
+        XCTAssertEqual(buffer.selectedUnitRange, 1 ..< 3)
     }
 
     func testMarkedSelectionRangeUsesUTF16RatherThanCharacterOffsets() {

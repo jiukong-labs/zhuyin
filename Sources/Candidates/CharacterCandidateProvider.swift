@@ -116,17 +116,20 @@ final class CharacterCandidateProvider {
     @discardableResult
     func addUserPhrase(
         phrase: String,
-        pronunciationSequence: [String]
+        pronunciationSequence: [String],
+        outputPattern: PhraseOutputPattern? = nil
     ) -> Bool {
         guard let identity = try? UserPhraseValidator.validate(
             phrase: phrase,
-            pronunciationSequence: pronunciationSequence
+            pronunciationSequence: pronunciationSequence,
+            outputPattern: outputPattern
         ) else {
             return false
         }
         return learning?.addPhrase(
             phrase: identity.phrase,
             pronunciationSequence: identity.pronunciationSequence,
+            outputPattern: identity.outputPattern,
             createdAt: now()
         ) ?? false
     }
@@ -149,6 +152,44 @@ final class CharacterCandidateProvider {
             phrase: identity.phrase,
             pronunciationSequence: identity.pronunciationSequence
         ) ?? false
+    }
+
+    /// Removes only the explicit pin represented by a candidate. Character
+    /// selection counts and user-authored phrases remain intact.
+    @discardableResult
+    func removePin(from candidate: Candidate) -> Bool {
+        guard candidate.pinned, let learning else {
+            return false
+        }
+
+        switch candidate.type {
+        case .character:
+            guard candidate.text.count == 1,
+                  candidate.pronunciationSequence.count == 1,
+                  let pronunciation = candidate.pronunciationSequence.first,
+                  !pronunciation.isEmpty else {
+                return false
+            }
+            learning.setPinned(
+                false,
+                character: candidate.text,
+                pronunciation: pronunciation
+            )
+        case .phrase:
+            guard let identity = try? UserPhraseValidator.validate(
+                phrase: candidate.text,
+                pronunciationSequence: candidate.pronunciationSequence,
+                outputPattern: candidate.outputPattern
+            ) else {
+                return false
+            }
+            learning.setPhrasePinned(
+                false,
+                phrase: identity.phrase,
+                pronunciationSequence: identity.pronunciationSequence
+            )
+        }
+        return true
     }
 
     /// Implicit learning only. Existing counts still rank candidates while the
@@ -178,7 +219,8 @@ final class CharacterCandidateProvider {
         case .phrase:
             guard let identity = try? UserPhraseValidator.validate(
                 phrase: candidate.text,
-                pronunciationSequence: candidate.pronunciationSequence
+                pronunciationSequence: candidate.pronunciationSequence,
+                outputPattern: candidate.outputPattern
             ), identity.phrase == candidate.text,
                   identity.pronunciationSequence
                     == candidate.pronunciationSequence else {
@@ -188,6 +230,7 @@ final class CharacterCandidateProvider {
             _ = learning?.addPhrase(
                 phrase: candidate.text,
                 pronunciationSequence: candidate.pronunciationSequence,
+                outputPattern: candidate.outputPattern,
                 createdAt: selectedAt
             )
             learning?.recordPhraseSelection(
@@ -208,7 +251,8 @@ final class CharacterCandidateProvider {
         for query in queries {
             let readings = query.pronunciationSequence
             guard readings.last == pronunciation,
-                  UserPhraseValidator.allowedUnitCount.contains(readings.count),
+                  (1 ... UserPhraseValidator.allowedUnitCount.upperBound)
+                    .contains(readings.count),
                   seenQueries.insert(readings).inserted else {
                 continue
             }
@@ -222,9 +266,15 @@ final class CharacterCandidateProvider {
                 guard record.pronunciationSequence == readings,
                       let identity = try? UserPhraseValidator.validate(
                           phrase: record.phrase,
-                          pronunciationSequence: readings
+                          pronunciationSequence: readings,
+                          outputPattern: record.outputPattern
                       ), identity.phrase == record.phrase,
-                      identity.pronunciationSequence == readings else {
+                      identity.pronunciationSequence == readings,
+                      phrasePatternIsCompatible(
+                          identity.outputPattern,
+                          text: identity.phrase,
+                          query: query
+                      ) else {
                     continue
                 }
                 let candidate = Candidate(
@@ -241,7 +291,8 @@ final class CharacterCandidateProvider {
                     userFrequency: record.selectionCount,
                     lastUsed: record.lastUsedAt,
                     pinned: record.pinned,
-                    isUserPhrase: true
+                    isUserPhrase: true,
+                    outputPattern: record.outputPattern
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue
@@ -251,7 +302,11 @@ final class CharacterCandidateProvider {
 
             for entry in dictionaryEntries {
                 guard entry.pronunciationSequence == readings,
-                      entry.text.count == readings.count else {
+                      phrasePatternIsCompatible(
+                          entry.outputPattern,
+                          text: entry.text,
+                          query: query
+                      ) else {
                     continue
                 }
                 let candidate = Candidate(
@@ -262,7 +317,8 @@ final class CharacterCandidateProvider {
                     sourceOrder: entry.sourceOrder,
                     baseFrequency: ranker.frequencyBonus(
                         selectionCount: entry.defaultSelectionCount
-                    )
+                    ),
+                    outputPattern: entry.outputPattern
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue
@@ -271,6 +327,40 @@ final class CharacterCandidateProvider {
             }
         }
         return result
+    }
+
+    private func phrasePatternIsCompatible(
+        _ pattern: PhraseOutputPattern,
+        text: String,
+        query: CompositionPhraseQuery
+    ) -> Bool {
+        guard pattern.validates(
+            text: text,
+            readingCount: query.pronunciationSequence.count
+        ) else {
+            return false
+        }
+        guard query.existingOutputPattern?.containsPunctuation == true else {
+            return true
+        }
+        let markers = pattern.markers
+        guard let finalReadingIndex = markers.lastIndex(
+            of: PhraseOutputPattern.readingMarker
+        ) else {
+            return false
+        }
+        let prefixMarkers = String(markers[..<finalReadingIndex])
+        guard prefixMarkers == query.existingOutputPattern?.rawValue else {
+            return false
+        }
+        let prefixCharacters = Array(text)[..<finalReadingIndex]
+        let punctuation = zip(prefixCharacters, markers[..<finalReadingIndex])
+            .compactMap { character, marker in
+                marker == PhraseOutputPattern.punctuationMarker
+                    ? String(character)
+                    : nil
+            }.joined()
+        return punctuation == query.existingPunctuationText
     }
 }
 

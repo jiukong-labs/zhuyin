@@ -6,8 +6,8 @@ import Foundation
 /// `String` also lets the input method preserve a raw Bopomofo syllable when
 /// dictionary conversion is unavailable.
 struct CompositionUnit: Identifiable, Equatable, Hashable {
-    /// Punctuation occupies the buffer like any other text, but it carries no
-    /// reading, so it can never take part in a user phrase or a phrase lookup.
+    /// Punctuation occupies the buffer like any other text but carries no
+    /// reading. Punctuated phrases preserve it as a literal output unit.
     enum Kind: Equatable, Hashable {
         case reading
         case punctuation
@@ -49,6 +49,20 @@ struct PendingCandidateSelection: Equatable {
 struct CompositionPhraseQuery: Equatable {
     let pronunciationSequence: [String]
     let existingSuffixUnitIDs: [UUID]
+    let existingOutputPattern: PhraseOutputPattern?
+    let existingPunctuationText: String
+
+    init(
+        pronunciationSequence: [String],
+        existingSuffixUnitIDs: [UUID],
+        existingOutputPattern: PhraseOutputPattern? = nil,
+        existingPunctuationText: String = ""
+    ) {
+        self.pronunciationSequence = pronunciationSequence
+        self.existingSuffixUnitIDs = existingSuffixUnitIDs
+        self.existingOutputPattern = existingOutputPattern
+        self.existingPunctuationText = existingPunctuationText
+    }
 
     var unitCount: Int {
         pronunciationSequence.count
@@ -65,7 +79,17 @@ struct CompositionPhraseSelection: Equatable {
     }
 
     var pronunciationSequence: [String] {
-        units.map(\.pronunciation)
+        units.filter { $0.kind == .reading }.map(\.pronunciation)
+    }
+
+    var outputPattern: PhraseOutputPattern {
+        PhraseOutputPattern(
+            rawValue: String(units.map {
+                $0.kind == .reading
+                    ? PhraseOutputPattern.readingMarker
+                    : PhraseOutputPattern.punctuationMarker
+            })
+        )!
     }
 }
 
@@ -75,12 +99,21 @@ struct CompositionPhraseSelection: Equatable {
 struct CompositionPhraseSelectionStatus: Equatable {
     let text: String
     let unitCount: Int
+    let readingCount: Int
+
+    init(text: String, unitCount: Int, readingCount: Int? = nil) {
+        self.text = text
+        self.unitCount = unitCount
+        self.readingCount = readingCount ?? unitCount
+    }
 
     var displayText: String {
-        let minimumHint = unitCount >= CompositionBuffer.minimumPhraseUnitCount
+        let isSavable = readingCount >= CompositionBuffer.minimumPhraseUnitCount
+            || (readingCount >= 1 && readingCount < unitCount)
+        let minimumHint = isSavable
             ? ""
-            : "　至少選 2 字"
-        return "造詞範圍 \(unitCount) 字：【\(text)】　⇧←／→ 擴張\(minimumHint)"
+            : "　至少選 2 音，或 1 音加標點"
+        return "造詞範圍 \(readingCount) 音／\(unitCount) 字：【\(text)】　⇧←／→ 擴張\(minimumHint)"
     }
 }
 
@@ -340,18 +373,21 @@ struct CompositionBuffer: Equatable {
         return units[units.index(after: index)].id
     }
 
-    /// Returns a phrase only when at least two composition units are selected
-    /// and every one of them carries a reading.
+    /// Returns a phrase for two readings, or for one reading accompanied by
+    /// at least one supported punctuation unit.
     var selectedPhrase: CompositionPhraseSelection? {
-        guard let selectedUnitRange,
-              selectedUnitRange.count >= Self.minimumPhraseUnitCount,
-              units[selectedUnitRange].allSatisfy({ $0.kind == .reading }) else {
+        guard let selectedUnitRange else {
             return nil
         }
-
-        return CompositionPhraseSelection(
-            units: Array(units[selectedUnitRange])
-        )
+        let selectedUnits = Array(units[selectedUnitRange])
+        let readingCount = selectedUnits.filter { $0.kind == .reading }.count
+        let hasPunctuation = selectedUnits.contains { $0.kind == .punctuation }
+        guard readingCount >= Self.minimumPhraseUnitCount
+                || (readingCount == 1 && hasPunctuation),
+              selectedUnits.count <= Self.maximumPhraseUnitCount else {
+            return nil
+        }
+        return CompositionPhraseSelection(units: selectedUnits)
     }
 
     var phraseSelectionStatus: CompositionPhraseSelectionStatus? {
@@ -360,7 +396,9 @@ struct CompositionBuffer: Equatable {
         }
         return CompositionPhraseSelectionStatus(
             text: units[selectedUnitRange].map(\.text).joined(),
-            unitCount: selectedUnitRange.count
+            unitCount: selectedUnitRange.count,
+            readingCount: units[selectedUnitRange]
+                .filter { $0.kind == .reading }.count
         )
     }
 
@@ -526,21 +564,21 @@ struct CompositionBuffer: Equatable {
     }
 
     /// Produces every exact suffix lookup ending in `pronunciation`, ordered
-    /// from the longest useful phrase to the shortest (which is two units).
+    /// from the longest useful phrase to the shortest. A one-reading query is
+    /// emitted so punctuated shortcuts such as 「嗎？」 can participate.
     func phraseLookupQueries(
         appending pronunciation: String,
         minimumUnitCount: Int = Self.minimumPhraseUnitCount,
         maximumUnitCount: Int = Self.maximumPhraseUnitCount
     ) -> [CompositionPhraseQuery] {
         guard !pronunciation.isEmpty,
-              minimumUnitCount >= Self.minimumPhraseUnitCount,
+              minimumUnitCount >= 1,
               maximumUnitCount >= minimumUnitCount else {
             return []
         }
 
-        // A phrase never spans punctuation, so only the trailing run of units
-        // that carry readings can extend the query.
-        let longestCount = min(maximumUnitCount, trailingReadingUnitCount + 1)
+        let precedingReadingUnits = units.filter { $0.kind == .reading }
+        let longestCount = min(maximumUnitCount, precedingReadingUnits.count + 1)
         guard longestCount >= minimumUnitCount else {
             return []
         }
@@ -551,11 +589,17 @@ struct CompositionBuffer: Equatable {
             by: -1
         ).map { unitCount in
             let existingUnitCount = unitCount - 1
-            let suffix = units.suffix(existingUnitCount)
+            let suffixReadings = precedingReadingUnits.suffix(existingUnitCount)
+            let suffix = suffixUnits(
+                endingAt: units.endIndex,
+                readingCount: existingUnitCount
+            )
             return CompositionPhraseQuery(
-                pronunciationSequence: suffix.map(\.pronunciation)
+                pronunciationSequence: suffixReadings.map(\.pronunciation)
                     + [pronunciation],
-                existingSuffixUnitIDs: suffix.map(\.id)
+                existingSuffixUnitIDs: suffix.map(\.id),
+                existingOutputPattern: punctuationPattern(for: suffix),
+                existingPunctuationText: punctuationText(in: suffix)
             )
         }
     }
@@ -573,7 +617,7 @@ struct CompositionBuffer: Equatable {
         maximumUnitCount: Int = Self.maximumPhraseUnitCount
     ) -> [CompositionPhraseQuery] {
         guard !pronunciation.isEmpty,
-              minimumUnitCount >= Self.minimumPhraseUnitCount,
+              minimumUnitCount >= 1,
               maximumUnitCount >= minimumUnitCount,
               let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
         else {
@@ -581,9 +625,8 @@ struct CompositionBuffer: Equatable {
         }
 
         let context = units[..<anchorIndex]
-        let trailingReadingCount = context.reversed()
-            .prefix { $0.kind == .reading }.count
-        let longestCount = min(maximumUnitCount, trailingReadingCount + 1)
+        let precedingReadingUnits = context.filter { $0.kind == .reading }
+        let longestCount = min(maximumUnitCount, precedingReadingUnits.count + 1)
         guard longestCount >= minimumUnitCount else {
             return []
         }
@@ -594,11 +637,17 @@ struct CompositionBuffer: Equatable {
             by: -1
         ).map { unitCount in
             let existingUnitCount = unitCount - 1
-            let suffix = context.suffix(existingUnitCount)
+            let suffix = precedingReadingUnits.suffix(existingUnitCount)
+            let contextSuffix = suffixUnits(
+                endingAt: anchorIndex,
+                readingCount: existingUnitCount
+            )
             return CompositionPhraseQuery(
                 pronunciationSequence: suffix.map(\.pronunciation)
                     + [pronunciation],
-                existingSuffixUnitIDs: suffix.map(\.id)
+                existingSuffixUnitIDs: contextSuffix.map(\.id),
+                existingOutputPattern: punctuationPattern(for: contextSuffix),
+                existingPunctuationText: punctuationText(in: contextSuffix)
             )
         }
     }
@@ -673,9 +722,6 @@ struct CompositionBuffer: Equatable {
             }
 
             let adjacentIndex = selectedUnitRange.lowerBound - 1
-            guard units[adjacentIndex].kind == .reading else {
-                return false
-            }
             self.selectedUnitRange = adjacentIndex ..< selectedUnitRange.upperBound
             return true
         }
@@ -687,20 +733,22 @@ struct CompositionBuffer: Equatable {
             }) else {
                 return false
             }
-            return beginDirectionalSelection(
-                at: lastReadingIndex,
-                offset: -1,
-                includeAdjacent: false
-            )
+            selectedUnitRange = lastReadingIndex ..< units.endIndex
+            return selectedUnitRange!.count <= Self.maximumPhraseUnitCount
         case let .caret(followingUnitID):
             guard let boundaryIndex = caretBoundaryIndex(
                 followingUnitID: followingUnitID
             ), boundaryIndex > units.startIndex else {
                 return false
             }
-            let precedingIndex = boundaryIndex - 1
-            guard units[precedingIndex].kind == .reading else {
+            guard let precedingIndex = units[..<boundaryIndex].lastIndex(
+                where: { $0.kind == .reading }
+            ) else {
                 return false
+            }
+            if precedingIndex < boundaryIndex - 1 {
+                selectedUnitRange = precedingIndex ..< boundaryIndex
+                return selectedUnitRange!.count <= Self.maximumPhraseUnitCount
             }
             return beginDirectionalSelection(
                 at: precedingIndex,
@@ -727,9 +775,6 @@ struct CompositionBuffer: Equatable {
             }
 
             let adjacentIndex = selectedUnitRange.upperBound
-            guard units[adjacentIndex].kind == .reading else {
-                return false
-            }
             self.selectedUnitRange = selectedUnitRange.lowerBound
                 ..< (adjacentIndex + 1)
             return true
@@ -742,17 +787,20 @@ struct CompositionBuffer: Equatable {
             }) else {
                 return false
             }
-            return beginDirectionalSelection(
-                at: firstReadingIndex,
-                offset: 1,
-                includeAdjacent: false
-            )
+            selectedUnitRange = units.startIndex ..< (firstReadingIndex + 1)
+            return selectedUnitRange!.count <= Self.maximumPhraseUnitCount
         case let .caret(followingUnitID):
-            guard let followingUnitID,
-                  let followingIndex = units.firstIndex(where: {
-                      $0.id == followingUnitID
-                  }), units[followingIndex].kind == .reading else {
+            guard let boundaryIndex = caretBoundaryIndex(
+                followingUnitID: followingUnitID
+            ), boundaryIndex < units.endIndex,
+                  let followingIndex = units[boundaryIndex...].firstIndex(
+                      where: { $0.kind == .reading }
+                  ) else {
                 return false
+            }
+            if followingIndex > boundaryIndex {
+                selectedUnitRange = boundaryIndex ..< (followingIndex + 1)
+                return selectedUnitRange!.count <= Self.maximumPhraseUnitCount
             }
             return beginDirectionalSelection(
                 at: followingIndex,
@@ -847,28 +895,35 @@ struct CompositionBuffer: Equatable {
         reason: CandidateCommitReason
     ) -> Bool {
         let readings = candidate.pronunciationSequence
-        let characters = Array(candidate.text)
+        let minimumReadingCount = candidate.outputPattern.containsPunctuation
+            ? 1
+            : Self.minimumPhraseUnitCount
         guard candidate.type == .phrase,
-              (Self.minimumPhraseUnitCount ... Self.maximumPhraseUnitCount)
+              (minimumReadingCount ... Self.maximumPhraseUnitCount)
                 .contains(readings.count),
-              characters.count == readings.count,
-              readings.allSatisfy({ !$0.isEmpty }) else {
+              readings.allSatisfy({ !$0.isEmpty }),
+              let replacementUnits = phraseUnits(for: candidate) else {
             return false
         }
 
         let existingReadings = Array(readings.dropLast())
-        guard containsExactSuffix(
-            pronunciationSequence: existingReadings
-        ) else {
+        let suffix = suffixUnits(
+            endingAt: units.endIndex,
+            readingCount: existingReadings.count
+        )
+        guard suffix.filter({ $0.kind == .reading }).map(\.pronunciation)
+                == existingReadings,
+              punctuationMatchesCandidatePrefix(
+                  suffix,
+                  candidate: candidate
+              ) else {
             return false
         }
 
-        units.removeLast(existingReadings.count)
-        pruneInvalidPendingSelections()
-
-        let replacementUnits = zip(characters, readings).map {
-            CompositionUnit(text: String($0), pronunciation: $1)
+        if !suffix.isEmpty {
+            units.removeLast(suffix.count)
         }
+        pruneInvalidPendingSelections()
         units.append(contentsOf: replacementUnits)
         pendingCandidateSelections.append(
             PendingCandidateSelection(
@@ -917,31 +972,36 @@ struct CompositionBuffer: Equatable {
         reason: CandidateCommitReason
     ) -> [CompositionUnit] {
         let readings = candidate.pronunciationSequence
-        let characters = Array(candidate.text)
+        let minimumReadingCount = candidate.outputPattern.containsPunctuation
+            ? 1
+            : Self.minimumPhraseUnitCount
         guard candidate.type == .phrase,
-              (Self.minimumPhraseUnitCount ... Self.maximumPhraseUnitCount)
+              (minimumReadingCount ... Self.maximumPhraseUnitCount)
                 .contains(readings.count),
-              characters.count == readings.count,
               readings.allSatisfy({ !$0.isEmpty }),
-              let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
+              let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID }),
+              let replacementUnits = phraseUnits(for: candidate)
         else {
             return []
         }
 
         let existingReadings = Array(readings.dropLast())
-        let context = units[..<anchorIndex]
-        guard context.suffix(existingReadings.count).map(\.pronunciation)
-                == existingReadings else {
+        let suffix = suffixUnits(
+            endingAt: anchorIndex,
+            readingCount: existingReadings.count
+        )
+        guard suffix.filter({ $0.kind == .reading }).map(\.pronunciation)
+                == existingReadings,
+              punctuationMatchesCandidatePrefix(
+                  suffix,
+                  candidate: candidate
+              ) else {
             return []
         }
 
-        let removalRange = (anchorIndex - existingReadings.count) ..< anchorIndex
+        let removalRange = (anchorIndex - suffix.count) ..< anchorIndex
         units.removeSubrange(removalRange)
         pruneInvalidPendingSelections()
-
-        let replacementUnits = zip(characters, readings).map {
-            CompositionUnit(text: String($0), pronunciation: $1)
-        }
         units.insert(contentsOf: replacementUnits, at: removalRange.lowerBound)
         pendingCandidateSelections.append(
             PendingCandidateSelection(
@@ -963,6 +1023,129 @@ struct CompositionBuffer: Equatable {
             return units.endIndex
         }
         return units.firstIndex(where: { $0.id == followingUnitID })
+    }
+
+    private func suffixUnits(
+        endingAt endIndex: Int,
+        readingCount: Int
+    ) -> ArraySlice<CompositionUnit> {
+        guard readingCount > 0, endIndex > units.startIndex else {
+            return units[endIndex ..< endIndex]
+        }
+        var foundReadings = 0
+        var startIndex = endIndex
+        while startIndex > units.startIndex, foundReadings < readingCount {
+            startIndex -= 1
+            if units[startIndex].kind == .reading {
+                foundReadings += 1
+            }
+        }
+        guard foundReadings == readingCount else {
+            return units[endIndex ..< endIndex]
+        }
+        return units[startIndex ..< endIndex]
+    }
+
+    private func outputPattern(
+        for units: ArraySlice<CompositionUnit>
+    ) -> PhraseOutputPattern? {
+        guard !units.isEmpty else {
+            return nil
+        }
+        return PhraseOutputPattern(
+            rawValue: String(units.map {
+                $0.kind == .reading
+                    ? PhraseOutputPattern.readingMarker
+                    : PhraseOutputPattern.punctuationMarker
+            })
+        )
+    }
+
+    private func punctuationPattern(
+        for units: ArraySlice<CompositionUnit>
+    ) -> PhraseOutputPattern? {
+        guard let pattern = outputPattern(for: units),
+              pattern.containsPunctuation else {
+            return nil
+        }
+        return pattern
+    }
+
+    private func punctuationText(
+        in units: ArraySlice<CompositionUnit>
+    ) -> String {
+        units.filter { $0.kind == .punctuation }.map(\.text).joined()
+    }
+
+    private func phraseUnits(for candidate: Candidate) -> [CompositionUnit]? {
+        let characters = Array(candidate.text)
+        let markers = candidate.outputPattern.markers
+        guard characters.count == markers.count,
+              candidate.outputPattern.readingCount
+                == candidate.pronunciationSequence.count else {
+            return nil
+        }
+        var readingIndex = 0
+        var result: [CompositionUnit] = []
+        for (character, marker) in zip(characters, markers) {
+            if marker == PhraseOutputPattern.readingMarker {
+                guard candidate.pronunciationSequence.indices.contains(
+                    readingIndex
+                ) else {
+                    return nil
+                }
+                result.append(
+                    CompositionUnit(
+                        text: String(character),
+                        pronunciation: candidate.pronunciationSequence[readingIndex]
+                    )
+                )
+                readingIndex += 1
+            } else {
+                guard PhraseOutputPattern.supportedPunctuation
+                    .contains(character) else {
+                    return nil
+                }
+                result.append(
+                    CompositionUnit(
+                        text: String(character),
+                        pronunciation: String(character),
+                        kind: .punctuation
+                    )
+                )
+            }
+        }
+        return readingIndex == candidate.pronunciationSequence.count
+            ? result
+            : nil
+    }
+
+    private func punctuationMatchesCandidatePrefix(
+        _ actualSuffix: ArraySlice<CompositionUnit>,
+        candidate: Candidate
+    ) -> Bool {
+        let actualPattern = outputPattern(for: actualSuffix)
+        guard actualPattern?.containsPunctuation == true else {
+            return true
+        }
+        let markers = candidate.outputPattern.markers
+        guard let lastReadingIndex = markers.lastIndex(
+            of: PhraseOutputPattern.readingMarker
+        ) else {
+            return false
+        }
+        let expectedPrefix = markers[..<lastReadingIndex]
+        guard String(expectedPrefix) == actualPattern?.rawValue else {
+            return false
+        }
+        let expectedPunctuation = zip(
+            Array(candidate.text)[..<lastReadingIndex], expectedPrefix
+        ).compactMap { character, marker in
+            marker == PhraseOutputPattern.punctuationMarker
+                ? String(character)
+                : nil
+        }.joined()
+        return punctuationText(in: actualSuffix) == expectedPunctuation
     }
 
     private mutating func beginDirectionalSelection(

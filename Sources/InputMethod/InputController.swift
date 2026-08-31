@@ -670,10 +670,14 @@ final class InputController: IMKInputController {
         if let pendingInsertionAnchorUnitID {
             return compositionBuffer.phraseLookupQueries(
                 appending: pronunciation,
-                before: pendingInsertionAnchorUnitID
+                before: pendingInsertionAnchorUnitID,
+                minimumUnitCount: 1
             )
         }
-        return compositionBuffer.phraseLookupQueries(appending: pronunciation)
+        return compositionBuffer.phraseLookupQueries(
+            appending: pronunciation,
+            minimumUnitCount: 1
+        )
     }
 
     private func handleCompositionCursorCommand(
@@ -970,7 +974,8 @@ final class InputController: IMKInputController {
             if let phrase = compositionBuffer.selectedPhrase,
                candidateProvider?.addUserPhrase(
                     phrase: phrase.text,
-                    pronunciationSequence: phrase.pronunciationSequence
+                    pronunciationSequence: phrase.pronunciationSequence,
+                    outputPattern: phrase.outputPattern
                ) == true {
                 confirmation = SavedUserPhraseConfirmation(
                     phrase: phrase.text,
@@ -1780,20 +1785,32 @@ extension InputController: CandidateWindowPresenterDelegate {
 
     func candidateWindowPresenter(
         _ presenter: CandidateWindowPresenter,
-        requestsDeletionOfCandidateAt index: Int,
+        requestsActionForCandidateAt index: Int,
         sessionID: UUID
     ) {
         guard var session = candidateSession,
               session.id == sessionID,
               let candidate = session.candidate(at: index),
-              candidate.isUserPhrase,
               let candidateProvider,
-              let inputClient = inputClient(from: client()),
-              candidateProvider.deleteUserPhrase(
-                  phrase: candidate.text,
-                  pronunciationSequence: candidate.pronunciationSequence
-              ) else {
+              let inputClient = inputClient(from: client()) else {
             return
+        }
+
+        let removesCandidate: Bool
+        if candidate.pinned {
+            guard candidateProvider.removePin(from: candidate) else {
+                return
+            }
+            removesCandidate = false
+        } else {
+            guard candidate.isUserPhrase,
+                  candidateProvider.deleteUserPhrase(
+                      phrase: candidate.text,
+                      pronunciationSequence: candidate.pronunciationSequence
+                  ) else {
+                return
+            }
+            removesCandidate = true
         }
 
         do {
@@ -1812,9 +1829,13 @@ extension InputController: CandidateWindowPresenterDelegate {
             }
         } catch {
             NSLog(
-                "Jiukong Zhuyin could not refresh candidates after deleting a user phrase: %@",
+                "Jiukong Zhuyin could not refresh candidates after changing candidate user data: %@",
                 error.localizedDescription
             )
+        }
+
+        guard removesCandidate else {
+            return
         }
 
         let remainingCandidates = session.candidates.filter {

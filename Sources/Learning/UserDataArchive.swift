@@ -14,10 +14,29 @@ struct ArchivedCharacter: Equatable, Codable {
 struct ArchivedPhrase: Equatable, Codable {
     let phrase: String
     let readings: [String]
+    let unitPattern: String?
     let selectionCount: Int64
     let createdAt: Int64
     let lastUsedAt: Int64?
     let pinned: Bool
+
+    init(
+        phrase: String,
+        readings: [String],
+        unitPattern: String? = nil,
+        selectionCount: Int64,
+        createdAt: Int64,
+        lastUsedAt: Int64?,
+        pinned: Bool
+    ) {
+        self.phrase = phrase
+        self.readings = readings
+        self.unitPattern = unitPattern
+        self.selectionCount = selectionCount
+        self.createdAt = createdAt
+        self.lastUsedAt = lastUsedAt
+        self.pinned = pinned
+    }
 }
 
 enum UserDataArchiveError: LocalizedError, Equatable {
@@ -61,7 +80,7 @@ struct UserDataMergeSummary: Equatable {
 /// unreadable file, a foreign format, or a newer version is refused outright.
 struct UserDataArchive: Equatable, Codable {
     static let formatIdentifier = "jiukong-zhuyin-user-data"
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     let format: String
     let version: Int
@@ -107,6 +126,7 @@ struct UserDataArchive: Equatable, Codable {
                 ArchivedPhrase(
                     phrase: record.phrase,
                     readings: record.pronunciationSequence,
+                    unitPattern: record.outputPattern.rawValue,
                     selectionCount: record.selectionCount,
                     createdAt: milliseconds(from: record.createdAt),
                     lastUsedAt: record.lastUsedAt.map(milliseconds(from:)),
@@ -218,10 +238,21 @@ private extension ArchivedCharacter {
 
 private extension ArchivedPhrase {
     func normalized() -> ArchivedPhrase? {
+        let outputPattern: PhraseOutputPattern?
+        if let unitPattern {
+            outputPattern = PhraseOutputPattern(rawValue: unitPattern)
+        } else {
+            outputPattern = PhraseOutputPattern.inferred(
+                from: phrase,
+                readingCount: readings.count
+            )
+        }
         guard selectionCount >= 0,
+              let outputPattern,
               let identity = try? UserPhraseValidator.validate(
                   phrase: phrase,
-                  pronunciationSequence: readings
+                  pronunciationSequence: readings,
+                  outputPattern: outputPattern
               ) else {
             return nil
         }
@@ -229,6 +260,7 @@ private extension ArchivedPhrase {
         return ArchivedPhrase(
             phrase: identity.phrase,
             readings: identity.pronunciationSequence,
+            unitPattern: identity.outputPattern.rawValue,
             selectionCount: selectionCount,
             createdAt: createdAt,
             lastUsedAt: lastUsedAt,
