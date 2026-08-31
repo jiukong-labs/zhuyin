@@ -65,8 +65,8 @@ dist/Jiukong-Zhuyin-0.1.0.pkg.sha256
 
 Before returning success it verifies the stable bundle identifier, both CPU
 architectures, Developer ID signature, Hardened Runtime, embedded provisioning
-profile, installer completion reminder, installer signature, notarization
-ticket, and Gatekeeper assessment.
+profile, preinstall and postinstall process-stop scripts, installer completion
+reminder, installer signature, notarization ticket, and Gatekeeper assessment.
 
 Before creating the tag, install the exact working build and run the local
 source, unit, and installed-input preflight:
@@ -133,7 +133,9 @@ Mac and, while x86_64 remains supported, one Intel Mac:
 4. CloudKit upload and restoration work between two Macs on the same test
    Apple Account, including offline edits and deletion tombstones.
 5. Reinstalling the same package and then upgrading from the previous release
-   preserve local user data.
+   preserve local user data and the iCloud-sync preference. Confirm the old
+   input-method PID exits during installation and the next PID runs the new
+   bundle version.
 6. `THIRD_PARTY_NOTICES.md`, `LICENSE`, and both source-verbatim MOE usage notes
    are present in the installed app's `Contents/Resources` directory.
 

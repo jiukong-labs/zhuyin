@@ -14,6 +14,7 @@ bundle_identifier="tw.idv.jiukong.inputmethod.zhuyin"
 installation_directory="/Library/Input Methods"
 entitlements_path="$repository_root/Resources/JiukongZhuyin.entitlements"
 installer_resources_directory="$repository_root/Resources/Installer"
+installer_scripts_directory="$installer_resources_directory/Scripts"
 output_directory="${OUTPUT_DIRECTORY:-$repository_root/dist}"
 
 usage() {
@@ -85,6 +86,12 @@ fi
 [[ -f "$entitlements_path" ]] || fail "Entitlements file is missing: $entitlements_path"
 [[ -f "$installer_resources_directory/conclusion.html" ]] \
     || fail "Installer conclusion is missing: $installer_resources_directory/conclusion.html"
+for installer_script in preinstall postinstall; do
+    [[ -x "$installer_scripts_directory/$installer_script" ]] \
+        || fail "Installer script is missing or not executable: $installer_script"
+    /bin/sh -n "$installer_scripts_directory/$installer_script" \
+        || fail "Installer script has invalid syntax: $installer_script"
+done
 
 for required_command in \
     /usr/bin/codesign \
@@ -120,6 +127,7 @@ component_package="$temporary_root/JiukongZhuyinComponent.pkg"
 synthesized_distribution="$temporary_root/Distribution.generated.xml"
 distribution_path="$temporary_root/Distribution.xml"
 expanded_package="$temporary_root/ExpandedPackage"
+expanded_component_package="$temporary_root/ExpandedComponentPackage"
 temporary_package="$temporary_root/Jiukong-Zhuyin.pkg"
 
 cleanup() {
@@ -266,9 +274,16 @@ checksum_path="$package_path.sha256"
 /usr/bin/pkgbuild \
     --component "$exported_application" \
     --install-location "$installation_directory" \
+    --scripts "$installer_scripts_directory" \
     --identifier "$bundle_identifier.installer" \
     --version "$release_version" \
     "$component_package"
+
+/usr/sbin/pkgutil --expand "$component_package" "$expanded_component_package"
+for installer_script in preinstall postinstall; do
+    [[ -f "$expanded_component_package/Scripts/$installer_script" ]] \
+        || fail "Component package omitted installer script: $installer_script"
+done
 
 /usr/bin/productbuild \
     --synthesize \

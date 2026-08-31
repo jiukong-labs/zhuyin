@@ -20,10 +20,10 @@ for every user of the Mac.
 3. Double-click the `.pkg`, confirm that macOS identifies the developer, and
    complete the installer. Administrator approval is required because the app
    is installed at `/Library/Input Methods/Jiukong Zhuyin.app`.
-4. Save your work, then sign out of macOS and sign back in, or restart the Mac.
-   Do this after every fresh install or update so macOS stops any cached
-   input-method process and loads the installed version. The Installer
-   completion screen also shows this reminder.
+4. Installer stops the currently cached 久空 process while replacing the app.
+   Save your work, then sign out of macOS and sign back in, or restart the Mac
+   so every text service loads the installed version. The Installer completion
+   screen also shows this reminder.
 5. Open **System Settings > Keyboard**. Under **Text Input**, click **Edit…**,
    then **+**. Select **Traditional Chinese**, add **久空輸入法**, and approve
    macOS's input-method prompt if it appears.
@@ -49,8 +49,9 @@ The release-page button remains available as a manual fallback. Administrator
 approval is still required because the package updates `/Library/Input
 Methods`. It replaces the application bundle but preserves preferences,
 learned selections, and user phrases under the current user's Library
-directory. macOS may continue running the previous process until the input
-method is restarted or the user signs out and back in.
+directory. Installer stops the cached process before replacing the bundle and
+once more afterward so the previous executable cannot keep running through the
+update.
 
 Do not keep a second development copy at
 `~/Library/Input Methods/Jiukong Zhuyin.app`: two bundles with the same
@@ -58,8 +59,8 @@ identifier can make macOS register the wrong copy. Remove the development copy
 with `scripts/uninstall.sh` before installing a public release.
 
 After the update finishes, save your work, then sign out of macOS and sign back
-in, or restart the Mac. This is the same refresh described in install step 4
-and prevents macOS from continuing to run the previous input-method process.
+in, or restart the Mac. This is the same full text-service refresh described in
+install step 4.
 
 ## Remove
 

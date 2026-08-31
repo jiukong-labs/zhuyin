@@ -407,6 +407,65 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(stateStore.load().pending.count, 1)
     }
 
+    func testUpgradeStateSurvivesAccountNotificationBeforeFirstCheck() throws {
+        let store = try makeStore()
+        let notificationCenter = NotificationCenter()
+        let preference = LockedBoolean(true)
+        let firstFetchStarted = expectation(description: "first fetch started")
+        let secondFetchStarted = expectation(description: "second fetch started")
+        let synchronized = expectation(description: "upgrade state synchronized")
+        let account = CloudAccountIdentifier(stableIdentifier: "account-a")
+        var oldState = CloudSyncPersistedState()
+        oldState.completedInitialMerge = true
+        let stateStore = MemoryCloudSyncStateStore(state: oldState)
+        var transport: ProbeCloudTransport!
+        transport = ProbeCloudTransport(
+            accountIdentifier: account,
+            defersFetch: true,
+            onFetch: {
+                if transport.fetchCount == 1 {
+                    firstFetchStarted.fulfill()
+                } else if transport.fetchCount == 2 {
+                    secondFetchStarted.fulfill()
+                }
+            }
+        )
+        let coordinator = UserDataCloudSyncCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: stateStore,
+            isEnabled: { preference.value },
+            turnOffSyncAfterAccountChange: {
+                preference.value = false
+            },
+            notificationCenter: notificationCenter,
+            debounceInterval: 0,
+            retryInterval: 60
+        )
+        let statusObserver = notificationCenter.addObserver(
+            forName: UserDataCloudSyncCoordinator
+                .statusDidChangeNotification,
+            object: coordinator,
+            queue: nil
+        ) { _ in
+            if case .idle = coordinator.status {
+                synchronized.fulfill()
+            }
+        }
+        defer { notificationCenter.removeObserver(statusObserver) }
+
+        coordinator.start()
+        wait(for: [firstFetchStarted], timeout: 2)
+        notificationCenter.post(name: .CKAccountChanged, object: nil)
+        wait(for: [secondFetchStarted], timeout: 2)
+        transport.completeDeferredFetch()
+        wait(for: [synchronized], timeout: 2)
+
+        XCTAssertTrue(preference.value)
+        XCTAssertEqual(stateStore.load().accountIdentifier, account)
+        XCTAssertEqual(transport.fetchCancellationStates, [true, false])
+    }
+
     func testAccountNotificationKeepsSyncEnabledForSameAccount() throws {
         let store = try makeStore()
         let notificationCenter = NotificationCenter()

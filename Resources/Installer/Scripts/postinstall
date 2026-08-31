@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Close any process macOS relaunched while the payload was being replaced. The
+# next InputMethodKit launch must load the newly installed executable.
+/usr/bin/pkill -TERM -x "Jiukong Zhuyin" 2>/dev/null || true
+
+attempt=0
+while /usr/bin/pgrep -x "Jiukong Zhuyin" >/dev/null 2>&1 \
+    && [ "$attempt" -lt 30 ]; do
+    /bin/sleep 0.1
+    attempt=$((attempt + 1))
+done
+
+/usr/bin/pkill -KILL -x "Jiukong Zhuyin" 2>/dev/null || true
+
+exit 0

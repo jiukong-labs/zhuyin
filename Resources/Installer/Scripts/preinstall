@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# InputMethodKit can keep the previous executable running while Installer
+# replaces its bundle. Stop it before touching the payload so old CloudKit
+# account-change handling cannot rewrite preferences during the upgrade.
+/usr/bin/pkill -TERM -x "Jiukong Zhuyin" 2>/dev/null || true
+
+attempt=0
+while /usr/bin/pgrep -x "Jiukong Zhuyin" >/dev/null 2>&1 \
+    && [ "$attempt" -lt 30 ]; do
+    /bin/sleep 0.1
+    attempt=$((attempt + 1))
+done
+
+# Do not replace an executable that is still running old synchronization code.
+/usr/bin/pkill -KILL -x "Jiukong Zhuyin" 2>/dev/null || true
+
+exit 0

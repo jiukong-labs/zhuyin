@@ -11,7 +11,7 @@ enum UpdatePrompt {
         case let .updateAvailable(release, installedVersion):
             alert.messageText = "有新版久空輸入法"
             alert.informativeText =
-                "目前版本為 \(installedVersion)，最新版本為 \(release.version)。久空會下載並驗證安裝套件，再自動開啟 macOS 安裝程式；安裝到 /Library/Input Methods 仍需管理員授權。"
+                "目前版本為 \(installedVersion)，最新版本為 \(release.version)。久空會下載並驗證安裝套件，再自動開啟 macOS 安裝程式；安裝時會停止目前的久空輸入法程序，請先儲存工作。安裝到 /Library/Input Methods 仍需管理員授權。"
             alert.addButton(withTitle: "下載並安裝")
             alert.addButton(withTitle: "開啟發布頁面")
             alert.addButton(withTitle: "稍後")

@@ -28,7 +28,12 @@ jobs:
         run: ./scripts/check-project-sources.sh
 
       - name: Check release-script syntax
-        run: zsh -n ./scripts/package-release.sh
+        run: |
+          zsh -n ./scripts/package-release.sh
+          sh -n ./Resources/Installer/Scripts/preinstall
+          sh -n ./Resources/Installer/Scripts/postinstall
+          test -x ./Resources/Installer/Scripts/preinstall
+          test -x ./Resources/Installer/Scripts/postinstall
 
       - name: Test (Debug)
         run: |

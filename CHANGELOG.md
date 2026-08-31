@@ -4,6 +4,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-31
+
+### Fixed
+
+- The installer now stops the cached pre-update input-method process before
+  replacing the bundle and once more afterward. This prevents an older
+  process from handling the installation's CloudKit cache-reset notification
+  and turning off iCloud sync before the updated account check can run.
+
 ## [0.1.6] - 2026-08-31
 
 ### Added
