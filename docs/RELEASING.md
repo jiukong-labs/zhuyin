@@ -81,8 +81,8 @@ public package at `/Library/Input Methods/Jiukong Zhuyin.app`. The development
 installer refuses to create a user-level copy beside that system-level app,
 because duplicate input-method bundle identifiers can make LaunchServices
 select the ad-hoc build and leave the maintainer's normal input source unable
-to launch. At cleanup, preflight re-registers and restarts the one installed
-test copy.
+to launch. At cleanup, preflight re-registers the one installed test copy;
+the next text client lets `imklaunchagent` start it through InputMethodKit.
 
 ## GitHub release workflow
 

@@ -38,17 +38,12 @@ cleanup() {
   fi
 
   # Acceptance deliberately stops the input method between scripts. Restore
-  # LaunchServices ownership and restart the installed copy so the maintainer
-  # is not left with menu entries whose backing process is gone.
+  # LaunchServices ownership, but do not launch the app directly: only
+  # imklaunchagent may start the resident InputMethodKit server when a text
+  # client activates the source. A process opened as an ordinary application
+  # has no active InputController and leaves a visible but unusable source.
   if ! "${script_directory}/register-input-source.sh" > /dev/null; then
     print -u2 "warning: Could not restore the installed Jiukong input source."
-  else
-    if [[ -d "$HOME/Library/Input Methods/Jiukong Zhuyin.app" ]]; then
-      restored_application="$HOME/Library/Input Methods/Jiukong Zhuyin.app"
-    else
-      restored_application="/Library/Input Methods/Jiukong Zhuyin.app"
-    fi
-    /usr/bin/open -gj "${restored_application}" 2>/dev/null || true
   fi
 
   rm -rf "${temporary_root}"
