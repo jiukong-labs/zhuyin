@@ -15,25 +15,44 @@ user_data_backup="${temporary_root}/JiukongZhuyin.user-data-backup"
 preferences_backup="${temporary_root}/preferences.plist"
 had_user_data=0
 had_preferences=0
+isolation_started=0
 
 cleanup() {
+  cleanup_status=$?
   /usr/bin/pkill -x "Jiukong Zhuyin" 2>/dev/null || true
 
-  if (( had_user_data )); then
-    rm -rf "${user_data_root}"
-    mv "${user_data_backup}" "${user_data_root}"
-  else
-    rm -rf "${user_data_root}"
+  if (( isolation_started )); then
+    if (( had_user_data )); then
+      rm -rf "${user_data_root}"
+      mv "${user_data_backup}" "${user_data_root}"
+    else
+      rm -rf "${user_data_root}"
+    fi
+
+    if (( had_preferences )); then
+      /usr/bin/defaults import "${preferences_domain}" \
+        "${preferences_backup}" > /dev/null
+    else
+      /usr/bin/defaults delete "${preferences_domain}" 2>/dev/null || true
+    fi
   fi
 
-  if (( had_preferences )); then
-    /usr/bin/defaults import "${preferences_domain}" \
-      "${preferences_backup}" > /dev/null
+  # Acceptance deliberately stops the input method between scripts. Restore
+  # LaunchServices ownership and restart the installed copy so the maintainer
+  # is not left with menu entries whose backing process is gone.
+  if ! "${script_directory}/register-input-source.sh" > /dev/null; then
+    print -u2 "warning: Could not restore the installed Jiukong input source."
   else
-    /usr/bin/defaults delete "${preferences_domain}" 2>/dev/null || true
+    if [[ -d "$HOME/Library/Input Methods/Jiukong Zhuyin.app" ]]; then
+      restored_application="$HOME/Library/Input Methods/Jiukong Zhuyin.app"
+    else
+      restored_application="/Library/Input Methods/Jiukong Zhuyin.app"
+    fi
+    /usr/bin/open -gj "${restored_application}" 2>/dev/null || true
   fi
 
   rm -rf "${temporary_root}"
+  return "${cleanup_status}"
 }
 trap cleanup EXIT
 
@@ -64,6 +83,7 @@ xcodebuild \
 # isolated database is active, and restore everything through the EXIT trap.
 /usr/bin/pkill -x "Jiukong Zhuyin" 2>/dev/null || true
 sleep 1
+isolation_started=1
 
 if /usr/bin/defaults export "${preferences_domain}" \
   "${preferences_backup}" > /dev/null 2>&1; then

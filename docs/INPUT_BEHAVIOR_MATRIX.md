@@ -13,6 +13,10 @@ Run the complete installed gate after installing the working build:
 ./scripts/run-acceptance.sh
 ```
 
+Use an account or Mac without a simultaneous public installation under
+`/Library/Input Methods`. The development installer deliberately refuses to
+create a second copy with the production bundle identifier.
+
 The complete local release preflight also runs source checks and the full unit
 test suite before this installed matrix:
 

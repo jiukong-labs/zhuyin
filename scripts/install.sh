@@ -18,12 +18,35 @@ derived_data_path="${DERIVED_DATA_PATH:-$temporary_root/DerivedData}"
 built_application="$derived_data_path/Build/Products/$build_configuration/Jiukong Zhuyin.app"
 installation_directory="$HOME/Library/Input Methods"
 installed_application="$installation_directory/Jiukong Zhuyin.app"
+system_application="/Library/Input Methods/Jiukong Zhuyin.app"
 staged_application="$temporary_root/Jiukong Zhuyin.app"
 
 cleanup() {
     rm -rf "$temporary_root"
 }
 trap cleanup EXIT
+
+# A public package installs the production bundle for every user, while this
+# development helper installs an ad-hoc copy for only the current user. macOS
+# cannot reliably resolve two apps with the same input-method bundle ID: the
+# user copy can shadow the signed system copy and leave a visible but
+# unlaunchable input source after a test run. Refuse before building or
+# changing LaunchServices so a maintainer's everyday installation stays intact.
+if [[ -d "$system_application" ]]; then
+    system_identifier="$(
+        /usr/libexec/PlistBuddy \
+            -c 'Print :CFBundleIdentifier' \
+            "$system_application/Contents/Info.plist" \
+            2>/dev/null || true
+    )"
+    if [[ "$system_identifier" == "$bundle_identifier" ]]; then
+        print -u2 "error: A public Jiukong installation already exists at:"
+        print -u2 "  $system_application"
+        print -u2 "Refusing to install a second copy with the same bundle identifier."
+        print -u2 "Use a dedicated test account/Mac, or remove the public installation first."
+        exit 1
+    fi
+fi
 
 xcodebuild \
     -quiet \

@@ -258,6 +258,13 @@ The installer builds a Release configuration, copies it to the current user's su
 ./scripts/install.sh
 ```
 
+The helper refuses to install when the public package is already present at
+`/Library/Input Methods/Jiukong Zhuyin.app`. A user-level development copy and
+the system-level public copy would have the same bundle identifier, allowing
+the ad-hoc build to shadow the signed release and break launching or settings.
+Use a dedicated test account/Mac, or remove the public installation before
+installing a development build.
+
 The default build uses an ad-hoc local signature. A maintainer with an Apple Development certificate can select it without changing the project:
 
 ```sh
@@ -279,9 +286,7 @@ input-source indicator.
 - **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
 
 ```sh
-lsregister=/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister
-"$lsregister" -f -R -trusted ~/Library/Input\ Methods/Jiukong\ Zhuyin.app
-~/Library/Input\ Methods/Jiukong\ Zhuyin.app/Contents/MacOS/Jiukong\ Zhuyin --register
+./scripts/register-input-source.sh
 ```
 
 If the installer reports that macOS did not register the input source, check both of those before anything else.

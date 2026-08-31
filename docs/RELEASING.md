@@ -76,6 +76,14 @@ source, unit, and installed-input preflight:
 ./scripts/run-release-preflight.sh
 ```
 
+Run this installed-input gate on a dedicated test account or Mac without the
+public package at `/Library/Input Methods/Jiukong Zhuyin.app`. The development
+installer refuses to create a user-level copy beside that system-level app,
+because duplicate input-method bundle identifiers can make LaunchServices
+select the ad-hoc build and leave the maintainer's normal input source unable
+to launch. At cleanup, preflight re-registers and restarts the one installed
+test copy.
+
 ## GitHub release workflow
 
 Create a protected GitHub Actions environment named `release`, then add these

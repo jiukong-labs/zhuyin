@@ -14,13 +14,26 @@ set -euo pipefail
 
 script_directory="${0:A:h}"
 repository_root="${script_directory:h}"
-installed_application="$HOME/Library/Input Methods/Jiukong Zhuyin.app"
+user_application="$HOME/Library/Input Methods/Jiukong Zhuyin.app"
+system_application="/Library/Input Methods/Jiukong Zhuyin.app"
 launch_services="/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister"
 bundle_identifier="tw.idv.jiukong.inputmethod.zhuyin"
 
-if [[ ! -d "$installed_application" ]]; then
-    print -u2 "Jiukong Zhuyin is not installed at $installed_application"
-    print -u2 "Run ./scripts/install.sh first."
+if [[ -d "$user_application" && -d "$system_application" ]]; then
+    print -u2 "Two Jiukong installations claim the same bundle identifier:"
+    print -u2 "  $user_application"
+    print -u2 "  $system_application"
+    print -u2 "Remove the development copy with ./scripts/uninstall.sh before registering."
+    exit 1
+fi
+if [[ -d "$user_application" ]]; then
+    installed_application="$user_application"
+elif [[ -d "$system_application" ]]; then
+    installed_application="$system_application"
+else
+    print -u2 "Jiukong Zhuyin is not installed in either supported location:"
+    print -u2 "  $user_application"
+    print -u2 "  $system_application"
     exit 1
 fi
 
@@ -32,6 +45,8 @@ if [[ -x "$launch_services" ]]; then
     typeset -A visited_applications
     for search_root in \
         "$repository_root/.build" \
+        "$repository_root/build" \
+        "$HOME/Library/Developer/Xcode/DerivedData" \
         /private/tmp \
         "${TMPDIR:-/tmp}"; do
         [[ -d "$search_root" ]] || continue
