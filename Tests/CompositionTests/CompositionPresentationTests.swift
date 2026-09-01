@@ -245,7 +245,7 @@ final class CompositionPresentationTests: XCTestCase {
         )
     }
 
-    func testOrdinaryMarkedTextUsesUnderlineWithoutSelectionFill() {
+    func testOrdinaryMarkedTextUsesUnderlineAndConvertedTextFallback() {
         let presentation = CompositionPresentation(
             text: "輸入字",
             selectionRange: NSRange(location: 3, length: 0)
@@ -286,7 +286,7 @@ final class CompositionPresentationTests: XCTestCase {
                     at: index,
                     effectiveRange: nil
                 ) as? Int,
-                Int(kTSMHiliteNoHilite)
+                Int(kTSMHiliteConvertedText)
             )
         }
     }

@@ -106,9 +106,10 @@ struct CompositionPresentation: Equatable {
 /// requests a collapsed native selection range instead, allowing clients that
 /// honor it to draw their normal blinking text cursor without a colored fill.
 enum CompositionMarkedTextRenderer {
-    /// Requests a LINE-style composition presentation: the client receives an
-    /// explicit transparent background and green underline instead of being
-    /// left to paint its default marked-text selection fill.
+    /// Requests a LINE-style composition presentation: clients that preserve
+    /// attributed marked text receive an explicit transparent background and
+    /// green underline. Clients that discard those visual attributes can use
+    /// Carbon's converted-text style as their native composition fallback.
     static func makeUnderlined(
         presentation: CompositionPresentation
     ) -> NSAttributedString {
@@ -121,7 +122,7 @@ enum CompositionMarkedTextRenderer {
         markedText.addAttributes(
             [
                 .backgroundColor: NSColor.clear,
-                .markedClauseSegment: Int(kTSMHiliteNoHilite),
+                .markedClauseSegment: Int(kTSMHiliteConvertedText),
                 .underlineColor: NSColor.systemGreen,
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
             ],

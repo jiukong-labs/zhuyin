@@ -4,6 +4,14 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-09-01
+
+### Fixed
+
+- Ordinary composition now includes the system converted-text style as a
+  fallback for web-backed input fields that ignore the explicit green
+  underline attributes.
+
 ## [0.1.7] - 2026-08-31
 
 ### Fixed
