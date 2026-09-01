@@ -42,13 +42,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let modeContainer = try XCTUnwrap(
             info["ComponentInputModeDict"] as? [String: Any]
         )
-        let serverModeContainer = try XCTUnwrap(
-            info["InputMethodServerModeDictionary"] as? [String: Any]
-        )
-        XCTAssertEqual(
-            serverModeContainer as NSDictionary,
-            modeContainer as NSDictionary
-        )
+        XCTAssertNil(info["InputMethodServerModeDictionary"])
         let modes = try XCTUnwrap(
             modeContainer["tsInputModeListKey"] as? [String: Any]
         )

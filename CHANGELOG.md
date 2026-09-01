@@ -4,6 +4,14 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-09-01
+
+### Fixed
+
+- The input method now declares its Chinese and English modes once through
+  `ComponentInputModeDict`, preventing System Settings from accumulating
+  duplicate 久空中文 or 久空英文 entries.
+
 ## [0.1.10] - 2026-09-01
 
 ### Fixed

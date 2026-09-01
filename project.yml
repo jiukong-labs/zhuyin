@@ -108,7 +108,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleSignature: JKZY
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        ComponentInputModeDict: &inputModeDictionary
+        ComponentInputModeDict:
           tsInputModeListKey:
             tw.idv.jiukong.inputmethod.zhuyin.Chinese:
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.Chinese
@@ -131,7 +131,6 @@ targets:
           tsVisibleInputModeOrderedArrayKey:
             - tw.idv.jiukong.inputmethod.zhuyin.Chinese
             - tw.idv.jiukong.inputmethod.zhuyin.English
-        InputMethodServerModeDictionary: *inputModeDictionary
         InputMethodConnectionName: JiukongZhuyin_1_Connection
         InputMethodServerControllerClass: JiukongInputController
         LSApplicationCategoryType: public.app-category.utilities
@@ -153,11 +152,11 @@ targets:
         CODE_SIGN_ENTITLEMENTS: $(JIUKONG_CLOUDKIT_ENTITLEMENTS)
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
-        CURRENT_PROJECT_VERSION: 18
+        CURRENT_PROJECT_VERSION: 19
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO
-        MARKETING_VERSION: 0.1.10
+        MARKETING_VERSION: 0.1.11
         PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.inputmethod.zhuyin
         PRODUCT_MODULE_NAME: JiukongZhuyin
         PRODUCT_NAME: Jiukong Zhuyin

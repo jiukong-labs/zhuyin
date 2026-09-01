@@ -60,6 +60,7 @@ struct Keystroke {
     let keyCode: Int
     let keyDownFlags: CGEventFlags
     let keyUpFlags: CGEventFlags
+    let modifierKeyCode: Int?
     let settleDelayMicroseconds: useconds_t
 
     init(
@@ -70,7 +71,21 @@ struct Keystroke {
         self.keyCode = keyCode
         keyDownFlags = flags
         keyUpFlags = flags
+        modifierKeyCode = nil
         self.settleDelayMicroseconds = settleDelayMicroseconds
+    }
+
+    /// Sends an explicit modifier press and release around a key. This mirrors
+    /// a physical chord for clients whose input-method route treats modifier
+    /// state differently from flags attached only to the character event.
+    static func shiftChord(_ keyCode: Int) -> Keystroke {
+        Keystroke(
+            keyCode,
+            keyDownFlags: .maskShift,
+            keyUpFlags: .maskShift,
+            modifierKeyCode: kVK_Shift,
+            settleDelayMicroseconds: 120_000
+        )
     }
 
     /// Modifier-only gestures need different flags on press and release so
@@ -83,6 +98,7 @@ struct Keystroke {
             keyCode,
             keyDownFlags: flag,
             keyUpFlags: [],
+            modifierKeyCode: nil,
             settleDelayMicroseconds: 900_000
         )
     }
@@ -91,31 +107,65 @@ struct Keystroke {
         _ keyCode: Int,
         keyDownFlags: CGEventFlags,
         keyUpFlags: CGEventFlags,
+        modifierKeyCode: Int?,
         settleDelayMicroseconds: useconds_t
     ) {
         self.keyCode = keyCode
         self.keyDownFlags = keyDownFlags
         self.keyUpFlags = keyUpFlags
+        self.modifierKeyCode = modifierKeyCode
         self.settleDelayMicroseconds = settleDelayMicroseconds
     }
 }
 
 let eventSource = CGEventSource(stateID: .privateState)
 
+func postEvent(
+    keyCode: Int,
+    isDown: Bool,
+    flags: CGEventFlags,
+    to pid: pid_t
+) {
+    guard let event = CGEvent(
+        keyboardEventSource: eventSource,
+        virtualKey: CGKeyCode(keyCode),
+        keyDown: isDown
+    ) else {
+        return
+    }
+    event.flags = flags
+    event.postToPid(pid)
+    usleep(28_000)
+}
+
 func post(_ keystroke: Keystroke, to pid: pid_t) {
-    for isDown in [true, false] {
-        guard let event = CGEvent(
-            keyboardEventSource: eventSource,
-            virtualKey: CGKeyCode(keystroke.keyCode),
-            keyDown: isDown
-        ) else {
-            continue
-        }
-        event.flags = isDown
-            ? keystroke.keyDownFlags
-            : keystroke.keyUpFlags
-        event.postToPid(pid)
-        usleep(28_000)
+    if let modifierKeyCode = keystroke.modifierKeyCode {
+        postEvent(
+            keyCode: modifierKeyCode,
+            isDown: true,
+            flags: keystroke.keyDownFlags,
+            to: pid
+        )
+    }
+    postEvent(
+        keyCode: keystroke.keyCode,
+        isDown: true,
+        flags: keystroke.keyDownFlags,
+        to: pid
+    )
+    postEvent(
+        keyCode: keystroke.keyCode,
+        isDown: false,
+        flags: keystroke.keyUpFlags,
+        to: pid
+    )
+    if let modifierKeyCode = keystroke.modifierKeyCode {
+        postEvent(
+            keyCode: modifierKeyCode,
+            isDown: false,
+            flags: [],
+            to: pid
+        )
     }
 }
 
@@ -373,7 +423,7 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
             Keystroke(kVK_ANSI_RightBracket),
             Keystroke(kVK_ANSI_Backslash),
-            Keystroke(kVK_ANSI_Backslash, .maskShift),
+            .shiftChord(kVK_ANSI_Backslash),
             Keystroke(kVK_Return),
         ],
         expectation: "「我」、／"

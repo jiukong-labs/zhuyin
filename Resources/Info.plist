@@ -73,55 +73,6 @@
 			<string>tw.idv.jiukong.inputmethod.zhuyin.English</string>
 		</array>
 	</dict>
-	<key>InputMethodServerModeDictionary</key>
-	<dict>
-		<key>tsInputModeListKey</key>
-		<dict>
-			<key>tw.idv.jiukong.inputmethod.zhuyin.Chinese</key>
-			<dict>
-				<key>TISInputSourceID</key>
-				<string>tw.idv.jiukong.inputmethod.zhuyin.Chinese</string>
-				<key>TISIntendedLanguage</key>
-				<string>zh-Hant</string>
-				<key>tsInputModeDefaultStateKey</key>
-				<true/>
-				<key>tsInputModeIsVisibleKey</key>
-				<true/>
-				<key>tsInputModeMenuIconFileKey</key>
-				<string>JiukongChineseColor.tiff</string>
-				<key>tsInputModePaletteIconFileKey</key>
-				<string>JiukongChineseColor.tiff</string>
-				<key>tsInputModePrimaryInScriptKey</key>
-				<true/>
-				<key>tsInputModeScriptKey</key>
-				<string>smUnicodeScript</string>
-			</dict>
-			<key>tw.idv.jiukong.inputmethod.zhuyin.English</key>
-			<dict>
-				<key>TISInputSourceID</key>
-				<string>tw.idv.jiukong.inputmethod.zhuyin.English</string>
-				<key>TISIntendedLanguage</key>
-				<string>en</string>
-				<key>tsInputModeDefaultStateKey</key>
-				<true/>
-				<key>tsInputModeIsVisibleKey</key>
-				<true/>
-				<key>tsInputModeMenuIconFileKey</key>
-				<string>JiukongEnglishAColor.tiff</string>
-				<key>tsInputModePaletteIconFileKey</key>
-				<string>JiukongEnglishAColor.tiff</string>
-				<key>tsInputModePrimaryInScriptKey</key>
-				<false/>
-				<key>tsInputModeScriptKey</key>
-				<string>smRoman</string>
-			</dict>
-		</dict>
-		<key>tsVisibleInputModeOrderedArrayKey</key>
-		<array>
-			<string>tw.idv.jiukong.inputmethod.zhuyin.Chinese</string>
-			<string>tw.idv.jiukong.inputmethod.zhuyin.English</string>
-		</array>
-	</dict>
 	<key>InputMethodConnectionName</key>
 	<string>JiukongZhuyin_1_Connection</string>
 	<key>InputMethodServerControllerClass</key>
