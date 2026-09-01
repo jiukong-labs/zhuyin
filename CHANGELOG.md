@@ -4,6 +4,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-09-01
+
+### Fixed
+
+- macOS can now cold-launch the input method server by using the recognized
+  `_1_Connection` service-name form. This fixes an input source that appeared
+  selected but did not receive keyboard events.
+- Installed-input acceptance now proves that keys reached Jiukong through its
+  unique Option-ASCII behavior instead of mistaking the cursor indicator for
+  the candidate panel.
+
 ## [0.1.9] - 2026-09-01
 
 ### Fixed

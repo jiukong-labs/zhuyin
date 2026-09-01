@@ -132,7 +132,7 @@ targets:
             - tw.idv.jiukong.inputmethod.zhuyin.Chinese
             - tw.idv.jiukong.inputmethod.zhuyin.English
         InputMethodServerModeDictionary: *inputModeDictionary
-        InputMethodConnectionName: tw_idv_jiukong_inputmethod_zhuyin_Connection
+        InputMethodConnectionName: JiukongZhuyin_1_Connection
         InputMethodServerControllerClass: JiukongInputController
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
@@ -153,11 +153,11 @@ targets:
         CODE_SIGN_ENTITLEMENTS: $(JIUKONG_CLOUDKIT_ENTITLEMENTS)
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
-        CURRENT_PROJECT_VERSION: 17
+        CURRENT_PROJECT_VERSION: 18
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO
-        MARKETING_VERSION: 0.1.9
+        MARKETING_VERSION: 0.1.10
         PRODUCT_BUNDLE_IDENTIFIER: tw.idv.jiukong.inputmethod.zhuyin
         PRODUCT_MODULE_NAME: JiukongZhuyin
         PRODUCT_NAME: Jiukong Zhuyin

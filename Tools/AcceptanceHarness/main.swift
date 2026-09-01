@@ -9,8 +9,10 @@ import Carbon
 //
 // 1. The system's own Zhuyin input method composes the same Bopomofo from the
 //    same keys. A run that never reached Jiukong therefore looks like a pass.
-//    Every run first presses Down after a probe syllable and proves the client
-//    is talking to Jiukong by requiring its candidate panel to appear.
+//    Every run first requires Option-A and Option-Z to insert Jiukong's literal
+//    `az`; macOS keyboard layouts produce different characters for those keys.
+//    This behavioral proof cannot mistake Jiukong's always-visible cursor
+//    indicator for its candidate panel.
 // 2. A running application keeps the input source it already adopted, so the
 //    harness selects the source first and then launches a *new* client
 //    instance, which adopts it at launch. The user's own TextEdit windows and
@@ -139,35 +141,36 @@ func focusedText(pid: pid_t) -> String {
     return text
 }
 
-func inputMethodPanelIsVisible() -> Bool {
-    let windows = CGWindowListCopyWindowInfo(
-        [.optionOnScreenOnly, .excludeDesktopElements],
-        kCGNullWindowID
-    ) as? [[String: Any]] ?? []
-    return windows.contains { window in
-        guard let owner = window[kCGWindowOwnerName as String] as? String else {
-            return false
-        }
-        return owner.contains("久空") || owner.contains("Jiukong")
-    }
+func clearFocusedText(pid: pid_t) {
+    post(Keystroke(kVK_ANSI_A, .maskCommand), to: pid)
+    usleep(200_000)
+    post(Keystroke(kVK_Delete), to: pid)
+    usleep(400_000)
+}
+
+func routesOptionASCIIThroughJiukong(pid: pid_t) -> Bool {
+    clearFocusedText(pid: pid)
+    post(Keystroke(kVK_ANSI_A, .maskAlternate), to: pid)
+    post(Keystroke(kVK_ANSI_Z, .maskAlternate), to: pid)
+    usleep(500_000)
+    return focusedText(pid: pid) == "az"
 }
 
 // MARK: - Scripts
 
 struct AcceptanceScript {
-    /// Keys that must raise the candidate panel on the arrangement under test.
-    let probe: [Int]
     let keystrokes: [Keystroke]
     let expectation: String
     let includedInDefaultRun: Bool
 
     init(
-        probe: [Int],
+        // Documents one representative syllable for the arrangement even
+        // though connection proof now uses arrangement-independent Option ASCII.
+        probe _: [Int],
         keystrokes: [Keystroke],
         expectation: String,
         includedInDefaultRun: Bool = true
     ) {
-        self.probe = probe
         self.keystrokes = keystrokes
         self.expectation = expectation
         self.includedInDefaultRun = includedInDefaultRun
@@ -511,16 +514,7 @@ func finish(_ message: String, code: Int32) -> Never {
 
 var connected = false
 for _ in 0 ..< 3 {
-    for key in script.probe {
-        post(Keystroke(key), to: clientPID)
-        usleep(120_000)
-    }
-    post(Keystroke(kVK_DownArrow), to: clientPID)
-    usleep(700_000)
-    connected = inputMethodPanelIsVisible()
-    post(Keystroke(kVK_Escape), to: clientPID)
-    post(Keystroke(kVK_Escape), to: clientPID)
-    usleep(400_000)
+    connected = routesOptionASCIIThroughJiukong(pid: clientPID)
     if connected { break }
     client?.activate(options: [.activateIgnoringOtherApps])
     usleep(700_000)
@@ -534,10 +528,7 @@ guard connected else {
 }
 
 // Start from an empty document so the result is unambiguous.
-post(Keystroke(kVK_ANSI_A, .maskCommand), to: clientPID)
-usleep(200_000)
-post(Keystroke(kVK_Delete), to: clientPID)
-usleep(400_000)
+clearFocusedText(pid: clientPID)
 
 for keystroke in script.keystrokes {
     post(keystroke, to: clientPID)

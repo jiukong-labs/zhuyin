@@ -1185,7 +1185,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1194,7 +1194,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";
@@ -1333,7 +1333,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1342,7 +1342,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.9;
+				MARKETING_VERSION = 0.1.10;
 				PRODUCT_BUNDLE_IDENTIFIER = tw.idv.jiukong.inputmethod.zhuyin;
 				PRODUCT_MODULE_NAME = JiukongZhuyin;
 				PRODUCT_NAME = "Jiukong Zhuyin";

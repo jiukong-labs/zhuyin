@@ -18,7 +18,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         XCTAssertEqual(info["NSPrincipalClass"] as? String, "NSApplication")
         XCTAssertEqual(
             info["InputMethodConnectionName"] as? String,
-            "tw_idv_jiukong_inputmethod_zhuyin_Connection"
+            "JiukongZhuyin_1_Connection"
         )
         XCTAssertEqual(
             info["InputMethodServerControllerClass"] as? String,

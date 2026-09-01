@@ -123,7 +123,7 @@
 		</array>
 	</dict>
 	<key>InputMethodConnectionName</key>
-	<string>tw_idv_jiukong_inputmethod_zhuyin_Connection</string>
+	<string>JiukongZhuyin_1_Connection</string>
 	<key>InputMethodServerControllerClass</key>
 	<string>JiukongInputController</string>
 	<key>LSApplicationCategoryType</key>

@@ -314,7 +314,11 @@ Unit tests cannot reach the InputMethodKit event path, so the behavior that only
 
 Each run launches its own TextEdit instance, types with real `CGEvent` delivery, compares the resulting text with the expectation, then restores the previous input source and closes the instance it launched. Existing TextEdit windows are untouched.
 
-Every run first completes a probe syllable, presses Down, and requires Jiukong's own candidate panel to appear before it types anything. Without that check a run can silently be composed by the system's built-in Zhuyin input method, which produces the same Bopomofo from the same keys and would look like a pass. A run that cannot prove the connection aborts instead of reporting a result.
+Every run first requires Option-A and Option-Z to produce Jiukong's literal
+`az` before it types the requested scenario. The system keyboard layouts
+produce different Option characters, so this proves that the client reached
+Jiukong without mistaking its cursor indicator for a candidate panel. A run
+that cannot prove the connection aborts instead of reporting a result.
 
 The complete release-blocking contract and its script mapping are recorded in
 [`docs/INPUT_BEHAVIOR_MATRIX.md`](docs/INPUT_BEHAVIOR_MATRIX.md). The default
