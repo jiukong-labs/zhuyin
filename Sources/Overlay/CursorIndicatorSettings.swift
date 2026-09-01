@@ -126,10 +126,27 @@ enum CapsLockIndicatorSize: String, CaseIterable, Codable {
     }
 }
 
+enum CompositionIndicatorAnimationPolicy {
+    static func shouldAnimate(
+        preferenceEnabled: Bool,
+        reduceMotionEnabled: Bool
+    ) -> Bool {
+        preferenceEnabled && !reduceMotionEnabled
+    }
+}
+
 /// The measured sizes one text size implies, including the Caps Lock badge.
 struct CursorIndicatorStyle: Equatable {
     let panelSize: NSSize
     let fontSize: CGFloat
+
+    var compositionDotDiameter: CGFloat {
+        max(3, fontSize * 0.42)
+    }
+
+    var compositionDotGap: CGFloat {
+        max(2, fontSize * 0.25)
+    }
 
     func capsLockFontSize(for size: CapsLockIndicatorSize) -> CGFloat {
         max(6, fontSize * size.scale)
@@ -144,11 +161,30 @@ struct CursorIndicatorStyle: Equatable {
     }
 
     func panelSize(withCapsLockBadge size: CapsLockIndicatorSize) -> NSSize {
-        NSSize(
+        panelSize(
+            showsCompositionIndicator: false,
+            capsLockSize: size
+        )
+    }
+
+    func panelSize(
+        showsCompositionIndicator: Bool,
+        capsLockSize: CapsLockIndicatorSize?
+    ) -> NSSize {
+        let compositionWidth = showsCompositionIndicator
+            ? compositionDotGap + compositionDotDiameter
+            : 0
+        let capsLockWidth = capsLockSize.map {
+            capsLockBadgeGap(for: $0) + capsLockBadgeWidth(for: $0)
+        } ?? 0
+        let capsLockHeight = capsLockSize.map {
+            ceil(capsLockFontSize(for: $0) * 1.4)
+        } ?? 0
+        return NSSize(
             width: panelSize.width
-                + capsLockBadgeGap(for: size)
-                + capsLockBadgeWidth(for: size),
-            height: max(panelSize.height, ceil(capsLockFontSize(for: size) * 1.4))
+                + compositionWidth
+                + capsLockWidth,
+            height: max(panelSize.height, capsLockHeight)
         )
     }
 }

@@ -624,6 +624,84 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertEqual(buffer, before)
     }
 
+    func testRevisionPhraseQueryEndsAtFocusedUnit() throws {
+        var buffer = CompositionBuffer()
+        let first = try XCTUnwrap(
+            buffer.append(text: "設", pronunciation: "ㄕㄜˋ")
+        )
+        let focused = try XCTUnwrap(
+            buffer.append(text: "計", pronunciation: "ㄐㄧˋ")
+        )
+        XCTAssertNotNil(buffer.append(text: "得", pronunciation: "ㄉㄜˊ"))
+
+        XCTAssertEqual(
+            buffer.phraseLookupQueries(
+                appending: focused.pronunciation,
+                before: focused.id
+            ),
+            [
+                CompositionPhraseQuery(
+                    pronunciationSequence: ["ㄕㄜˋ", "ㄐㄧˋ"],
+                    existingSuffixUnitIDs: [first.id]
+                )
+            ]
+        )
+    }
+
+    func testRevisionCanReplaceExactPhraseEndingAtFocusedUnit() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "社", pronunciation: "ㄕㄜˋ"))
+        let focused = try XCTUnwrap(
+            buffer.append(text: "計", pronunciation: "ㄐㄧˋ")
+        )
+        let trailing = try XCTUnwrap(
+            buffer.append(text: "得", pronunciation: "ㄉㄜˊ")
+        )
+        let phrase = phraseCandidate(
+            "設計",
+            readings: ["ㄕㄜˋ", "ㄐㄧˋ"]
+        )
+
+        let replacements = buffer.replaceRevisionSuffix(
+            endingAt: focused.id,
+            candidate: phrase,
+            reason: .number(1)
+        )
+
+        XCTAssertEqual(replacements.map(\.text), ["設", "計"])
+        XCTAssertEqual(buffer.text, "設計得")
+        XCTAssertEqual(buffer.units.last, trailing)
+        XCTAssertEqual(
+            buffer.pendingCandidateSelections.last,
+            PendingCandidateSelection(
+                candidate: phrase,
+                reason: .number(1),
+                coveredUnitIDs: replacements.map(\.id)
+            )
+        )
+    }
+
+    func testRevisionPhraseRejectsNonmatchingPrefixWithoutMutation() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "設", pronunciation: "ㄕㄜˊ"))
+        let focused = try XCTUnwrap(
+            buffer.append(text: "計", pronunciation: "ㄐㄧˋ")
+        )
+        let before = buffer
+
+        XCTAssertTrue(
+            buffer.replaceRevisionSuffix(
+                endingAt: focused.id,
+                candidate: phraseCandidate(
+                    "設計",
+                    readings: ["ㄕㄜˋ", "ㄐㄧˋ"]
+                ),
+                reason: .space
+            ).isEmpty
+        )
+        XCTAssertEqual(buffer, before)
+    }
+
     func testDeleteFocusedUnitPrunesOnlySelectionsCoveringThatUnit() throws {
         var buffer = CompositionBuffer()
         let first = characterCandidate("測", reading: "ㄘㄜˋ")

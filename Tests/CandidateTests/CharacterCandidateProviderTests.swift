@@ -408,6 +408,45 @@ final class CharacterCandidateProviderTests: XCTestCase {
         })
     }
 
+    func testRevisionQueryIncludesSavedPhraseEndingAtFocusedUnit() throws {
+        let learning = LearningSpy()
+        let readings = ["ㄕㄜˋ", "ㄐㄧˋ"]
+        learning.phraseRecordsByPronunciation[readings] = [
+            makePhraseRecord(
+                id: 30,
+                phrase: "設計",
+                readings: readings,
+                selectionCount: 1
+            ),
+        ]
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        var buffer = CompositionBuffer()
+        XCTAssertNotNil(buffer.append(text: "設", pronunciation: "ㄕㄜˋ"))
+        let focused = try XCTUnwrap(
+            buffer.append(text: "計", pronunciation: "ㄐㄧˋ")
+        )
+        XCTAssertNotNil(buffer.append(text: "得", pronunciation: "ㄉㄜˊ"))
+
+        let candidates = try provider.candidates(
+            for: focused.pronunciation,
+            phraseQueries: buffer.phraseLookupQueries(
+                appending: focused.pronunciation,
+                before: focused.id
+            )
+        )
+
+        XCTAssertTrue(candidates.contains { candidate in
+            candidate.text == "設計"
+                && candidate.type == .phrase
+                && candidate.isUserPhrase
+                && candidate.pronunciationSequence == readings
+        })
+        XCTAssertEqual(learning.requestedPhraseReadings, [readings])
+    }
+
     func testFirstPartyPhraseReplacesWrongAutomaticCharacterForTest() throws {
         let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
         var buffer = CompositionBuffer()

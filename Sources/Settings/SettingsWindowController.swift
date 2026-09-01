@@ -247,7 +247,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func makeDataView() -> NSView {
         let syncCheckbox = NSButton(
-            checkboxWithTitle: "使用 iCloud 自動同步選字與使用者詞",
+            checkboxWithTitle: "使用 iCloud 自動同步選字、使用者詞與游標外觀",
             target: self,
             action: #selector(iCloudSyncDidChange(_:))
         )
@@ -283,7 +283,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "iCloud 同步",
                     controls: [syncCheckbox, syncNowButton, statusLabel],
-                    note: "使用同一個 Apple Account 的 Mac 會自動合併學習資料。輸入仍使用本機資料庫；沒有網路或 iCloud 暫時無法使用時，不會影響打字。同步欄位使用 CloudKit 加密值。"
+                    note: "使用同一個 Apple Account 的 Mac 會自動合併學習資料並同步游標指示器外觀。輸入與設定仍以本機資料為主；沒有網路或 iCloud 暫時無法使用時，不會影響打字。同步內容使用獨立的 CloudKit records。"
                 ),
                 SettingsPaneBuilder.section(
                     title: "匯出與匯入",
@@ -366,6 +366,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func synchronizeCloudNow(_ sender: Any?) {
         learning.synchronizeCloudNow()
+        CloudPreferencesSyncService.shared.synchronizeNow()
         reloadCloudSyncStatus()
     }
 

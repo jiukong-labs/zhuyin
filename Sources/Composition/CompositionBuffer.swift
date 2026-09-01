@@ -551,6 +551,62 @@ struct CompositionBuffer: Equatable {
         return true
     }
 
+    /// Replaces the exact reading span ending at a focused revision unit with
+    /// a phrase candidate. Unlike ordinary suffix acceptance, text following
+    /// the focused unit remains untouched.
+    ///
+    /// Returning the newly inserted units lets a caller repair a caret anchor
+    /// when the focused unit itself was also the unit following that caret.
+    @discardableResult
+    mutating func replaceRevisionSuffix(
+        endingAt unitID: UUID,
+        candidate: Candidate,
+        reason: CandidateCommitReason
+    ) -> [CompositionUnit] {
+        let readings = candidate.pronunciationSequence
+        let minimumReadingCount = candidate.outputPattern.containsPunctuation
+            ? 1
+            : Self.minimumPhraseUnitCount
+        guard candidate.type == .phrase,
+              (minimumReadingCount ... Self.maximumPhraseUnitCount)
+                .contains(readings.count),
+              readings.allSatisfy({ !$0.isEmpty }),
+              let focusedIndex = units.firstIndex(where: { $0.id == unitID }),
+              units[focusedIndex].kind == .reading,
+              units[focusedIndex].pronunciation == readings.last,
+              let replacementUnits = phraseUnits(for: candidate) else {
+            return []
+        }
+
+        let existingReadings = Array(readings.dropLast())
+        let prefix = suffixUnits(
+            endingAt: focusedIndex,
+            readingCount: existingReadings.count
+        )
+        guard prefix.filter({ $0.kind == .reading }).map(\.pronunciation)
+                == existingReadings,
+              punctuationMatchesCandidatePrefix(
+                  prefix,
+                  candidate: candidate
+              ) else {
+            return []
+        }
+
+        let removalRange = (focusedIndex - prefix.count) ..< (focusedIndex + 1)
+        units.removeSubrange(removalRange)
+        pruneInvalidPendingSelections()
+        units.insert(contentsOf: replacementUnits, at: removalRange.lowerBound)
+        pendingCandidateSelections.append(
+            PendingCandidateSelection(
+                candidate: candidate,
+                reason: reason,
+                coveredUnitIDs: replacementUnits.map(\.id)
+            )
+        )
+        clearSelection()
+        return replacementUnits
+    }
+
     @discardableResult
     mutating func deleteUnit(withID unitID: UUID) -> CompositionUnit? {
         guard let index = units.firstIndex(where: { $0.id == unitID }) else {

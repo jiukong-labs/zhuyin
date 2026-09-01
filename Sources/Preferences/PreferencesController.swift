@@ -14,6 +14,13 @@ final class PreferencesController {
 
     static let shared = PreferencesController()
 
+    enum ChangeOrigin: String {
+        case local
+        case cloud
+    }
+
+    static let changeOriginUserInfoKey = "origin"
+
     private let store: PreferencesStoring
     private let notificationCenter: NotificationCenter
     private let lock = NSLock()
@@ -37,7 +44,10 @@ final class PreferencesController {
     /// Applies a change, persists it, and notifies observers only when the
     /// resulting value actually differs from the current one.
     @discardableResult
-    func update(_ transform: (inout Preferences) -> Void) -> Preferences {
+    func update(
+        origin: ChangeOrigin = .local,
+        _ transform: (inout Preferences) -> Void
+    ) -> Preferences {
         lock.lock()
         var updated = cached
         transform(&updated)
@@ -51,7 +61,8 @@ final class PreferencesController {
         if changed {
             notificationCenter.post(
                 name: Self.didChangeNotification,
-                object: self
+                object: self,
+                userInfo: [Self.changeOriginUserInfoKey: origin.rawValue]
             )
         }
         return updated

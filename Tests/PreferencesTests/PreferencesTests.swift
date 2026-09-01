@@ -84,6 +84,8 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(indicator.placement, .lowerRight)
         XCTAssertEqual(indicator.tracking, .fixedDistance)
         XCTAssertEqual(indicator.textSize, .small)
+        XCTAssertTrue(indicator.showsCompositionIndicator)
+        XCTAssertTrue(indicator.animatesCompositionIndicator)
         XCTAssertTrue(indicator.showsCapsLockIndicator)
         XCTAssertEqual(indicator.appearance, CursorIndicatorAppearance())
     }
@@ -95,13 +97,16 @@ final class PreferencesTests: XCTestCase {
                 placement: .upperRight,
                 tracking: .followCursor,
                 textSize: .huge,
+                showsCompositionIndicator: false,
+                animatesCompositionIndicator: false,
                 showsCapsLockIndicator: false,
                 capsLockIndicatorSize: .small,
                 appearance: CursorIndicatorAppearance(
                     chineseText: "漢",
                     englishText: "EN",
                     chineseColorHex: "#112233",
-                    englishColorHex: "#445566"
+                    englishColorHex: "#445566",
+                    compositionIndicatorColorHex: "#778899"
                 )
             )
         ).encoded()
@@ -112,12 +117,50 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(decoded.placement, .upperRight)
         XCTAssertEqual(decoded.tracking, .followCursor)
         XCTAssertEqual(decoded.textSize, .huge)
+        XCTAssertFalse(decoded.showsCompositionIndicator)
+        XCTAssertFalse(decoded.animatesCompositionIndicator)
         XCTAssertFalse(decoded.showsCapsLockIndicator)
         XCTAssertEqual(decoded.capsLockIndicatorSize, .small)
         XCTAssertEqual(decoded.appearance.chineseText, "漢")
         XCTAssertEqual(decoded.appearance.englishText, "EN")
         XCTAssertEqual(decoded.appearance.chineseColorHex, "#112233")
         XCTAssertEqual(decoded.appearance.englishColorHex, "#445566")
+        XCTAssertEqual(
+            decoded.appearance.compositionIndicatorColorHex,
+            "#778899"
+        )
+    }
+
+    func testVersionOneMigrationKeepsExistingValuesAndDefaultsNewFields() {
+        let decoded = Preferences.decoded(
+            from: [
+                PreferenceKey.version.rawValue: 1,
+                PreferenceKey.cursorIndicatorChineseText.rawValue: "漢",
+                PreferenceKey.cursorIndicatorChineseColor.rawValue: "#112233",
+                PreferenceKey.cursorIndicatorTextSize.rawValue: "large",
+            ]
+        ).cursorIndicator
+
+        XCTAssertEqual(decoded.appearance.chineseText, "漢")
+        XCTAssertEqual(decoded.appearance.chineseColorHex, "#112233")
+        XCTAssertEqual(decoded.textSize, .large)
+        XCTAssertTrue(decoded.showsCompositionIndicator)
+        XCTAssertTrue(decoded.animatesCompositionIndicator)
+        XCTAssertNil(decoded.appearance.compositionIndicatorColorHex)
+        XCTAssertEqual(decoded.appearance.compositionIndicatorColor, .systemGreen)
+    }
+
+    func testMalformedCompositionColorFallsBackToSystemGreen() {
+        let decoded = Preferences.decoded(
+            from: [
+                PreferenceKey.version.rawValue: Preferences.currentVersion,
+                PreferenceKey.cursorIndicatorCompositionColor.rawValue:
+                    "not-a-color",
+            ]
+        ).cursorIndicator
+
+        XCTAssertNil(decoded.appearance.compositionIndicatorColorHex)
+        XCTAssertEqual(decoded.appearance.compositionIndicatorColor, .systemGreen)
     }
 
     func testClearedOverridesDecodeAsNoOverride() {

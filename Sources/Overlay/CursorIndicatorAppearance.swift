@@ -12,17 +12,22 @@ struct CursorIndicatorAppearance: Equatable {
     var englishText: String?
     var chineseColorHex: String?
     var englishColorHex: String?
+    var compositionIndicatorColorHex: String?
 
     init(
         chineseText: String? = nil,
         englishText: String? = nil,
         chineseColorHex: String? = nil,
-        englishColorHex: String? = nil
+        englishColorHex: String? = nil,
+        compositionIndicatorColorHex: String? = nil
     ) {
         self.chineseText = Self.sanitizedText(chineseText)
         self.englishText = Self.sanitizedText(englishText)
         self.chineseColorHex = Self.sanitizedHex(chineseColorHex)
         self.englishColorHex = Self.sanitizedHex(englishColorHex)
+        self.compositionIndicatorColorHex = Self.sanitizedHex(
+            compositionIndicatorColorHex
+        )
     }
 
     func text(for mode: LanguageMode) -> String {
@@ -56,6 +61,11 @@ struct CursorIndicatorAppearance: Equatable {
 
     static let capsLockColor = NSColor.systemOrange
     static let capsLockIndicator = "⇪"
+
+    var compositionIndicatorColor: NSColor {
+        compositionIndicatorColorHex.flatMap(Self.color(fromHex:))
+            ?? .systemGreen
+    }
 
     /// Trims whitespace, drops empty text, and caps the length so the panel
     /// cannot be pushed to an unusable width.

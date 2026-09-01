@@ -5,7 +5,7 @@ import Foundation
 /// The type is a plain value so that decoding, normalization, and defaults can
 /// be tested without touching `UserDefaults` or the settings window.
 struct Preferences: Equatable {
-    static let currentVersion = 1
+    static let currentVersion = 2
     static let `default` = Preferences()
 
     var shiftKeyPreference: ShiftKeyPreference
@@ -41,6 +41,8 @@ struct CursorIndicatorPreferences: Equatable {
     var placement: CursorIndicatorPlacement
     var tracking: CursorIndicatorTracking
     var textSize: CursorIndicatorTextSize
+    var showsCompositionIndicator: Bool
+    var animatesCompositionIndicator: Bool
     var showsCapsLockIndicator: Bool
     var capsLockIndicatorSize: CapsLockIndicatorSize
     var appearance: CursorIndicatorAppearance
@@ -50,6 +52,8 @@ struct CursorIndicatorPreferences: Equatable {
         placement: CursorIndicatorPlacement = .lowerRight,
         tracking: CursorIndicatorTracking = .fixedDistance,
         textSize: CursorIndicatorTextSize = .small,
+        showsCompositionIndicator: Bool = true,
+        animatesCompositionIndicator: Bool = true,
         showsCapsLockIndicator: Bool = true,
         capsLockIndicatorSize: CapsLockIndicatorSize = .extraLarge,
         appearance: CursorIndicatorAppearance = CursorIndicatorAppearance()
@@ -58,6 +62,8 @@ struct CursorIndicatorPreferences: Equatable {
         self.placement = placement
         self.tracking = tracking
         self.textSize = textSize
+        self.showsCompositionIndicator = showsCompositionIndicator
+        self.animatesCompositionIndicator = animatesCompositionIndicator
         self.showsCapsLockIndicator = showsCapsLockIndicator
         self.capsLockIndicatorSize = capsLockIndicatorSize
         self.appearance = appearance
@@ -77,12 +83,18 @@ enum PreferenceKey: String, CaseIterable {
     case cursorIndicatorPlacement = "JiukongCursorIndicatorPlacement"
     case cursorIndicatorTracking = "JiukongCursorIndicatorTracking"
     case cursorIndicatorTextSize = "JiukongCursorIndicatorTextSize"
+    case cursorIndicatorShowsComposition =
+        "JiukongCursorIndicatorShowsComposition"
+    case cursorIndicatorAnimatesComposition =
+        "JiukongCursorIndicatorAnimatesComposition"
     case cursorIndicatorShowsCapsLock = "JiukongCursorIndicatorShowsCapsLock"
     case cursorIndicatorCapsLockSize = "JiukongCursorIndicatorCapsLockSize"
     case cursorIndicatorChineseText = "JiukongCursorIndicatorChineseText"
     case cursorIndicatorEnglishText = "JiukongCursorIndicatorEnglishText"
     case cursorIndicatorChineseColor = "JiukongCursorIndicatorChineseColor"
     case cursorIndicatorEnglishColor = "JiukongCursorIndicatorEnglishColor"
+    case cursorIndicatorCompositionColor =
+        "JiukongCursorIndicatorCompositionColor"
 }
 
 extension Preferences {
@@ -123,6 +135,10 @@ extension Preferences {
                 cursorIndicator.tracking.rawValue,
             PreferenceKey.cursorIndicatorTextSize.rawValue:
                 cursorIndicator.textSize.rawValue,
+            PreferenceKey.cursorIndicatorShowsComposition.rawValue:
+                cursorIndicator.showsCompositionIndicator,
+            PreferenceKey.cursorIndicatorAnimatesComposition.rawValue:
+                cursorIndicator.animatesCompositionIndicator,
             PreferenceKey.cursorIndicatorShowsCapsLock.rawValue:
                 cursorIndicator.showsCapsLockIndicator,
             PreferenceKey.cursorIndicatorCapsLockSize.rawValue:
@@ -135,6 +151,8 @@ extension Preferences {
                 cursorIndicator.appearance.chineseColorHex ?? "",
             PreferenceKey.cursorIndicatorEnglishColor.rawValue:
                 cursorIndicator.appearance.englishColorHex ?? "",
+            PreferenceKey.cursorIndicatorCompositionColor.rawValue:
+                cursorIndicator.appearance.compositionIndicatorColorHex ?? "",
         ]
     }
 
@@ -191,6 +209,20 @@ extension Preferences {
         ) {
             indicator.showsCapsLockIndicator = showsCapsLock
         }
+        if let showsComposition = boolean(
+            from: values[
+                PreferenceKey.cursorIndicatorShowsComposition.rawValue
+            ]
+        ) {
+            indicator.showsCompositionIndicator = showsComposition
+        }
+        if let animatesComposition = boolean(
+            from: values[
+                PreferenceKey.cursorIndicatorAnimatesComposition.rawValue
+            ]
+        ) {
+            indicator.animatesCompositionIndicator = animatesComposition
+        }
         if let raw = values[PreferenceKey.cursorIndicatorPlacement.rawValue]
             as? String,
            let placement = CursorIndicatorPlacement(rawValue: raw) {
@@ -224,7 +256,11 @@ extension Preferences {
                 as? String,
             englishColorHex:
                 values[PreferenceKey.cursorIndicatorEnglishColor.rawValue]
-                as? String
+                as? String,
+            compositionIndicatorColorHex:
+                values[
+                    PreferenceKey.cursorIndicatorCompositionColor.rawValue
+                ] as? String
         )
 
         return indicator

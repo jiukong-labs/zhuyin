@@ -55,6 +55,7 @@ private func runApplication() throws {
         let application = NSApplication.shared
         application.setActivationPolicy(.accessory)
         UserLearningService.shared.startCloudSync()
+        CloudPreferencesSyncService.shared.start()
         UpdateController.shared.startAutomaticChecks()
         DispatchQueue.main.async {
             SettingsWindowController.shared.show()
@@ -75,6 +76,7 @@ private func runApplication() throws {
     // runs, independent of any particular client's text-field focus.
     SystemInputSourceObserver.shared.start()
     UserLearningService.shared.startCloudSync()
+    CloudPreferencesSyncService.shared.start()
     UpdateController.shared.startAutomaticChecks()
     jiukongDebugLog("main.swift finished starting SystemInputSourceObserver")
 

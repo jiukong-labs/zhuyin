@@ -6,7 +6,7 @@
 
 Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and offline-first character and phrase learning with optional iCloud restoration.
 
-> 開發狀態：選字與使用者詞已具備 CloudKit 私有資料庫同步實作；正式連線仍須以 Apple Developer Team 簽署、建立 container 並部署 production schema。
+> 開發狀態：選字、使用者詞與游標外觀偏好已具備 CloudKit 私有資料庫同步實作；正式連線須使用 Apple Developer Team 簽署、既有 container 與已部署的 production schema。
 
 ## AI 製作聲明
 
@@ -159,7 +159,7 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v3 原地保留選字頻率、使用者詞與有順序的逐音讀音，並記錄詞內注音與標點的對應。內建字典另含專案自有的預設選字基準；個人資料庫無法使用時，輸入仍會安全使用這份內建排序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
 
-iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即同步。輸入與候選查詢永遠使用本機 SQLite，不等待網路；啟動時與持續使用期間會從同一 Apple Account 的 CloudKit 私有資料庫合併變更，本機異動則短暫合併後在背景上傳。同步的是逐筆記錄而非 SQLite 檔案，刪除會留下雲端 tombstone，避免離線的另一台 Mac 或重灌後把舊資料復活。CloudKit record name 只含穩定雜湊，文字、注音、次數、時間與置頂欄位均使用 CloudKit encrypted values。完整設計與部署前置條件見 [iCloud sync notes](docs/CLOUD_SYNC.md)。
+iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即同步。輸入與候選查詢永遠使用本機 SQLite，不等待網路；啟動時與持續使用期間會從同一 Apple Account 的 CloudKit 私有資料庫合併變更，本機異動則短暫合併後在背景上傳。同步的是逐筆學習記錄與游標外觀偏好，而非 SQLite 或偏好檔案；學習資料刪除會留下雲端 tombstone，避免離線的另一台 Mac 或重灌後把舊資料復活。CloudKit record name 只含穩定雜湊或偏好欄位識別，個人文字、注音、次數、時間、置頂值及偏好值均使用 CloudKit encrypted values。完整設計與部署前置條件見 [iCloud sync notes](docs/CLOUD_SYNC.md)。
 
 ### 設定視窗
 
@@ -343,7 +343,7 @@ Milestone 11 把獨立工具 `lang-cursor` 的免費功能併入輸入法：跟�
 
 ## Privacy
 
-Composition and candidate lookup stay on the Mac. When iCloud learning sync is enabled, Jiukong sends only committed character-learning records and explicitly saved user phrases to the current user's private CloudKit database; it does not upload uncommitted composition or document contents. Sync can be disabled in the Data settings pane, and manual JSON export/import remains available.
+Composition and candidate lookup stay on the Mac. When iCloud sync is enabled, Jiukong sends committed character-learning records, explicitly saved user phrases, and cursor-indicator appearance preferences to the current user's private CloudKit database; it does not upload uncommitted composition or document contents. Personal record values and preference values use CloudKit encrypted fields. Sync can be disabled in the Data settings pane, and manual JSON export/import remains available.
 
 ## Project
 

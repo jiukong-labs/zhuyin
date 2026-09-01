@@ -16,6 +16,16 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
     private let placementButton = NSPopUpButton(frame: .zero, pullsDown: false)
     private let trackingButton = NSPopUpButton(frame: .zero, pullsDown: false)
     private let textSizeButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let compositionIndicatorButton = NSButton(
+        checkboxWithTitle: "組字時顯示狀態圓點",
+        target: nil,
+        action: nil
+    )
+    private let compositionAnimationButton = NSButton(
+        checkboxWithTitle: "使用呼吸動畫",
+        target: nil,
+        action: nil
+    )
     private let capsLockButton = NSButton(
         checkboxWithTitle: "Caps Lock 開啟時一併顯示 ⇪",
         target: nil,
@@ -26,6 +36,7 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
     private let englishTextField = NSTextField(string: "")
     private let chineseColorWell = NSColorWell()
     private let englishColorWell = NSColorWell()
+    private let compositionColorWell = NSColorWell()
 
     private static let placements = CursorIndicatorPlacement.allCases
     private static let trackings = CursorIndicatorTracking.allCases
@@ -42,6 +53,14 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
         enabledButton.action = #selector(enabledDidChange(_:))
         capsLockButton.target = self
         capsLockButton.action = #selector(capsLockDidChange(_:))
+        compositionIndicatorButton.target = self
+        compositionIndicatorButton.action = #selector(
+            compositionIndicatorDidChange(_:)
+        )
+        compositionAnimationButton.target = self
+        compositionAnimationButton.action = #selector(
+            compositionAnimationDidChange(_:)
+        )
 
         configure(
             placementButton,
@@ -73,7 +92,13 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
         chineseColorWell.action = #selector(chineseColorDidChange(_:))
         englishColorWell.target = self
         englishColorWell.action = #selector(englishColorDidChange(_:))
-        for well in [chineseColorWell, englishColorWell] {
+        compositionColorWell.target = self
+        compositionColorWell.action = #selector(compositionColorDidChange(_:))
+        for well in [
+            chineseColorWell,
+            englishColorWell,
+            compositionColorWell,
+        ] {
             well.widthAnchor.constraint(equalToConstant: 44).isActive = true
             well.heightAnchor.constraint(equalToConstant: 22).isActive = true
         }
@@ -90,6 +115,12 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
                 englishTextField,
                 englishColorWell,
                 makeButton("重設", action: #selector(resetEnglish(_:))),
+            ],
+            [
+                NSTextField(labelWithString: "組字狀態"),
+                NSTextField(labelWithString: ""),
+                compositionColorWell,
+                makeButton("重設", action: #selector(resetCompositionColor(_:))),
             ],
         ])
         appearanceGrid.rowSpacing = 8
@@ -121,6 +152,14 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
                 note: "只在使用久空輸入法時顯示；切換到其他輸入法會自動消失。開啟後就不再顯示切換時的短暫提示，避免同時出現兩個指示。"
             ),
             SettingsPaneBuilder.section(
+                title: "組字狀態",
+                controls: [
+                    compositionIndicatorButton,
+                    compositionAnimationButton,
+                ],
+                note: "部分網頁編輯器不會顯示組字底線。開啟後，組字期間會在游標指示器旁顯示狀態圓點。"
+            ),
+            SettingsPaneBuilder.section(
                 title: "Caps Lock",
                 controls: [capsLockRow],
                 note: "Caps Lock 狀態每 0.2 秒檢查一次，不需要輸入監控權限。"
@@ -137,6 +176,13 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
         let indicator = preferences.current.cursorIndicator
 
         enabledButton.state = indicator.isEnabled ? .on : .off
+        compositionIndicatorButton.state = indicator.showsCompositionIndicator
+            ? .on
+            : .off
+        compositionAnimationButton.state = indicator.animatesCompositionIndicator
+            ? .on
+            : .off
+        compositionAnimationButton.isEnabled = indicator.showsCompositionIndicator
         capsLockButton.state = indicator.showsCapsLockIndicator ? .on : .off
         select(placementButton, index: Self.placements.firstIndex(of: indicator.placement))
         select(trackingButton, index: Self.trackings.firstIndex(of: indicator.tracking))
@@ -150,6 +196,8 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
         englishTextField.stringValue = indicator.appearance.englishText ?? ""
         chineseColorWell.color = indicator.appearance.color(for: .chinese)
         englishColorWell.color = indicator.appearance.color(for: .english)
+        compositionColorWell.color = indicator.appearance
+            .compositionIndicatorColor
     }
 
     private func configure(
@@ -186,6 +234,15 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
 
     @objc private func capsLockDidChange(_ sender: NSButton) {
         update { $0.showsCapsLockIndicator = sender.state == .on }
+    }
+
+    @objc private func compositionIndicatorDidChange(_ sender: NSButton) {
+        update { $0.showsCompositionIndicator = sender.state == .on }
+        compositionAnimationButton.isEnabled = sender.state == .on
+    }
+
+    @objc private func compositionAnimationDidChange(_ sender: NSButton) {
+        update { $0.animatesCompositionIndicator = sender.state == .on }
     }
 
     @objc private func placementDidChange(_ sender: NSPopUpButton) {
@@ -232,6 +289,13 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
         }
     }
 
+    @objc private func compositionColorDidChange(_ sender: NSColorWell) {
+        update {
+            $0.appearance.compositionIndicatorColorHex =
+                CursorIndicatorAppearance.hex(from: sender.color)
+        }
+    }
+
     @objc private func resetChinese(_ sender: Any?) {
         update {
             $0.appearance.chineseText = nil
@@ -245,6 +309,11 @@ final class CursorIndicatorSettingsController: NSObject, NSTextFieldDelegate {
             $0.appearance.englishText = nil
             $0.appearance.englishColorHex = nil
         }
+        reload()
+    }
+
+    @objc private func resetCompositionColor(_ sender: Any?) {
+        update { $0.appearance.compositionIndicatorColorHex = nil }
         reload()
     }
 

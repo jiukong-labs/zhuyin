@@ -1,4 +1,4 @@
-# iCloud learning sync
+# iCloud sync
 
 Jiukong keeps `user.sqlite` as the runtime source of truth for candidate lookup.
 No keystroke, composition update, or candidate query waits for CloudKit. The
@@ -37,17 +37,43 @@ inside iCloud Drive.
   identity. Text, ordered readings, count, timestamps, and pin values use
   `CKRecord.encryptedValues`.
 
-The custom private-database zone is `JiukongUserLearning`; the record type is
-`JKUserLearning`; and the container identifier is
-`iCloud.tw.idv.jiukong.inputmethod.zhuyin`. The local SQLite schema remains at
-version 2 because CloudKit state is deliberately stored separately.
+The learning custom private-database zone is `JiukongUserLearning`; its record
+type is `JKUserLearning`. The local SQLite schema remains at version 2 because
+CloudKit state is deliberately stored separately.
+
+## Cursor appearance preferences
+
+The same opt-in iCloud setting also synchronizes cursor-indicator appearance.
+UserDefaults remains the live local source of truth, so typing and settings
+never wait for CloudKit. Synchronized fields include the Chinese and English
+labels and colors, composition-dot color and show/animate switches, text size,
+placement, tracking, and Caps Lock indicator appearance.
+
+Appearance preferences use a separate custom zone, `JiukongPreferences`, and
+record type, `JKPreference`. Each known preference has its own record so an
+older app cannot overwrite fields introduced by a newer version. The value is
+stored through `CKRecord.encryptedValues`; the schema version, opaque
+preference key, modification time, and monotonic revision remain ordinary
+record metadata. Last-write-wins resolution compares modification time, then
+revision, with a deterministic value tie-breaker.
+
+Local sync state is stored separately at
+`~/Library/Application Support/JiukongZhuyin/cloud-preferences-state.json`
+with the same `0600` file protection. Offline changes remain pending and retry
+later. Malformed or unsupported remote fields are ignored individually rather
+than replacing valid local settings, and remote changes apply immediately
+without relaunching the input method.
+
+Both zones use the private database in container
+`iCloud.tw.idv.jiukong.inputmethod.zhuyin`.
 
 ## Failure behavior
 
 No iCloud account, no network, missing entitlements, quota or service errors,
-and CloudKit conflicts never disable local learning or typing. The Data pane
-shows the current status and offers an immediate retry. Pending local changes
-remain in the journal until a complete save succeeds.
+and CloudKit conflicts never disable local learning, local appearance settings,
+or typing. The Data pane shows the current status and offers an immediate
+retry. Pending local changes remain in their respective journals until a
+complete save succeeds.
 
 JSON export/import remains the provider-independent backup path. An exported
 JSON file is not encrypted and should still be handled as personal data.
@@ -79,8 +105,9 @@ Before shipping:
    Account, offline mutation upload, unpinning, individual deletion, and clear
    operations before release.
 
-Unit tests use an in-memory transport and cover restore, initial upload,
+Unit tests use in-memory transports and cover learning restore, initial upload,
 tombstones, pending local precedence, exact unpinning, failed-save retention,
 disabled and cancelled sync, real and spurious Apple Account changes, stable
-opaque identities, and private journal persistence. They do not substitute for
-the signed two-Mac CloudKit acceptance run above.
+opaque identities, private journal persistence, preference last-write-wins,
+offline retry, malformed preference records, and forward schema compatibility.
+They do not substitute for the signed two-Mac CloudKit acceptance run above.

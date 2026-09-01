@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 
 private final class CursorIndicatorPanel: NSPanel {
     override var canBecomeKey: Bool { false }
@@ -24,6 +25,7 @@ final class CursorIndicatorController {
     private var settings = CursorIndicatorPreferences()
     private var mode: LanguageMode = .chinese
     private var isActive = false
+    private var hasActiveComposition = false
     private var isCapsLockOn = false
     private var trackingTimer: Timer?
     private var capsLockTimer: Timer?
@@ -67,6 +69,13 @@ final class CursorIndicatorController {
             .stationary,
         ]
         panel.orderOut(nil)
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(accessibilityDisplayOptionsDidChange),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil
+        )
     }
 
     /// True when the indicator is configured to appear at all, which lets the
@@ -97,6 +106,22 @@ final class CursorIndicatorController {
         reposition(easing: false)
     }
 
+    /// Updated by the active input controller whenever its engine state
+    /// changes. This never inspects marked text supplied by the client app.
+    func updateCompositionActive(_ active: Bool) {
+        precondition(Thread.isMainThread)
+        guard hasActiveComposition != active else {
+            return
+        }
+        hasActiveComposition = active
+        refreshContent()
+        resizePanel()
+        guard isRunning else {
+            return
+        }
+        reposition(easing: false)
+    }
+
     /// Called when a client starts or stops using this input method.
     func setActive(_ active: Bool) {
         precondition(Thread.isMainThread)
@@ -107,6 +132,11 @@ final class CursorIndicatorController {
             return
         }
         isActive = active
+        if !active {
+            hasActiveComposition = false
+            refreshContent()
+            resizePanel()
+        }
         updateRunState()
     }
 
@@ -116,12 +146,19 @@ final class CursorIndicatorController {
 
     private var currentPanelSize: NSSize {
         let style = settings.textSize.style
-        guard showsCapsLockBadge else {
-            return style.panelSize
-        }
         return style.panelSize(
-            withCapsLockBadge: settings.capsLockIndicatorSize
+            showsCompositionIndicator: showsCompositionDot,
+            capsLockSize: showsCapsLockBadge
+                ? settings.capsLockIndicatorSize
+                : nil
         )
+    }
+
+    private var showsCompositionDot: Bool {
+        isRunning
+            && mode == .chinese
+            && hasActiveComposition
+            && settings.showsCompositionIndicator
     }
 
     private var showsCapsLockBadge: Bool {
@@ -150,8 +187,20 @@ final class CursorIndicatorController {
         contentView.update(
             text: settings.appearance.text(for: mode),
             color: settings.appearance.color(for: mode),
+            showsComposition: showsCompositionDot,
+            compositionColor: settings.appearance.compositionIndicatorColor,
+            animatesComposition: CompositionIndicatorAnimationPolicy
+                .shouldAnimate(
+                    preferenceEnabled: settings.animatesCompositionIndicator,
+                    reduceMotionEnabled: NSWorkspace.shared
+                        .accessibilityDisplayShouldReduceMotion
+                ),
             showsCapsLock: showsCapsLockBadge
         )
+    }
+
+    @objc private func accessibilityDisplayOptionsDidChange() {
+        refreshContent()
     }
 
     private func resizePanel() {
@@ -241,8 +290,9 @@ final class CursorIndicatorController {
     }
 }
 
-private final class CursorIndicatorContentView: NSView {
+final class CursorIndicatorContentView: NSView {
     private let label = NSTextField(labelWithString: "")
+    private let compositionDotView = NSView()
     private let capsLockLabel = NSTextField(
         labelWithString: CursorIndicatorAppearance.capsLockIndicator
     )
@@ -257,12 +307,17 @@ private final class CursorIndicatorContentView: NSView {
         layer?.backgroundColor = NSColor.clear.cgColor
 
         label.alignment = .center
+        compositionDotView.wantsLayer = true
+        compositionDotView.isHidden = true
         capsLockLabel.alignment = .left
         capsLockLabel.textColor = CursorIndicatorAppearance.capsLockColor
         capsLockLabel.isHidden = true
 
         addSubview(label)
+        addSubview(compositionDotView)
         addSubview(capsLockLabel)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
         apply(style: style, capsLockSize: capsLockSize)
     }
 
@@ -282,11 +337,81 @@ private final class CursorIndicatorContentView: NSView {
         needsLayout = true
     }
 
-    func update(text: String, color: NSColor, showsCapsLock: Bool) {
+    func update(
+        text: String,
+        color: NSColor,
+        showsComposition: Bool,
+        compositionColor: NSColor,
+        animatesComposition: Bool,
+        showsCapsLock: Bool
+    ) {
         label.stringValue = text
         label.textColor = color
+        compositionDotView.isHidden = !showsComposition
+        compositionDotView.layer?.backgroundColor = compositionColor.cgColor
+        updateCompositionAnimation(
+            showsComposition && animatesComposition
+        )
         capsLockLabel.isHidden = !showsCapsLock
+        setAccessibilityLabel(
+            showsComposition ? "\(text)輸入模式，正在組字" : "\(text)輸入模式"
+        )
         needsLayout = true
+    }
+
+    var isCompositionDotVisible: Bool {
+        !compositionDotView.isHidden
+    }
+
+    var isCompositionDotAnimating: Bool {
+        compositionDotView.layer?.animation(
+            forKey: Self.compositionAnimationKey
+        ) != nil
+    }
+
+    var compositionDotFrame: NSRect {
+        compositionDotView.frame
+    }
+
+    var compositionDotColorHex: String? {
+        guard let color = compositionDotView.layer?.backgroundColor,
+              let appKitColor = NSColor(cgColor: color) else {
+            return nil
+        }
+        return CursorIndicatorAppearance.hex(from: appKitColor)
+    }
+
+    var capsLockFrame: NSRect {
+        capsLockLabel.frame
+    }
+
+    private static let compositionAnimationKey = "compositionBreathing"
+
+    private func updateCompositionAnimation(_ animates: Bool) {
+        guard let layer = compositionDotView.layer else {
+            return
+        }
+        layer.removeAnimation(forKey: Self.compositionAnimationKey)
+        layer.opacity = 1
+        layer.transform = CATransform3DIdentity
+        guard animates else {
+            return
+        }
+
+        let opacity = CABasicAnimation(keyPath: "opacity")
+        opacity.fromValue = 0.35
+        opacity.toValue = 1.0
+        let scale = CABasicAnimation(keyPath: "transform.scale")
+        scale.fromValue = 0.8
+        scale.toValue = 1.0
+
+        let group = CAAnimationGroup()
+        group.animations = [opacity, scale]
+        group.duration = 1.35
+        group.autoreverses = true
+        group.repeatCount = .infinity
+        group.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(group, forKey: Self.compositionAnimationKey)
     }
 
     // Laid out by hand because the panel is resized from outside whenever the
@@ -294,10 +419,7 @@ private final class CursorIndicatorContentView: NSView {
     override func layout() {
         super.layout()
 
-        let badgeWidth = style.capsLockBadgeWidth(for: capsLockSize)
-        let gap = style.capsLockBadgeGap(for: capsLockSize)
-        let reservedWidth = capsLockLabel.isHidden ? 0 : gap + badgeWidth
-        let labelWidth = max(0, bounds.width - reservedWidth)
+        let labelWidth = min(style.panelSize.width, bounds.width)
 
         label.frame = NSRect(
             x: 0,
@@ -305,10 +427,31 @@ private final class CursorIndicatorContentView: NSView {
             width: labelWidth,
             height: bounds.height
         )
+        var nextX = labelWidth
+        if !compositionDotView.isHidden {
+            nextX += style.compositionDotGap
+            let diameter = style.compositionDotDiameter
+            compositionDotView.frame = NSRect(
+                x: nextX,
+                y: (bounds.height - diameter) / 2,
+                width: diameter,
+                height: diameter
+            )
+            compositionDotView.layer?.cornerRadius = diameter / 2
+            nextX += diameter
+        } else {
+            compositionDotView.frame = .zero
+        }
+
+        let badgeWidth = style.capsLockBadgeWidth(for: capsLockSize)
+        let gap = style.capsLockBadgeGap(for: capsLockSize)
+        if !capsLockLabel.isHidden {
+            nextX += gap
+        }
         capsLockLabel.frame = NSRect(
-            x: labelWidth + gap,
+            x: nextX,
             y: 0,
-            width: badgeWidth,
+            width: capsLockLabel.isHidden ? 0 : badgeWidth,
             height: bounds.height
         )
     }

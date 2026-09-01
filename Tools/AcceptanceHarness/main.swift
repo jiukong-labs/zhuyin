@@ -313,6 +313,22 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試"
     ),
+    // Holds a real marked composition so a maintainer can verify the
+    // cursor-indicator breathing dot without changing committed text rules.
+    "composition-indicator": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G),
+            Keystroke(
+                kVK_ANSI_4,
+                settleDelayMicroseconds: 30_000_000
+            ),
+        ],
+        expectation: "測試",
+        includedInDefaultRun: false
+    ),
     // Every intermediate syllable may start with a provisional CNS-order
     // character. The final reading must prefer Jiukong's exact six-reading
     // sentence and replace the complete marked suffix in one operation.

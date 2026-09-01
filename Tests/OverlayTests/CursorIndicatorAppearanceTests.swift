@@ -9,6 +9,7 @@ final class CursorIndicatorAppearanceTests: XCTestCase {
         XCTAssertEqual(appearance.text(for: .english), "A")
         XCTAssertEqual(appearance.color(for: .chinese), .systemRed)
         XCTAssertEqual(appearance.color(for: .english), .systemBlue)
+        XCTAssertEqual(appearance.compositionIndicatorColor, .systemGreen)
     }
 
     func testCustomTextIsTrimmedAndLengthLimited() {
@@ -79,5 +80,24 @@ final class CursorIndicatorAppearanceTests: XCTestCase {
         XCTAssertEqual(appearance.text(for: .chinese), "漢")
         XCTAssertEqual(appearance.text(for: .english), "A")
         XCTAssertEqual(appearance.color(for: .english), .systemBlue)
+    }
+
+    func testCompositionColorUsesSharedHexConversionAndFallback() {
+        let custom = CursorIndicatorAppearance(
+            compositionIndicatorColorHex: "663399"
+        )
+        let invalid = CursorIndicatorAppearance(
+            compositionIndicatorColorHex: "purple"
+        )
+
+        XCTAssertEqual(custom.compositionIndicatorColorHex, "#663399")
+        XCTAssertEqual(
+            CursorIndicatorAppearance.hex(
+                from: custom.compositionIndicatorColor
+            ),
+            "#663399"
+        )
+        XCTAssertNil(invalid.compositionIndicatorColorHex)
+        XCTAssertEqual(invalid.compositionIndicatorColor, .systemGreen)
     }
 }

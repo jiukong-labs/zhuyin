@@ -124,6 +124,7 @@ final class InputController: IMKInputController {
               let inputClient = sender as? any IMKTextInput else {
             return false
         }
+        defer { synchronizeCompositionActivity() }
 
         switch event.type {
         case .flagsChanged:
@@ -360,11 +361,13 @@ final class InputController: IMKInputController {
         synchronizeLanguageModeWithCurrentInputSource()
         UserLearningService.shared.refreshCloudIfNeeded()
         startCursorIndicator()
+        synchronizeCompositionActivity()
     }
 
     override func deactivateServer(_ sender: Any!) {
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: sender)
+        cursorIndicator.updateCompositionActive(false)
         super.deactivateServer(sender)
     }
 
@@ -403,6 +406,7 @@ final class InputController: IMKInputController {
                 }
                 self.languageModeController.synchronize(withSystemMode: mode)
                 self.cursorIndicator.update(mode: mode)
+                self.synchronizeCompositionActivity()
             }
             return
         }
@@ -431,6 +435,7 @@ final class InputController: IMKInputController {
         reason: CandidateCommitReason,
         using sender: Any?
     ) {
+        defer { synchronizeCompositionActivity() }
         guard candidateSession != nil
             || inputSession.hasComposition
             || !compositionBuffer.isEmpty else {
@@ -486,6 +491,7 @@ final class InputController: IMKInputController {
 
         languageModeController.synchronize(withSystemMode: mode)
         cursorIndicator.update(mode: mode)
+        synchronizeCompositionActivity()
         return false
     }
 
@@ -515,6 +521,20 @@ final class InputController: IMKInputController {
         cursorIndicator.apply(preferences.current.cursorIndicator)
         cursorIndicator.update(mode: languageModeController.mode)
         cursorIndicator.setActive(true)
+    }
+
+    private var hasActiveComposition: Bool {
+        CompositionActivityState.isActive(
+            hasCandidateSession: candidateSession != nil,
+            inputSessionHasComposition: inputSession.hasComposition,
+            compositionBufferIsEmpty: compositionBuffer.isEmpty
+        )
+    }
+
+    private func synchronizeCompositionActivity() {
+        cursorIndicator.updateCompositionActive(
+            languageModeController.mode == .chinese && hasActiveComposition
+        )
     }
 
     private func synchronizeLanguageModeWithCurrentInputSource() {
@@ -680,6 +700,19 @@ final class InputController: IMKInputController {
         )
     }
 
+    /// Revision lookup treats the focused reading as the final reading of an
+    /// exact phrase query. Context ends immediately before that unit, so text
+    /// after the revision caret cannot leak into the candidate list.
+    private func revisionPhraseLookupQueries(
+        for focusedUnit: CompositionUnit
+    ) -> [CompositionPhraseQuery] {
+        compositionBuffer.phraseLookupQueries(
+            appending: focusedUnit.pronunciation,
+            before: focusedUnit.id,
+            minimumUnitCount: 1
+        )
+    }
+
     private func handleCompositionCursorCommand(
         _ command: CompositionCursorCommand,
         inputClient: any IMKTextInput
@@ -815,7 +848,8 @@ final class InputController: IMKInputController {
 
         do {
             let candidates = try candidateProvider.candidates(
-                for: unit.pronunciation
+                for: unit.pronunciation,
+                phraseQueries: revisionPhraseLookupQueries(for: unit)
             )
             guard var session = CandidateSession(
                 pronunciation: unit.pronunciation,
@@ -1161,11 +1195,27 @@ final class InputController: IMKInputController {
         clearCandidatePresentation()
 
         if let revisionUnitID {
-            guard compositionBuffer.replaceUnit(
-                withID: revisionUnitID,
-                candidate: candidate,
-                reason: reason
-            ) else {
+            let didReplace: Bool
+            switch candidate.type {
+            case .character:
+                didReplace = compositionBuffer.replaceUnit(
+                    withID: revisionUnitID,
+                    candidate: candidate,
+                    reason: reason
+                )
+            case .phrase:
+                let replacementUnits = compositionBuffer
+                    .replaceRevisionSuffix(
+                        endingAt: revisionUnitID,
+                        candidate: candidate,
+                        reason: reason
+                    )
+                didReplace = !replacementUnits.isEmpty
+                if revisingUnitID == revisionUnitID {
+                    revisingUnitID = replacementUnits.first?.id
+                }
+            }
+            guard didReplace else {
                 NSLog("Jiukong Zhuyin rejected an inconsistent revision candidate.")
                 return false
             }
@@ -1436,6 +1486,7 @@ final class InputController: IMKInputController {
         reason: CandidateCommitReason,
         to inputClient: any IMKTextInput
     ) {
+        defer { synchronizeCompositionActivity() }
         hidePhraseSelectionPresentation()
         _ = acceptPreferredCandidate(reason: reason)
         isRevisionCaretActive = false
@@ -1461,11 +1512,11 @@ final class InputController: IMKInputController {
     }
 
     private func discardAllComposition() {
+        defer { synchronizeCompositionActivity() }
         hidePhraseSelectionPresentation()
         discardCandidateState()
         _ = inputSession.discardComposition()
         compositionBuffer.discard()
-        compositionFallbackAnchor = nil
     }
 
     private func presentCandidates(
@@ -1676,6 +1727,7 @@ final class InputController: IMKInputController {
     private func updateMarkedComposition(
         on inputClient: any IMKTextInput
     ) {
+        defer { synchronizeCompositionActivity() }
         if !compositionBuffer.hasSelection {
             hidePhraseSelectionPresentation()
         }
@@ -1833,9 +1885,15 @@ extension InputController: CandidateWindowPresenterDelegate {
         }
 
         do {
-            let phraseQueries = session.revisionFocus == nil
-                ? phraseLookupQueries(appending: session.pronunciation)
-                : []
+            let phraseQueries: [CompositionPhraseQuery]
+            if let focus = session.revisionFocus,
+               let unit = compositionBuffer.unit(withID: focus.unitID) {
+                phraseQueries = revisionPhraseLookupQueries(for: unit)
+            } else {
+                phraseQueries = phraseLookupQueries(
+                    appending: session.pronunciation
+                )
+            }
             let refreshedCandidates = try candidateProvider.candidates(
                 for: session.pronunciation,
                 phraseQueries: phraseQueries

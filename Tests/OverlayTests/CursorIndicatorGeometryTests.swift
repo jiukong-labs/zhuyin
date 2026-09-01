@@ -193,4 +193,44 @@ final class CursorIndicatorGeometryTests: XCTestCase {
 
         XCTAssertEqual(fontSizes, fontSizes.sorted())
     }
+
+    func testCompositionDotAndCapsLockReserveIndependentSpace() {
+        for textSize in CursorIndicatorTextSize.allCases {
+            let style = textSize.style
+            let dotOnly = style.panelSize(
+                showsCompositionIndicator: true,
+                capsLockSize: nil
+            )
+            let both = style.panelSize(
+                showsCompositionIndicator: true,
+                capsLockSize: .extraLarge
+            )
+
+            XCTAssertGreaterThan(dotOnly.width, style.panelSize.width)
+            XCTAssertGreaterThan(both.width, dotOnly.width)
+            XCTAssertGreaterThanOrEqual(dotOnly.height, style.panelSize.height)
+            XCTAssertGreaterThanOrEqual(style.compositionDotDiameter, 3)
+        }
+    }
+
+    func testReduceMotionAndDisabledPreferenceUseStaticDot() {
+        XCTAssertTrue(
+            CompositionIndicatorAnimationPolicy.shouldAnimate(
+                preferenceEnabled: true,
+                reduceMotionEnabled: false
+            )
+        )
+        XCTAssertFalse(
+            CompositionIndicatorAnimationPolicy.shouldAnimate(
+                preferenceEnabled: false,
+                reduceMotionEnabled: false
+            )
+        )
+        XCTAssertFalse(
+            CompositionIndicatorAnimationPolicy.shouldAnimate(
+                preferenceEnabled: true,
+                reduceMotionEnabled: true
+            )
+        )
+    }
 }

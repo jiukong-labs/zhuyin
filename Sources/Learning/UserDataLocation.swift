@@ -21,6 +21,7 @@ struct UserDataLocation: Equatable {
     static let directoryName = "JiukongZhuyin"
     static let databaseName = "user.sqlite"
     static let cloudSyncStateName = "cloud-sync-state.json"
+    static let cloudPreferencesStateName = "cloud-preferences-state.json"
 
     let directoryURL: URL
 
@@ -31,6 +32,13 @@ struct UserDataLocation: Equatable {
     var cloudSyncStateURL: URL {
         directoryURL.appendingPathComponent(
             Self.cloudSyncStateName,
+            isDirectory: false
+        )
+    }
+
+    var cloudPreferencesStateURL: URL {
+        directoryURL.appendingPathComponent(
+            Self.cloudPreferencesStateName,
             isDirectory: false
         )
     }
