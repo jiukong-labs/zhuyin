@@ -1711,7 +1711,10 @@ final class InputController: IMKInputController {
         if let phraseRange {
             markedText = CompositionMarkedTextRenderer.make(
                 presentation: presentation,
-                highlightedRange: phraseRange
+                highlightedRange: phraseRange,
+                markAttributes: convertedTextMarkAttributes(
+                    for: presentation
+                )
             )
         } else if isRevisionCaretActive {
             markedText = CompositionMarkedTextRenderer.makeUnhighlighted(
@@ -1719,7 +1722,10 @@ final class InputController: IMKInputController {
             )
         } else {
             markedText = CompositionMarkedTextRenderer.makeUnderlined(
-                presentation: presentation
+                presentation: presentation,
+                markAttributes: convertedTextMarkAttributes(
+                    for: presentation
+                )
             )
         }
         let clientSelectionRange = phraseRange == nil
@@ -1730,6 +1736,19 @@ final class InputController: IMKInputController {
             selectionRange: clientSelectionRange,
             replacementRange: Self.currentSelectionRange
         )
+    }
+
+    private func convertedTextMarkAttributes(
+        for presentation: CompositionPresentation
+    ) -> [NSAttributedString.Key: Any] {
+        let wholeRange = NSRange(
+            location: 0,
+            length: presentation.text.utf16.count
+        )
+        return mark(
+            forStyle: Int(kTSMHiliteConvertedText),
+            at: wholeRange
+        ) as? [NSAttributedString.Key: Any] ?? [:]
     }
 
     private func clearMarkedText(on inputClient: any IMKTextInput) {

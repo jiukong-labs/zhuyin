@@ -4,6 +4,14 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-09-01
+
+### Fixed
+
+- Ordinary composition now obtains its clause attributes through
+  InputMethodKit's `markForStyle` API instead of storing a Carbon highlight
+  constant directly as a clause identifier.
+
 ## [0.1.8] - 2026-09-01
 
 ### Fixed

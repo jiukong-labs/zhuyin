@@ -106,12 +106,12 @@ struct CompositionPresentation: Equatable {
 /// requests a collapsed native selection range instead, allowing clients that
 /// honor it to draw their normal blinking text cursor without a colored fill.
 enum CompositionMarkedTextRenderer {
-    /// Requests a LINE-style composition presentation: clients that preserve
-    /// attributed marked text receive an explicit transparent background and
-    /// green underline. Clients that discard those visual attributes can use
-    /// Carbon's converted-text style as their native composition fallback.
+    /// Requests a LINE-style composition presentation. `markAttributes` must
+    /// come from `IMKInputController.mark(forStyle:at:)`, so the client gets a
+    /// valid InputMethodKit clause as well as the explicit project styling.
     static func makeUnderlined(
-        presentation: CompositionPresentation
+        presentation: CompositionPresentation,
+        markAttributes: [NSAttributedString.Key: Any]
     ) -> NSAttributedString {
         let markedText = NSMutableAttributedString(
             string: presentation.text
@@ -120,9 +120,12 @@ enum CompositionMarkedTextRenderer {
             return markedText
         }
         markedText.addAttributes(
+            markAttributes,
+            range: NSRange(location: 0, length: markedText.length)
+        )
+        markedText.addAttributes(
             [
                 .backgroundColor: NSColor.clear,
-                .markedClauseSegment: Int(kTSMHiliteConvertedText),
                 .underlineColor: NSColor.systemGreen,
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
             ],
@@ -162,10 +165,14 @@ enum CompositionMarkedTextRenderer {
 
     static func make(
         presentation: CompositionPresentation,
-        highlightedRange: NSRange?
+        highlightedRange: NSRange?,
+        markAttributes: [NSAttributedString.Key: Any]
     ) -> NSAttributedString {
         let markedText = NSMutableAttributedString(
-            attributedString: makeUnderlined(presentation: presentation)
+            attributedString: makeUnderlined(
+                presentation: presentation,
+                markAttributes: markAttributes
+            )
         )
         guard let highlightedRange,
               highlightedRange.location != NSNotFound,

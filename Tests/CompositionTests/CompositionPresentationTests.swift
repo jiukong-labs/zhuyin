@@ -3,6 +3,12 @@ import Carbon
 import XCTest
 
 final class CompositionPresentationTests: XCTestCase {
+    private let convertedTextMarkAttributes: [NSAttributedString.Key: Any] = [
+        .markedClauseSegment: 27,
+        .underlineColor: NSColor.systemRed,
+        .underlineStyle: NSUnderlineStyle.thick.rawValue,
+    ]
+
     func testEmptyCompositionHasNoPresentation() {
         XCTAssertNil(
             CompositionPresentation.make(
@@ -220,7 +226,8 @@ final class CompositionPresentationTests: XCTestCase {
 
         let rendered = CompositionMarkedTextRenderer.make(
             presentation: presentation,
-            highlightedRange: presentation.selectionRange
+            highlightedRange: presentation.selectionRange,
+            markAttributes: convertedTextMarkAttributes
         )
 
         XCTAssertEqual(
@@ -245,14 +252,15 @@ final class CompositionPresentationTests: XCTestCase {
         )
     }
 
-    func testOrdinaryMarkedTextUsesUnderlineAndConvertedTextFallback() {
+    func testOrdinaryMarkedTextPreservesOfficialClauseAndOverridesVisuals() {
         let presentation = CompositionPresentation(
             text: "輸入字",
             selectionRange: NSRange(location: 3, length: 0)
         )
 
         let rendered = CompositionMarkedTextRenderer.makeUnderlined(
-            presentation: presentation
+            presentation: presentation,
+            markAttributes: convertedTextMarkAttributes
         )
 
         for index in 0 ..< rendered.length {
@@ -286,7 +294,7 @@ final class CompositionPresentationTests: XCTestCase {
                     at: index,
                     effectiveRange: nil
                 ) as? Int,
-                Int(kTSMHiliteConvertedText)
+                27
             )
         }
     }
@@ -346,7 +354,8 @@ final class CompositionPresentationTests: XCTestCase {
         ] {
             let rendered = CompositionMarkedTextRenderer.make(
                 presentation: presentation,
-                highlightedRange: focusedRange
+                highlightedRange: focusedRange,
+                markAttributes: convertedTextMarkAttributes
             )
             XCTAssertEqual(rendered.string, "測試")
             XCTAssertEqual(rendered.length, 2)
@@ -377,7 +386,8 @@ final class CompositionPresentationTests: XCTestCase {
 
         let rendered = CompositionMarkedTextRenderer.make(
             presentation: presentation,
-            highlightedRange: presentation.selectionRange
+            highlightedRange: presentation.selectionRange,
+            markAttributes: convertedTextMarkAttributes
         )
 
         XCTAssertEqual(
