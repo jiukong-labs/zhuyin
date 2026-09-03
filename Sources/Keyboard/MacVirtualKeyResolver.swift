@@ -62,6 +62,14 @@ enum MacVirtualKeyResolver {
 
 /// A Chinese-mode escape for entering ASCII letters and digits without
 /// changing input mode. Other Option chords remain owned by the client.
+///
+/// Plain Shift held with a letter (no Option) is included too, so an
+/// uppercase Latin letter is always committed through this controller's own
+/// reliable `insertText` call rather than left to the client's own handling
+/// of the raw, separately redelivered key event. Some clients (notably
+/// web-backed editors) process that redelivered event on a path that races
+/// the asynchronous commit of any just-finished composition, which can land
+/// the letter away from the caret instead of right after it.
 enum OptionASCIIShortcut {
     static func text(
         for key: KeyboardKey?,
@@ -70,7 +78,9 @@ enum OptionASCIIShortcut {
         let modifiers = modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .subtracting(.capsLock)
-        guard modifiers == .option || modifiers == [.option, .shift] else {
+        guard modifiers == .option
+            || modifiers == [.option, .shift]
+            || modifiers == .shift else {
             return nil
         }
 

@@ -132,6 +132,51 @@ final class StandardZhuyinLayoutTests: XCTestCase {
         }
     }
 
+    /// Plain Shift (no Option) must also resolve an uppercase letter, so the
+    /// caller commits it through its own reliable `insertText` call instead
+    /// of leaving it to the client's handling of the raw, separately
+    /// redelivered key event — a path that can land the letter away from the
+    /// caret on some clients when it races an in-flight composition commit.
+    func testShiftAloneProducesUppercaseLettersButNotDigits() {
+        let mappings: [(KeyboardKey, String)] = [
+            (.letterA, "A"), (.letterB, "B"), (.letterC, "C"),
+            (.letterD, "D"), (.letterE, "E"), (.letterF, "F"),
+            (.letterG, "G"), (.letterH, "H"), (.letterI, "I"),
+            (.letterJ, "J"), (.letterK, "K"), (.letterL, "L"),
+            (.letterM, "M"), (.letterN, "N"), (.letterO, "O"),
+            (.letterP, "P"), (.letterQ, "Q"), (.letterR, "R"),
+            (.letterS, "S"), (.letterT, "T"), (.letterU, "U"),
+            (.letterV, "V"), (.letterW, "W"), (.letterX, "X"),
+            (.letterY, "Y"), (.letterZ, "Z"),
+        ]
+
+        for (key, uppercase) in mappings {
+            XCTAssertEqual(
+                OptionASCIIShortcut.text(
+                    for: key,
+                    modifierFlags: .shift
+                ),
+                uppercase
+            )
+            XCTAssertEqual(
+                OptionASCIIShortcut.text(
+                    for: key,
+                    modifierFlags: [.shift, .capsLock]
+                ),
+                uppercase
+            )
+        }
+
+        for digit: KeyboardKey in [
+            .digit0, .digit1, .digit2, .digit3, .digit4,
+            .digit5, .digit6, .digit7, .digit8, .digit9,
+        ] {
+            XCTAssertNil(
+                OptionASCIIShortcut.text(for: digit, modifierFlags: .shift)
+            )
+        }
+    }
+
     func testOptionASCIIShortcutRejectsOtherKeysAndModifierChords() {
         XCTAssertNil(
             OptionASCIIShortcut.text(for: .digit1, modifierFlags: [])
