@@ -622,6 +622,11 @@ struct CompositionBuffer: Equatable {
     /// Produces every exact suffix lookup ending in `pronunciation`, ordered
     /// from the longest useful phrase to the shortest. A one-reading query is
     /// emitted so punctuated shortcuts such as 「嗎？」 can participate.
+    ///
+    /// Context never reaches past the end of an already-accepted multi-unit
+    /// phrase (see `unlockedContextStartIndex`), so a later homophone can
+    /// never re-segment through and overwrite a phrase the dictionary or the
+    /// user's own word list already resolved.
     func phraseLookupQueries(
         appending pronunciation: String,
         minimumUnitCount: Int = Self.minimumPhraseUnitCount,
@@ -633,7 +638,9 @@ struct CompositionBuffer: Equatable {
             return []
         }
 
-        let precedingReadingUnits = units.filter { $0.kind == .reading }
+        let contextStart = unlockedContextStartIndex(before: units.endIndex)
+        let precedingReadingUnits = units[contextStart...]
+            .filter { $0.kind == .reading }
         let longestCount = min(maximumUnitCount, precedingReadingUnits.count + 1)
         guard longestCount >= minimumUnitCount else {
             return []
@@ -666,6 +673,7 @@ struct CompositionBuffer: Equatable {
     /// revision-focus navigation and the new reading is about to be inserted
     /// right before that unit, so a phrase can only combine with readings up
     /// to the insertion point rather than the anchor or anything after it.
+    /// Context is likewise walled off at an already-accepted phrase's end.
     func phraseLookupQueries(
         appending pronunciation: String,
         before anchorUnitID: UUID,
@@ -680,7 +688,8 @@ struct CompositionBuffer: Equatable {
             return []
         }
 
-        let context = units[..<anchorIndex]
+        let contextStart = unlockedContextStartIndex(before: anchorIndex)
+        let context = units[contextStart..<anchorIndex]
         let precedingReadingUnits = context.filter { $0.kind == .reading }
         let longestCount = min(maximumUnitCount, precedingReadingUnits.count + 1)
         guard longestCount >= minimumUnitCount else {
@@ -1081,6 +1090,54 @@ struct CompositionBuffer: Equatable {
         return units.firstIndex(where: { $0.id == followingUnitID })
     }
 
+    /// Index ranges still occupied, contiguously, by a previously accepted
+    /// multi-unit phrase candidate (from the dictionary or the user's own
+    /// word list). Single-unit selections are excluded: a lone character must
+    /// stay free to combine into a phrase as more readings are typed, which
+    /// is how phrases ordinarily form here.
+    ///
+    /// A selection whose covered units are no longer contiguous (already
+    /// edited apart) is skipped rather than enforced, since it no longer
+    /// describes one settled span.
+    private func lockedPhraseRanges() -> [Range<Int>] {
+        guard !pendingCandidateSelections.isEmpty else {
+            return []
+        }
+        var indexByID: [UUID: Int] = [:]
+        for (index, unit) in units.enumerated() {
+            indexByID[unit.id] = index
+        }
+
+        return pendingCandidateSelections
+            .filter { $0.coveredUnitIDs.count > 1 }
+            .compactMap { selection -> Range<Int>? in
+                let indices = selection.coveredUnitIDs.compactMap {
+                    indexByID[$0]
+                }
+                guard indices.count == selection.coveredUnitIDs.count,
+                      Set(indices).count == indices.count,
+                      let minIndex = indices.min(),
+                      let maxIndex = indices.max(),
+                      maxIndex - minIndex + 1 == indices.count else {
+                    return nil
+                }
+                return minIndex ..< (maxIndex + 1)
+            }
+    }
+
+    /// The earliest index a suffix or preceding-context scan ending at
+    /// `endIndex` may reach back to. Scanning stops immediately after the
+    /// nearest locked phrase lying entirely before `endIndex`, so later
+    /// typing can never re-segment through and split it apart — this is what
+    /// keeps an already-resolved phrase such as 「室友」 from being overwritten
+    /// by a later homophone (e.g. continuing with 「有沒有」).
+    private func unlockedContextStartIndex(before endIndex: Int) -> Int {
+        lockedPhraseRanges()
+            .filter { $0.upperBound <= endIndex }
+            .map(\.upperBound)
+            .max() ?? units.startIndex
+    }
+
     private func suffixUnits(
         endingAt endIndex: Int,
         readingCount: Int
@@ -1088,9 +1145,10 @@ struct CompositionBuffer: Equatable {
         guard readingCount > 0, endIndex > units.startIndex else {
             return units[endIndex ..< endIndex]
         }
+        let lowerLimit = unlockedContextStartIndex(before: endIndex)
         var foundReadings = 0
         var startIndex = endIndex
-        while startIndex > units.startIndex, foundReadings < readingCount {
+        while startIndex > lowerLimit, foundReadings < readingCount {
             startIndex -= 1
             if units[startIndex].kind == .reading {
                 foundReadings += 1

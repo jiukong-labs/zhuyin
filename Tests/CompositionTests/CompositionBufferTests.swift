@@ -209,6 +209,71 @@ final class CompositionBufferTests: XCTestCase {
         _ = try XCTUnwrap(buffer.takeCommitSnapshot())
     }
 
+    /// Regression for a homophone re-segmenting through an already-settled
+    /// phrase: 「室友」 is resolved first, then 「有」／「沒」／「有」 are typed one
+    /// at a time. 「友」 and 「有」 share the same reading (ㄧㄡˇ), so a naive
+    /// backward scan for 「有沒有」 could reach across the settled phrase and
+    /// devour 「友」. The settled phrase must stay untouched; the new phrase
+    /// may only claim the readings typed after it.
+    func testAcceptedPhraseIsNotSplitByALaterHomophoneReSegmentation() throws {
+        var buffer = CompositionBuffer()
+        // Mirrors how a phrase is actually formed: 「室」 lands first as its
+        // own raw reading, then completing 「友」 retroactively resolves the
+        // pair into the phrase.
+        XCTAssertNotNil(buffer.append(text: "室", pronunciation: "ㄕˋ"))
+        let roommate = phraseCandidate("室友", readings: ["ㄕˋ", "ㄧㄡˇ"])
+        XCTAssertTrue(buffer.acceptCandidate(roommate, reason: .space))
+        let roommateIDs = buffer.units.map(\.id)
+
+        XCTAssertTrue(buffer.acceptCandidate(
+            characterCandidate("有", reading: "ㄧㄡˇ"),
+            reason: .space
+        ))
+        XCTAssertTrue(buffer.acceptCandidate(
+            characterCandidate("沒", reading: "ㄇㄟˊ"),
+            reason: .space
+        ))
+
+        // Completing the final 「有」 must only offer queries built from the
+        // two characters typed after 「室友」 — the settled phrase's own
+        // trailing reading (also ㄧㄡˇ) stays out of reach.
+        let queries = buffer.phraseLookupQueries(
+            appending: "ㄧㄡˇ",
+            minimumUnitCount: 1
+        )
+        XCTAssertEqual(
+            queries.map(\.pronunciationSequence),
+            [
+                ["ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"],
+                ["ㄇㄟˊ", "ㄧㄡˇ"],
+                ["ㄧㄡˇ"],
+            ]
+        )
+
+        let phrase = phraseCandidate(
+            "有沒有",
+            readings: ["ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"]
+        )
+        XCTAssertTrue(buffer.acceptCandidate(phrase, reason: .implicitPassThrough))
+
+        XCTAssertEqual(buffer.text, "室友有沒有")
+        // 「室友」 itself is untouched: its two units survive with their
+        // original identities.
+        XCTAssertEqual(buffer.units.prefix(2).map(\.id), roommateIDs)
+
+        // A phrase that would still require reaching back into the settled
+        // 「室友」 (its trailing ㄧㄡˇ standing in for a fresh 「有」) is rejected
+        // outright rather than replacing part of it.
+        let intrudingPhrase = phraseCandidate(
+            "友有",
+            readings: ["ㄧㄡˇ", "ㄧㄡˇ"]
+        )
+        XCTAssertFalse(
+            buffer.acceptCandidate(intrudingPhrase, reason: .implicitPassThrough)
+        )
+        XCTAssertEqual(buffer.text, "室友有沒有")
+    }
+
     func testPhraseReplacementRequiresValidShapeAndExactExistingSuffix() {
         let invalidCandidates = [
             phraseCandidate("空", readings: ["ㄎㄨㄥ"]),

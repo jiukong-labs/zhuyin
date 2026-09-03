@@ -4,6 +4,18 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Shift plus a letter now commits the uppercase Latin letter directly instead
+  of relying on the client to handle a separately redelivered key event. On
+  some clients that redelivery raced the just-finished composition's commit,
+  landing the letter away from the caret instead of right after it.
+- An already-accepted phrase from the dictionary or the user's own word list
+  no longer gets split apart by a later homophone. For example, completing
+  「室友」and then typing 「有沒有」stopped turning it into 「室有沒有」— 「友」
+  and 「有」share a reading, and continued typing could previously re-segment
+  back across the settled phrase and overwrite part of it.
+
 ## [0.1.11] - 2026-09-01
 
 ### Fixed
