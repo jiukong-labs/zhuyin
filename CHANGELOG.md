@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-09-04
+
 ### Fixed
 
 - Backspacing a positioned caret's revised character all the way down to
