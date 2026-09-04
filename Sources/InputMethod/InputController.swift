@@ -951,10 +951,18 @@ final class InputController: IMKInputController {
                     to: inputClient
                 )
             }
-            // Once the chosen character has become a raw reading, either
-            // physical deletion key continues removing its components. After
-            // the initial is gone, keep consuming repeats so they cannot reach
-            // an unrelated marked unit or client character.
+            // Once the raw reading has nothing left to remove, its revision is
+            // over — the character it replaced is already gone from the
+            // buffer. Restore the positioned caret at the same boundary so a
+            // further Backspace resumes deleting the unit before it, instead
+            // of leaving every later press silently swallowed here.
+            if !inputSession.hasComposition {
+                isEditingRevisionPronunciation = false
+                isRevisionCaretActive = true
+                revisingUnitID = pendingInsertionAnchorUnitID
+                pendingInsertionAnchorUnitID = nil
+                updateMarkedComposition(on: inputClient)
+            }
             return true
         }
 

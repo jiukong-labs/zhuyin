@@ -4,6 +4,12 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Backspacing a positioned caret's revised character all the way down to
+  nothing no longer leaves every further Backspace silently swallowed; it now
+  resumes deleting the reading before it, as usual.
+
 ## [0.1.13] - 2026-09-03
 
 ### Fixed
