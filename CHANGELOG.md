@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-09-05
+
 ### Added
 
 - Built-in phrases can now be removed from the candidate window. Every phrase
