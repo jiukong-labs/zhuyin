@@ -322,7 +322,10 @@ final class CharacterCandidateProviderTests: XCTestCase {
             Array(texts.prefix(16)),
             [
                 "意", "譯", "議", "益", "施", "異", "義", "憶",
-                "易", "疫", "翌", "逸", "溢", "億", "毅", "誼",
+                // 藝 rises on the phrase-attestation tier once the reviewed
+                // lexicon carries 「藝能」; the captured-selection order above
+                // it is unchanged.
+                "藝", "易", "疫", "翌", "逸", "溢", "億", "毅",
             ]
         )
     }

@@ -26,6 +26,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
   merges a pack without lowering a count or clearing a pin the recipient set,
   and applying the sender's removals is a separate opt-out.
 
+- 172 reviewed everyday and computing words joined the first-party lexicon,
+  which now holds 2,137 entries. They were selected from real first-party
+  typing use and reviewed one by one: personal names and mis-segmented
+  fragments were excluded, and seven entries were corrected before being added
+  (for example 發怖 → 發布 and 檔名's reading ㄉㄤˇ → ㄉㄤˋ).
+  The set also adds tone-sandhi readings people actually type, such as
+  「一樣 ㄧˊ ㄧㄤˋ」 and 「不是 ㄅㄨˊ ㄕˋ」, which the lexicon previously carried
+  only in their base tones.
+
 ### Changed
 
 - The user database schema is now version 4. The upgrade adds the removed
