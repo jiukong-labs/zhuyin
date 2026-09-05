@@ -459,22 +459,24 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
                 }
                 if let archive = remote.archive {
                     archives.append(archive)
-                    if let pinned = local.pinned {
-                        exactPins.append(exactPin(
-                            identity: remote.identity,
-                            pinned: pinned
-                        ))
+                    if let pinned = local.pinned,
+                       let pin = exactPin(
+                           identity: remote.identity,
+                           pinned: pinned
+                       ) {
+                        exactPins.append(pin)
                     }
                     appliedRemoteChanges = true
                 }
             case nil:
                 if let archive = remote.archive {
                     archives.append(archive)
-                    if let pinned = remote.pinned {
-                        exactPins.append(exactPin(
-                            identity: remote.identity,
-                            pinned: pinned
-                        ))
+                    if let pinned = remote.pinned,
+                       let pin = exactPin(
+                           identity: remote.identity,
+                           pinned: pinned
+                       ) {
+                        exactPins.append(pin)
                     }
                 } else {
                     deletions.append(remote.identity)
@@ -487,7 +489,8 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
             let combined = UserDataArchive(
                 exportedAt: 0,
                 characters: archives.flatMap(\.characters),
-                phrases: archives.flatMap(\.phrases)
+                phrases: archives.flatMap(\.phrases),
+                suppressions: archives.flatMap(\.suppressions)
             )
             try store.merge(combined)
         }
@@ -551,18 +554,26 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
             let cloudRecord = try CloudUserDataRecord.phrase(record)
             result[cloudRecord.identity.recordName] = cloudRecord
         }
+        for record in try store.allSuppressedPhrases() {
+            let cloudRecord = try CloudUserDataRecord.suppressedPhrase(record)
+            result[cloudRecord.identity.recordName] = cloudRecord
+        }
         return result
     }
 
     private func exactPin(
         identity: CloudUserDataIdentity,
         pinned: Bool
-    ) -> ExactPin {
+    ) -> ExactPin? {
         switch identity.kind {
         case .character:
             return .character(identity, pinned)
         case .phrase:
             return .phrase(identity, pinned)
+        case .suppressedPhrase:
+            // A suppression has no pin of its own; its whole state is the
+            // merged tombstone row.
+            return nil
         }
     }
 
@@ -592,6 +603,13 @@ final class UserDataCloudSyncCoordinator: UserDataCloudSyncing {
             )
         case .phrase:
             try store.deletePhrase(
+                phrase: identity.text,
+                pronunciationSequence: identity.readings
+            )
+        case .suppressedPhrase:
+            // Deleting a suppression is a restore: another Mac put the
+            // built-in phrase back, so this one stops hiding it too.
+            try store.restorePhrase(
                 phrase: identity.text,
                 pronunciationSequence: identity.readings
             )

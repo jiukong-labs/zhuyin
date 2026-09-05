@@ -37,6 +37,7 @@
 		221A51110211C7971ECB3808 /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
 		2385FE7B04A31B19DEC22090 /* JiukongDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */; };
 		24AB213BDD66DFC7BFAF095A /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
+		24B027157A39DC76BEF86D6C /* SuppressedPhraseStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03882DC24F667E03BC04E7D /* SuppressedPhraseStoreTests.swift */; };
 		2538A2B3C7B9A89AE53CC398 /* DictionaryDatabaseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */; };
 		25D17A90C07E9393159D5878 /* BopomofoSyllableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */; };
 		27AFCC19C975073B881F8EB8 /* CandidateInputSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690E76FF37E2DCB587DAC99 /* CandidateInputSourcePolicy.swift */; };
@@ -65,6 +66,7 @@
 		48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */; };
 		4B22755BB5E4DC9E01F7CE03 /* CursorIndicatorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */; };
 		4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
+		4D5DBCC7D8EFBB4B3646C391 /* SuppressedPhraseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */; };
 		4DE5097304E0676C4EDECE03 /* CompositionSelectionCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66A01410C21B39C42BD6E35 /* CompositionSelectionCommandRouter.swift */; };
 		4E0D9DE49EDA18DC03634DAE /* CloudUserDataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65E2ED9B9B0619D268501FA /* CloudUserDataModels.swift */; };
 		4E179BBFE7B49DD47A04264B /* CompositionPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14C51C5EA239A803E995F77 /* CompositionPresentationTests.swift */; };
@@ -140,6 +142,7 @@
 		A0301C6A683601AA029AEB80 /* CandidateInputSourcePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */; };
 		A05333C1ECECB1A47CE36C80 /* Candidate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8896906B6EED89C1949CC6BF /* Candidate.swift */; };
 		A0A1101F2A6E54631335AB66 /* PunctuationLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590627441D682121FCF1B0A1 /* PunctuationLayout.swift */; };
+		A223F3638CEACB7804E9282D /* SuppressedPhraseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */; };
 		A26F4F32F9F39B2A4A7087DB /* BopomofoInputSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D23CD3BA494977E33B8494E /* BopomofoInputSessionTests.swift */; };
 		A3D1E30F3F998FC695A6D759 /* UpdateRelease.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E134113536FB1FB0AC3B7E0 /* UpdateRelease.swift */; };
 		A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
@@ -250,6 +253,7 @@
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
 		4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuffer.swift; sourceTree = "<group>"; };
+		4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuppressedPhraseRecord.swift; sourceTree = "<group>"; };
 		516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PunctuationLayoutTests.swift; sourceTree = "<group>"; };
 		52585F1659FDE1B503AF4C48 /* reviseddict_usage_note.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = reviseddict_usage_note.txt; sourceTree = "<group>"; };
 		526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
@@ -344,6 +348,7 @@
 		EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesControllerTests.swift; sourceTree = "<group>"; };
 		EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningStore.swift; sourceTree = "<group>"; };
 		ED6A694E0C4EFD92A5AB44B1 /* CompositionActivityState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionActivityState.swift; sourceTree = "<group>"; };
+		F03882DC24F667E03BC04E7D /* SuppressedPhraseStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuppressedPhraseStoreTests.swift; sourceTree = "<group>"; };
 		F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometry.swift; sourceTree = "<group>"; };
 		F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVirtualKeyResolver.swift; sourceTree = "<group>"; };
 		F621FE5FB032FDAD27EBC2B0 /* CompositionPunctuationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionPunctuationTests.swift; sourceTree = "<group>"; };
@@ -428,6 +433,7 @@
 				0B2D193AE0A0EB6D678E9964 /* CloudSyncStateStore.swift */,
 				B65E2ED9B9B0619D268501FA /* CloudUserDataModels.swift */,
 				5E02E22713564B559C471CEE /* ProcessEntitlements.swift */,
+				4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */,
 				FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */,
 				443AFD224DBEF6F890A10793 /* UserDataCloudSyncCoordinator.swift */,
 				1341D26D7D00ADF00B3355C1 /* UserDataLocation.swift */,
@@ -529,6 +535,7 @@
 			isa = PBXGroup;
 			children = (
 				E50D6DFC84E6B94322309AF5 /* CloudUserDataModelsTests.swift */,
+				F03882DC24F667E03BC04E7D /* SuppressedPhraseStoreTests.swift */,
 				E94452FDF698E1AC4A512804 /* UserDataArchiveTests.swift */,
 				7B186CA5B924FBF653433399 /* UserDataClearingTests.swift */,
 				279222F74CF4F2ECF3B1FB0C /* UserDataCloudSyncCoordinatorTests.swift */,
@@ -1077,6 +1084,7 @@
 				5A34442CA12BB28D8BDD49D4 /* SettingsWindowController.swift in Sources */,
 				4EE56011674AE8700780FC80 /* ShiftToggleController.swift in Sources */,
 				AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */,
+				A223F3638CEACB7804E9282D /* SuppressedPhraseRecord.swift in Sources */,
 				1F94381C74A7CB144051FCEF /* SystemInputSourceObserver.swift in Sources */,
 				E809D1E93C26198090007BA8 /* UpdateController.swift in Sources */,
 				7E116391F827EC6CB00B98D0 /* UpdateInstaller.swift in Sources */,
@@ -1176,6 +1184,8 @@
 				AECF58023168697EB29690B7 /* ShiftToggleControllerTests.swift in Sources */,
 				14C4230B00D5EC61B7A8901F /* StandardZhuyinLayout.swift in Sources */,
 				9026C8DCE02772769169E368 /* StandardZhuyinLayoutTests.swift in Sources */,
+				4D5DBCC7D8EFBB4B3646C391 /* SuppressedPhraseRecord.swift in Sources */,
+				24B027157A39DC76BEF86D6C /* SuppressedPhraseStoreTests.swift in Sources */,
 				B11BA7A4A4CE188EFFBE8D6F /* UpdateController.swift in Sources */,
 				0953F6ECA2B01FF78B6B0628 /* UpdateInstaller.swift in Sources */,
 				28C87A93BE87685EF9970314 /* UpdateRelease.swift in Sources */,

@@ -10,12 +10,13 @@ final class UserDataListController: NSObject,
     enum Kind {
         case characters
         case phrases
+        case suppressedPhrases
 
         var textColumnTitle: String {
             switch self {
             case .characters:
                 return "字"
-            case .phrases:
+            case .phrases, .suppressedPhrases:
                 return "詞"
             }
         }
@@ -26,6 +27,28 @@ final class UserDataListController: NSObject,
                 return "尚未學習任何選字。"
             case .phrases:
                 return "尚未建立任何使用者詞。"
+            case .suppressedPhrases:
+                return "沒有已刪除的內建詞。"
+            }
+        }
+
+        /// A removed built-in phrase has no usage count and cannot be pinned;
+        /// it is one identity that stays hidden until the user restores it.
+        var showsUsageColumns: Bool {
+            switch self {
+            case .characters, .phrases:
+                return true
+            case .suppressedPhrases:
+                return false
+            }
+        }
+
+        var primaryActionTitle: String {
+            switch self {
+            case .characters, .phrases:
+                return "刪除…"
+            case .suppressedPhrases:
+                return "恢復…"
             }
         }
     }
@@ -67,8 +90,10 @@ final class UserDataListController: NSObject,
 
         pinButton.target = self
         pinButton.action = #selector(togglePin(_:))
+        pinButton.isHidden = !kind.showsUsageColumns
         deleteButton.target = self
         deleteButton.action = #selector(deleteSelectedRow(_:))
+        deleteButton.title = kind.primaryActionTitle
 
         statusLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         statusLabel.textColor = .secondaryLabelColor
@@ -81,7 +106,11 @@ final class UserDataListController: NSObject,
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.heightAnchor.constraint(equalToConstant: 220).isActive = true
 
-        let buttonRow = NSStackView(views: [pinButton, deleteButton])
+        let buttonRow = NSStackView(
+            views: kind.showsUsageColumns
+                ? [pinButton, deleteButton]
+                : [deleteButton]
+        )
         buttonRow.orientation = .horizontal
         buttonRow.spacing = 10
 
@@ -138,6 +167,19 @@ final class UserDataListController: NSObject,
                     pinned: record.pinned
                 )
             }
+        case .suppressedPhrases:
+            allRows = learning.allSuppressedPhrases().map { record in
+                UserDataListRow(
+                    identity: .suppressedPhrase(
+                        text: record.phrase,
+                        readings: record.pronunciationSequence
+                    ),
+                    text: record.phrase,
+                    reading: record.pronunciationSequence.joined(separator: " "),
+                    selectionCount: 0,
+                    pinned: false
+                )
+            }
         }
         applyFilter()
     }
@@ -150,7 +192,7 @@ final class UserDataListController: NSObject,
         tableView.rowSizeStyle = .default
         tableView.style = .inset
 
-        let columns: [(
+        var columns: [(
             NSUserInterfaceItemIdentifier,
             String,
             CGFloat,
@@ -158,9 +200,11 @@ final class UserDataListController: NSObject,
         )] = [
             (ColumnID.text, kind.textColumnTitle, 90, .text),
             (ColumnID.reading, "注音", 170, .reading),
-            (ColumnID.count, "次數", 50, .count),
-            (ColumnID.pinned, "置頂", 40, .pinned),
         ]
+        if kind.showsUsageColumns {
+            columns.append((ColumnID.count, "次數", 50, .count))
+            columns.append((ColumnID.pinned, "置頂", 40, .pinned))
+        }
         for (identifier, title, width, sortColumn) in columns {
             let column = NSTableColumn(identifier: identifier)
             column.title = title
@@ -263,6 +307,8 @@ final class UserDataListController: NSObject,
                 phrase: text,
                 pronunciationSequence: readings
             )
+        case .suppressedPhrase:
+            return
         }
         reload()
     }
@@ -272,35 +318,46 @@ final class UserDataListController: NSObject,
             return
         }
 
+        let isRestore = kind == .suppressedPhrases
         let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "刪除「\(row.text)」？"
-        alert.informativeText =
-            "會刪除這一筆（\(row.reading)）的使用次數與置頂狀態，此操作無法復原。"
-        alert.addButton(withTitle: "刪除")
+        alert.alertStyle = isRestore ? .informational : .warning
+        alert.messageText = isRestore
+            ? "恢復「\(row.text)」？"
+            : "刪除「\(row.text)」？"
+        alert.informativeText = isRestore
+            ? "這個內建詞（\(row.reading)）會重新出現在候選視窗中。"
+            : "會刪除這一筆（\(row.reading)）的使用次數與置頂狀態，此操作無法復原。"
+        alert.addButton(withTitle: isRestore ? "恢復" : "刪除")
         alert.addButton(withTitle: "取消")
         guard alert.runModal() == .alertFirstButtonReturn else {
             return
         }
 
-        let deleted: Bool
+        let changed: Bool
         switch row.identity {
         case let .character(text, pronunciation):
-            deleted = learning.deleteCharacterRecord(
+            changed = learning.deleteCharacterRecord(
                 character: text,
                 pronunciation: pronunciation
             )
         case let .phrase(text, readings):
-            deleted = learning.deletePhrase(
+            changed = learning.deletePhrase(
+                phrase: text,
+                pronunciationSequence: readings
+            )
+        case let .suppressedPhrase(text, readings):
+            changed = learning.restorePhrase(
                 phrase: text,
                 pronunciationSequence: readings
             )
         }
 
-        if !deleted {
+        if !changed {
             let failure = NSAlert()
             failure.alertStyle = .critical
-            failure.messageText = "無法刪除這一筆資料"
+            failure.messageText = isRestore
+                ? "無法恢復這個內建詞"
+                : "無法刪除這一筆資料"
             failure.informativeText = "資料庫目前無法寫入，資料仍然保留。"
             failure.addButton(withTitle: "好")
             failure.runModal()

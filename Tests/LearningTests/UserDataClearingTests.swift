@@ -93,7 +93,12 @@ final class UserDataClearingTests: XCTestCase {
         )
         XCTAssertEqual(
             try userTables(database: database),
-            ["character_learning", "user_phrase_readings", "user_phrases"]
+            [
+                "character_learning",
+                "suppressed_phrases",
+                "user_phrase_readings",
+                "user_phrases",
+            ]
         )
     }
 

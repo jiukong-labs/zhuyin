@@ -85,6 +85,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
         static let createdAt = "createdAt"
         static let lastUsedAt = "lastUsedAt"
         static let pinned = "pinned"
+        static let suppressedAt = "suppressedAt"
 
         static let encrypted = [
             text,
@@ -95,6 +96,7 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             createdAt,
             lastUsedAt,
             pinned,
+            suppressedAt,
         ]
     }
 
@@ -558,6 +560,10 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
             record.encryptedValues[Field.pinned] = NSNumber(
                 value: phrase.pinned
             )
+        case let .suppressedPhrase(suppression):
+            record.encryptedValues[Field.suppressedAt] = NSNumber(
+                value: suppression.suppressedAt
+            )
         case .deleted:
             break
         }
@@ -601,6 +607,11 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                 readings: readings,
                 outputPattern: outputPattern
             )
+        case .suppressedPhrase:
+            identity = try CloudUserDataIdentity(
+                suppressedPhrase: text,
+                readings: readings
+            )
         }
         guard record.recordID.recordName == identity.recordName else {
             throw CloudUserDataModelError.invalidRecordName
@@ -608,6 +619,24 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
 
         if boolean(record[Field.deleted]) == true {
             return try .tombstone(identity)
+        }
+
+        if identity.kind == .suppressedPhrase {
+            guard let suppressedAt = integer(
+                record.encryptedValues[Field.suppressedAt]
+            ) else {
+                throw CloudUserDataModelError.invalidPayload
+            }
+            return try CloudUserDataRecord(
+                identity: identity,
+                payload: .suppressedPhrase(
+                    ArchivedSuppressedPhrase(
+                        phrase: identity.text,
+                        readings: identity.readings,
+                        suppressedAt: suppressedAt
+                    )
+                )
+            )
         }
 
         guard let selectionCount = integer(
@@ -656,6 +685,8 @@ final class CloudKitUserDataTransport: CloudUserDataTransporting {
                     )
                 )
             )
+        case .suppressedPhrase:
+            throw CloudUserDataModelError.invalidPayload
         }
     }
 

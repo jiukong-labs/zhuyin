@@ -5,6 +5,7 @@ struct UserDataListRow: Equatable {
     enum Identity: Equatable {
         case character(text: String, pronunciation: String)
         case phrase(text: String, readings: [String])
+        case suppressedPhrase(text: String, readings: [String])
     }
 
     let identity: Identity

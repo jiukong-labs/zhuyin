@@ -21,7 +21,7 @@ enum UserLearningStoreError: LocalizedError {
 
 final class UserLearningStore: UserLearningStoring {
     static let applicationID: Int64 = 0x4A5A5955
-    static let schemaVersion = 3
+    static let schemaVersion = 4
 
     private static let maximumSelectionCount = Int64.max
 
@@ -395,6 +395,138 @@ final class UserLearningStore: UserLearningStoring {
         }
     }
 
+    /// Hides one built-in dictionary phrase from the candidate window.
+    ///
+    /// The row is a tombstone in the user's own database rather than an edit
+    /// to the bundled dictionary, so a dictionary shipped with a later app
+    /// update cannot restore the phrase. Suppressing an identity twice keeps
+    /// the first timestamp, which makes an import or a cloud merge idempotent.
+    func suppressPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date = Date()
+    ) throws {
+        let identity = try UserPhraseValidator.validate(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence
+        )
+        try withOperationLock {
+            let statement = try database.prepare(
+                """
+                INSERT INTO suppressed_phrases (
+                    pronunciation_key,
+                    phrase,
+                    suppressed_at
+                ) VALUES (?, ?, ?)
+                ON CONFLICT(pronunciation_key, phrase) DO UPDATE SET
+                    suppressed_at = MIN(
+                        suppressed_phrases.suppressed_at,
+                        excluded.suppressed_at
+                    )
+                """
+            )
+            try statement.bind(identity.pronunciationKey, at: 1)
+            try statement.bind(identity.phrase, at: 2)
+            try statement.bind(Self.milliseconds(since1970: date), at: 3)
+            guard try statement.step() == .done else {
+                throw UserLearningStoreError.invalidSchema(
+                    "a phrase suppression returned an unexpected row"
+                )
+            }
+            try secureDatabaseSidecars()
+        }
+    }
+
+    /// Lets a previously removed built-in phrase appear again.
+    func restorePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws {
+        let identity = try UserPhraseValidator.validate(
+            phrase: phrase,
+            pronunciationSequence: pronunciationSequence
+        )
+        try withOperationLock {
+            let statement = try database.prepare(
+                """
+                DELETE FROM suppressed_phrases
+                WHERE pronunciation_key = ? AND phrase = ?
+                """
+            )
+            try statement.bind(identity.pronunciationKey, at: 1)
+            try statement.bind(identity.phrase, at: 2)
+            guard try statement.step() == .done else {
+                throw UserLearningStoreError.invalidSchema(
+                    "a phrase restoration returned an unexpected row"
+                )
+            }
+            try secureDatabaseSidecars()
+        }
+    }
+
+    /// The phrase texts removed for exactly this reading sequence. Candidate
+    /// lookup needs nothing else, so the hot path stays one indexed read.
+    func suppressedPhrases(
+        for pronunciationSequence: [String]
+    ) throws -> Set<String> {
+        let pronunciationKey = try UserPhrasePronunciationKey.encode(
+            pronunciationSequence
+        )
+        return try withOperationLock {
+            let statement = try database.prepare(
+                """
+                SELECT phrase
+                FROM suppressed_phrases
+                WHERE pronunciation_key = ?
+                """
+            )
+            try statement.bind(pronunciationKey, at: 1)
+            var result: Set<String> = []
+            while try statement.step() == .row {
+                result.insert(try statement.text(at: 0))
+            }
+            return result
+        }
+    }
+
+    func allSuppressedPhrases() throws -> [SuppressedPhraseRecord] {
+        try withOperationLock {
+            let statement = try database.prepare(
+                """
+                SELECT pronunciation_key, phrase, suppressed_at
+                FROM suppressed_phrases
+                ORDER BY suppressed_at, phrase, pronunciation_key
+                """
+            )
+            var result: [SuppressedPhraseRecord] = []
+            while try statement.step() == .row {
+                let key = try statement.text(at: 0)
+                let phrase = try statement.text(at: 1)
+                // A row whose key or pattern cannot be read back would have to
+                // predate this schema. Skipping it keeps the settings list and
+                // an export usable instead of failing the whole read.
+                guard let readings = try? UserPhrasePronunciationKey.decode(key),
+                      let pattern = PhraseOutputPattern.inferred(
+                          from: phrase,
+                          readingCount: readings.count
+                      ) else {
+                    continue
+                }
+                result.append(
+                    SuppressedPhraseRecord(
+                        phrase: phrase,
+                        pronunciationSequence: readings,
+                        outputPattern: pattern,
+                        suppressedAt: Self.date(
+                            millisecondsSince1970: statement.integer(at: 2)
+                        )
+                    )
+                )
+            }
+            return result
+        }
+    }
+
     /// Merges an imported archive into the existing data in one transaction.
     ///
     /// Merging is idempotent: counts and timestamps take the larger value, pins
@@ -412,6 +544,10 @@ final class UserLearningStore: UserLearningStoring {
                 for entry in archive.phrases {
                     try mergePhraseLocked(entry)
                     summary.mergedPhrases += 1
+                }
+                for entry in archive.suppressions {
+                    try mergeSuppressionLocked(entry)
+                    summary.mergedSuppressions += 1
                 }
             }
             try secureDatabaseSidecars()
@@ -435,7 +571,12 @@ final class UserLearningStore: UserLearningStoring {
         )
     }
 
-    /// Empties both data sets in one transaction, so a failure can never leave
+    /// Restores every removed built-in phrase and leaves the rest untouched.
+    func clearSuppressedPhrases() throws {
+        try clear(statements: ["DELETE FROM suppressed_phrases"])
+    }
+
+    /// Empties every data set in one transaction, so a failure can never leave
     /// characters cleared while phrases survive.
     func clearAllUserData() throws {
         try clear(
@@ -443,6 +584,7 @@ final class UserLearningStore: UserLearningStoring {
                 "DELETE FROM user_phrase_readings",
                 "DELETE FROM user_phrases",
                 "DELETE FROM character_learning",
+                "DELETE FROM suppressed_phrases",
             ]
         )
     }
@@ -510,6 +652,19 @@ final class UserLearningStore: UserLearningStoring {
                 try validateCharacterSchema()
                 try validatePhraseSchema(expectsOutputPattern: false)
                 try migrateVersionTwoToCurrent()
+            case 3:
+                guard userTables == [
+                    "character_learning",
+                    "user_phrases",
+                    "user_phrase_readings",
+                ] else {
+                    throw UserLearningStoreError.invalidSchema(
+                        "version 3 contains unexpected tables"
+                    )
+                }
+                try validateCharacterSchema()
+                try validatePhraseSchema(expectsOutputPattern: true)
+                try migrateVersionThreeToCurrent()
             case Self.schemaVersion:
                 try validateSchema()
             default:
@@ -526,6 +681,7 @@ final class UserLearningStore: UserLearningStoring {
         try withImmediateTransaction {
             try createCharacterSchema()
             try createPhraseSchema()
+            try createSuppressionSchema()
             try validateSchema()
             if setApplicationID {
                 try database.execute(
@@ -539,6 +695,7 @@ final class UserLearningStore: UserLearningStoring {
     private func migrateVersionOneToCurrent() throws {
         try withImmediateTransaction {
             try createPhraseSchema()
+            try createSuppressionSchema()
             try validateSchema()
             try database.execute("PRAGMA user_version = \(Self.schemaVersion)")
         }
@@ -574,6 +731,18 @@ final class UserLearningStore: UserLearningStoring {
                 }
                 try update.reset()
             }
+            try createSuppressionSchema()
+            try validateSchema()
+            try database.execute("PRAGMA user_version = \(Self.schemaVersion)")
+        }
+    }
+
+    /// Version 3 stored characters and phrases but had nowhere to record that
+    /// the user removed a built-in phrase. Only the new table is added, so an
+    /// upgrade never rewrites existing learning data.
+    private func migrateVersionThreeToCurrent() throws {
+        try withImmediateTransaction {
+            try createSuppressionSchema()
             try validateSchema()
             try database.execute("PRAGMA user_version = \(Self.schemaVersion)")
         }
@@ -642,11 +811,26 @@ final class UserLearningStore: UserLearningStoring {
         )
     }
 
+    private func createSuppressionSchema() throws {
+        try database.execute(
+            """
+            CREATE TABLE IF NOT EXISTS suppressed_phrases (
+                pronunciation_key TEXT NOT NULL
+                    CHECK(length(pronunciation_key) > 0),
+                phrase TEXT NOT NULL CHECK(length(phrase) > 0),
+                suppressed_at INTEGER NOT NULL,
+                PRIMARY KEY (pronunciation_key, phrase)
+            ) WITHOUT ROWID
+            """
+        )
+    }
+
     private func validateSchema() throws {
         let expectedTables: Set<String> = [
             "character_learning",
             "user_phrases",
             "user_phrase_readings",
+            "suppressed_phrases",
         ]
         guard try existingUserTables() == expectedTables else {
             throw UserLearningStoreError.invalidSchema(
@@ -655,6 +839,32 @@ final class UserLearningStore: UserLearningStoring {
         }
         try validateCharacterSchema()
         try validatePhraseSchema(expectsOutputPattern: true)
+        try validateSuppressionSchema()
+    }
+
+    private func validateSuppressionSchema() throws {
+        let expected: [String: ColumnDefinition] = [
+            "pronunciation_key": ColumnDefinition(
+                type: "TEXT",
+                isNotNull: true,
+                primaryKeyPosition: 1
+            ),
+            "phrase": ColumnDefinition(
+                type: "TEXT",
+                isNotNull: true,
+                primaryKeyPosition: 2
+            ),
+            "suppressed_at": ColumnDefinition(
+                type: "INTEGER",
+                isNotNull: true,
+                primaryKeyPosition: 0
+            ),
+        ]
+        guard try columnDefinitions(for: "suppressed_phrases") == expected else {
+            throw UserLearningStoreError.invalidSchema(
+                "the suppressed phrase table has unexpected columns"
+            )
+        }
     }
 
     private func validateCharacterSchema() throws {
@@ -1266,6 +1476,39 @@ final class UserLearningStore: UserLearningStoring {
         guard try statement.step() == .done else {
             throw UserLearningStoreError.invalidSchema(
                 "user phrase merge returned an unexpected row"
+            )
+        }
+    }
+
+    /// Merging keeps the earliest suppression time, so importing the same
+    /// document twice, or merging the same cloud record again, changes nothing.
+    private func mergeSuppressionLocked(
+        _ entry: ArchivedSuppressedPhrase
+    ) throws {
+        let identity = try UserPhraseValidator.validate(
+            phrase: entry.phrase,
+            pronunciationSequence: entry.readings
+        )
+        let statement = try database.prepare(
+            """
+            INSERT INTO suppressed_phrases (
+                pronunciation_key,
+                phrase,
+                suppressed_at
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(pronunciation_key, phrase) DO UPDATE SET
+                suppressed_at = MIN(
+                    suppressed_phrases.suppressed_at,
+                    excluded.suppressed_at
+                )
+            """
+        )
+        try statement.bind(identity.pronunciationKey, at: 1)
+        try statement.bind(identity.phrase, at: 2)
+        try statement.bind(entry.suppressedAt, at: 3)
+        guard try statement.step() == .done else {
+            throw UserLearningStoreError.invalidSchema(
+                "a phrase suppression merge returned an unexpected row"
             )
         }
     }

@@ -142,6 +142,91 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         }
     }
 
+    func testRemovedBuiltInPhraseSyncsToThisMac() throws {
+        let store = try makeStore()
+        let transport = ProbeCloudTransport(records: [
+            try cloudSuppression(),
+        ])
+        let coordinator = makeCoordinator(store: store, transport: transport)
+
+        waitForSync(coordinator)
+
+        XCTAssertEqual(
+            try store.allSuppressedPhrases().map(\.phrase),
+            ["測試"]
+        )
+        XCTAssertEqual(
+            try store.suppressedPhrases(for: ["ㄘㄜˋ", "ㄕˋ"]),
+            ["測試"]
+        )
+    }
+
+    func testLocallyRemovedBuiltInPhraseIsUploaded() throws {
+        let store = try makeStore()
+        try store.suppressPhrase(
+            phrase: "測試",
+            pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+            at: Date(timeIntervalSince1970: 7)
+        )
+        let transport = ProbeCloudTransport()
+        let coordinator = makeCoordinator(store: store, transport: transport)
+
+        waitForSync(coordinator)
+
+        XCTAssertEqual(transport.savedRecords.count, 1)
+        let uploaded = try XCTUnwrap(transport.savedRecords.first)
+        XCTAssertEqual(uploaded.identity.kind, .suppressedPhrase)
+        guard case let .suppressedPhrase(record) = uploaded.payload else {
+            return XCTFail("Expected an active suppression upload")
+        }
+        XCTAssertEqual(record.phrase, "測試")
+        XCTAssertEqual(record.suppressedAt, 7_000)
+    }
+
+    /// Restoring a built-in phrase on another Mac reaches this one as a
+    /// tombstone for the suppression, which puts the phrase back here too.
+    func testRemoteTombstoneRestoresARemovedBuiltInPhrase() throws {
+        let store = try makeStore()
+        try store.suppressPhrase(
+            phrase: "測試",
+            pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+            at: Date(timeIntervalSince1970: 7)
+        )
+        let identity = try CloudUserDataIdentity(
+            suppressedPhrase: "測試",
+            readings: ["ㄘㄜˋ", "ㄕˋ"]
+        )
+        let stateStore = MemoryCloudSyncStateStore(state: completedState())
+        let transport = ProbeCloudTransport(records: [
+            try .tombstone(identity),
+        ])
+        let coordinator = makeCoordinator(
+            store: store,
+            transport: transport,
+            stateStore: stateStore
+        )
+
+        waitForSync(coordinator)
+
+        XCTAssertEqual(try store.allSuppressedPhrases(), [])
+        XCTAssertTrue(transport.savedRecords.isEmpty)
+    }
+
+    /// A suppression and the user phrase with the same text and readings are
+    /// separate cloud records, so one can never overwrite the other.
+    func testSuppressionAndUserPhraseUseDistinctRecordNames() throws {
+        let suppression = try CloudUserDataIdentity(
+            suppressedPhrase: "測試",
+            readings: ["ㄘㄜˋ", "ㄕˋ"]
+        )
+        let phrase = try CloudUserDataIdentity(
+            phrase: "測試",
+            readings: ["ㄘㄜˋ", "ㄕˋ"]
+        )
+
+        XCTAssertNotEqual(suppression.recordName, phrase.recordName)
+    }
+
     func testRemoteUnpinIsAppliedExactlyWhenNoLocalMutationExists() throws {
         let store = try makeStore()
         try store.setPinned(true, character: "鍵", pronunciation: "ㄐㄧㄢˋ")
@@ -663,6 +748,25 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
                     createdAt: 1_000,
                     lastUsedAt: 9_000,
                     pinned: pinned
+                )
+            )
+        )
+    }
+
+    private func cloudSuppression(
+        at milliseconds: Int64 = 5_000
+    ) throws -> CloudUserDataRecord {
+        let identity = try CloudUserDataIdentity(
+            suppressedPhrase: "測試",
+            readings: ["ㄘㄜˋ", "ㄕˋ"]
+        )
+        return try CloudUserDataRecord(
+            identity: identity,
+            payload: .suppressedPhrase(
+                ArchivedSuppressedPhrase(
+                    phrase: "測試",
+                    readings: ["ㄘㄜˋ", "ㄕˋ"],
+                    suppressedAt: milliseconds
                 )
             )
         )

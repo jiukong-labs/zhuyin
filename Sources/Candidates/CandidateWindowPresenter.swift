@@ -117,8 +117,11 @@ private enum CandidateWindowPresentationText {
     static let actionGap = "\u{00A0}\u{00A0}"
     static let actionSlot = "　"
 
+    /// Every phrase carries the inline remove control, built-in ones included.
+    /// A character never does: removing it would leave its reading without a
+    /// candidate.
     static func hasInlineAction(_ candidate: Candidate) -> Bool {
-        candidate.pinned || candidate.isUserPhrase
+        candidate.pinned || candidate.type == .phrase
     }
 
     static func sizingText(for candidate: Candidate) -> String {
@@ -309,9 +312,14 @@ private final class CandidateGridView: NSView {
                     width: actionWidth,
                     height: button.frame.height
                 )
-                let actionLabel = candidate.pinned
-                    ? "取消置頂「\(candidate.text)」"
-                    : "刪除使用者詞「\(candidate.text)」"
+                let actionLabel: String
+                if candidate.pinned {
+                    actionLabel = "取消置頂「\(candidate.text)」"
+                } else if candidate.isUserPhrase {
+                    actionLabel = "刪除使用者詞「\(candidate.text)」"
+                } else {
+                    actionLabel = "刪除內建詞「\(candidate.text)」"
+                }
                 actionButton.toolTip = actionLabel
                 actionButton.setAccessibilityLabel(actionLabel)
             }

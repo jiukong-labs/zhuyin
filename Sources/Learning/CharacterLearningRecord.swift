@@ -54,6 +54,26 @@ protocol UserLearningProviding: AnyObject {
         phrase: String,
         pronunciationSequence: [String]
     ) -> Bool
+
+    /// The built-in phrase texts the user removed for this exact reading
+    /// sequence. Candidate lookup drops them from the dictionary's own
+    /// results.
+    func suppressedPhrases(
+        for pronunciationSequence: [String]
+    ) -> Set<String>
+
+    @discardableResult
+    func suppressPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) -> Bool
+
+    @discardableResult
+    func restorePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool
 }
 
 extension UserLearningProviding {
@@ -111,6 +131,29 @@ extension UserLearningProviding {
     ) -> Bool {
         false
     }
+
+    func suppressedPhrases(
+        for pronunciationSequence: [String]
+    ) -> Set<String> {
+        []
+    }
+
+    @discardableResult
+    func suppressPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) -> Bool {
+        false
+    }
+
+    @discardableResult
+    func restorePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool {
+        false
+    }
 }
 
 protocol UserLearningStoring: AnyObject {
@@ -159,12 +202,29 @@ protocol UserLearningStoring: AnyObject {
         pronunciationSequence: [String]
     ) throws
 
+    func suppressedPhrases(
+        for pronunciationSequence: [String]
+    ) throws -> Set<String>
+
+    func suppressPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) throws
+
+    func restorePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws
+
     func clearCharacterLearning() throws
     func clearUserPhrases() throws
+    func clearSuppressedPhrases() throws
     func clearAllUserData() throws
 
     func allCharacterRecords() throws -> [CharacterLearningRecord]
     func allPhraseRecords() throws -> [UserPhraseRecord]
+    func allSuppressedPhrases() throws -> [SuppressedPhraseRecord]
 
     func deleteCharacterRecord(
         character: String,
@@ -218,8 +278,26 @@ extension UserLearningStoring {
         pronunciationSequence: [String]
     ) throws {}
 
+    func suppressedPhrases(
+        for pronunciationSequence: [String]
+    ) throws -> Set<String> {
+        []
+    }
+
+    func suppressPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) throws {}
+
+    func restorePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) throws {}
+
     func clearCharacterLearning() throws {}
     func clearUserPhrases() throws {}
+    func clearSuppressedPhrases() throws {}
     func clearAllUserData() throws {}
 
     func allCharacterRecords() throws -> [CharacterLearningRecord] {
@@ -227,6 +305,10 @@ extension UserLearningStoring {
     }
 
     func allPhraseRecords() throws -> [UserPhraseRecord] {
+        []
+    }
+
+    func allSuppressedPhrases() throws -> [SuppressedPhraseRecord] {
         []
     }
 
