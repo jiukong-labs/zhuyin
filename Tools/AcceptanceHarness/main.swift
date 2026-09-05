@@ -384,6 +384,25 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "ㄘㄜ試"
     ),
+    // Erasing a revised reading completely ends that revision instead of
+    // leaving Backspace dead. With 試 focused, three presses restore 測's
+    // ㄘㄜˋ and consume all of it; the fourth must reach 我 and remove its
+    // tone, so Return commits the raw ㄨㄛ before the untouched 試.
+    "revision-backspace-exhausted": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_Delete), Keystroke(kVK_Delete),
+            Keystroke(kVK_Delete), Keystroke(kVK_Delete),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "ㄨㄛ試"
+    ),
     // With 試 on the right of the caret, Forward Delete restores ㄕˋ and
     // removes its tone. Return commits the raw ㄕ after the unchanged 測.
     "revision-forward-delete": AcceptanceScript(
