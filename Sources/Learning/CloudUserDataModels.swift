@@ -10,6 +10,9 @@ struct CloudUserDataIdentity: Codable, Equatable, Hashable {
     enum Kind: String, Codable {
         case character
         case phrase
+        /// A built-in phrase the user removed. It carries no learning data of
+        /// its own; its presence is the fact being synchronized.
+        case suppressedPhrase
     }
 
     let kind: Kind
@@ -45,6 +48,20 @@ struct CloudUserDataIdentity: Codable, Equatable, Hashable {
         text = validated.phrase
         self.readings = validated.pronunciationSequence
         self.outputPattern = validated.outputPattern
+    }
+
+    init(
+        suppressedPhrase: String,
+        readings: [String]
+    ) throws {
+        let validated = try UserPhraseValidator.validate(
+            phrase: suppressedPhrase,
+            pronunciationSequence: readings
+        )
+        kind = .suppressedPhrase
+        text = validated.phrase
+        self.readings = validated.pronunciationSequence
+        outputPattern = validated.outputPattern
     }
 
     /// Bounded, deterministic, and opaque enough to use as a CloudKit name and
@@ -93,6 +110,7 @@ struct CloudUserDataRecord: Equatable {
     enum Payload: Equatable {
         case character(ArchivedCharacter)
         case phrase(ArchivedPhrase)
+        case suppressedPhrase(ArchivedSuppressedPhrase)
         case deleted
     }
 
@@ -101,7 +119,10 @@ struct CloudUserDataRecord: Equatable {
 
     init(identity: CloudUserDataIdentity, payload: Payload) throws {
         switch (identity.kind, payload) {
-        case (.character, .character), (.phrase, .phrase), (_, .deleted):
+        case (.character, .character),
+             (.phrase, .phrase),
+             (.suppressedPhrase, .suppressedPhrase),
+             (_, .deleted):
             break
         default:
             throw CloudUserDataModelError.identityKindMismatch
@@ -151,6 +172,25 @@ struct CloudUserDataRecord: Equatable {
         )
     }
 
+    static func suppressedPhrase(
+        _ record: SuppressedPhraseRecord
+    ) throws -> Self {
+        let identity = try CloudUserDataIdentity(
+            suppressedPhrase: record.phrase,
+            readings: record.pronunciationSequence
+        )
+        return try Self(
+            identity: identity,
+            payload: .suppressedPhrase(
+                ArchivedSuppressedPhrase(
+                    phrase: record.phrase,
+                    readings: record.pronunciationSequence,
+                    suppressedAt: milliseconds(record.suppressedAt)
+                )
+            )
+        )
+    }
+
     static func tombstone(_ identity: CloudUserDataIdentity) throws -> Self {
         try Self(identity: identity, payload: .deleted)
     }
@@ -169,6 +209,13 @@ struct CloudUserDataRecord: Equatable {
                 characters: [],
                 phrases: [phrase]
             )
+        case let .suppressedPhrase(suppression):
+            return UserDataArchive(
+                exportedAt: 0,
+                characters: [],
+                phrases: [],
+                suppressions: [suppression]
+            )
         case .deleted:
             return nil
         }
@@ -180,7 +227,7 @@ struct CloudUserDataRecord: Equatable {
             return record.pinned
         case let .phrase(record):
             return record.pinned
-        case .deleted:
+        case .suppressedPhrase, .deleted:
             return nil
         }
     }

@@ -33,13 +33,17 @@ inside iCloud Drive.
 - Deletions are saved as records with a tombstone flag instead of physically
   deleting the CloudKit record. This lets an offline Mac learn that an entry
   was removed and prevents reinstall restoration from resurrecting it.
+- A removed built-in phrase is its own record kind, `suppressedPhrase`. Its
+  presence is the fact being synchronized, so every Mac hides the same phrase;
+  its tombstone is a restore. It is a separate identity from a user phrase
+  with the same text and readings, so neither can overwrite the other.
 - CloudKit record names contain only a versioned SHA-256 digest of the logical
   identity. Text, ordered readings, count, timestamps, and pin values use
   `CKRecord.encryptedValues`.
 
 The learning custom private-database zone is `JiukongUserLearning`; its record
-type is `JKUserLearning`. The local SQLite schema remains at version 2 because
-CloudKit state is deliberately stored separately.
+type is `JKUserLearning`. The local SQLite schema version is tracked
+independently because CloudKit state is deliberately stored separately.
 
 ## Cursor appearance preferences
 
@@ -106,7 +110,8 @@ Before shipping:
    operations before release.
 
 Unit tests use in-memory transports and cover learning restore, initial upload,
-tombstones, pending local precedence, exact unpinning, failed-save retention,
+tombstones, removed built-in phrases and their restores, pending local
+precedence, exact unpinning, failed-save retention,
 disabled and cancelled sync, real and spurious Apple Account changes, stable
 opaque identities, private journal persistence, preference last-write-wins,
 offline retry, malformed preference records, and forward schema compatibility.

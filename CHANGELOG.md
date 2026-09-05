@@ -4,6 +4,26 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Built-in phrases can now be removed from the candidate window. Every phrase
+  candidate carries the inline `×`; removing one records the deletion in the
+  user's own database rather than editing the bundled dictionary, so a
+  dictionary shipped with a later update cannot bring the phrase back and a
+  personal word list keeps converging on what someone actually types. Single
+  characters remain non-deletable, since removing one could leave a reading
+  with no candidate at all.
+- A new 「已刪除內建詞」 settings tab lists every removed built-in phrase and
+  restores them one at a time; 「恢復內建詞…」 in the data tab restores all of
+  them, and 「清除全部」 does too. Removals synchronize through iCloud as their
+  own record kind and travel with a JSON export, so neither another Mac nor a
+  restored backup resurrects a deleted phrase.
+### Changed
+
+- The user database schema is now version 4. The upgrade adds the removed
+  built-in phrase table in place and leaves existing selection counts and user
+  phrases untouched.
+
 ## [0.1.14] - 2026-09-04
 
 ### Fixed

@@ -14,6 +14,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private let characterList: UserDataListController
     private let phraseList: UserDataListController
+    private let suppressedPhraseList: UserDataListController
     private let cursorIndicatorSettings: CursorIndicatorSettingsController
 
     private var window: NSWindow?
@@ -46,6 +47,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             learning: learning
         )
         phraseList = UserDataListController(kind: .phrases, learning: learning)
+        suppressedPhraseList = UserDataListController(
+            kind: .suppressedPhrases,
+            learning: learning
+        )
         cursorIndicatorSettings = CursorIndicatorSettingsController(
             preferences: preferences
         )
@@ -115,6 +120,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             ("一般", makeGeneralView()),
             ("游標指示器", cursorIndicatorSettings.makeView()),
             ("使用者詞", phraseList.makeView()),
+            ("已刪除內建詞", suppressedPhraseList.makeView()),
             ("選字紀錄", characterList.makeView()),
             ("資料", makeDataView()),
             ("更新", makeUpdateView()),
@@ -273,6 +279,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let clearRow = NSStackView(views: [
             makeButton("清除選字紀錄…", action: #selector(clearCharacterLearning(_:))),
             makeButton("清除使用者詞…", action: #selector(clearUserPhrases(_:))),
+            makeButton("恢復內建詞…", action: #selector(restoreSuppressedPhrases(_:))),
             makeButton("清除全部…", action: #selector(clearAllUserData(_:))),
         ])
         clearRow.orientation = .horizontal
@@ -328,6 +335,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private func reloadLists() {
         characterList.reload()
         phraseList.reload()
+        suppressedPhraseList.reload()
     }
 
     @objc private func shiftPreferenceDidChange(_ sender: NSPopUpButton) {
@@ -501,10 +509,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         reloadLists()
 
         var informative =
-            "合併了 \(summary.mergedCharacters) 筆選字紀錄與 \(summary.mergedPhrases) 個使用者詞。"
+            "合併了 \(summary.mergedCharacters) 筆選字紀錄、\(summary.mergedPhrases) 個使用者詞與 \(summary.mergedSuppressions) 個已刪除的內建詞。"
         if !issues.isEmpty {
             informative +=
-                "\n略過 \(issues.skippedCharacters) 筆無法辨識的選字紀錄與 \(issues.skippedPhrases) 個無法辨識的詞。"
+                "\n略過 \(issues.skippedCharacters) 筆無法辨識的選字紀錄與 \(issues.skippedPhrases + issues.skippedSuppressions) 個無法辨識的詞。"
         }
         let done = NSAlert()
         done.messageText = "已匯入使用者資料"
@@ -531,25 +539,41 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    @objc private func restoreSuppressedPhrases(_ sender: Any?) {
+        performClear(
+            message: "恢復全部已刪除的內建詞？",
+            informative: "所有被刪除的內建詞都會重新出現在候選視窗中，選字紀錄與使用者詞會保留。之後仍可再次逐筆刪除。",
+            isDestructive: false
+        ) { [learning] in
+            learning.clearSuppressedPhrases()
+        }
+    }
+
     @objc private func clearAllUserData(_ sender: Any?) {
         performClear(
             message: "清除全部使用者資料？",
-            informative: "會刪除所有個人選字紀錄與使用者詞，排序會回到久空內建預設。"
+            informative: "會刪除所有個人選字紀錄與使用者詞、恢復所有已刪除的內建詞，排序會回到久空內建預設。"
         ) { [learning] in
             learning.clearAllUserData()
         }
     }
 
+    /// `isDestructive` is false for restoring removed built-in phrases: that
+    /// puts data back rather than discarding it, so it must not claim to be
+    /// irreversible or report a failure as lost user data.
     private func performClear(
         message: String,
         informative: String,
+        isDestructive: Bool = true,
         operation: () -> Bool
     ) {
         let confirmation = NSAlert()
-        confirmation.alertStyle = .warning
+        confirmation.alertStyle = isDestructive ? .warning : .informational
         confirmation.messageText = message
-        confirmation.informativeText = informative + "此操作無法復原。"
-        confirmation.addButton(withTitle: "清除")
+        confirmation.informativeText = isDestructive
+            ? informative + "此操作無法復原。"
+            : informative
+        confirmation.addButton(withTitle: isDestructive ? "清除" : "恢復")
         confirmation.addButton(withTitle: "取消")
         guard confirmation.runModal() == .alertFirstButtonReturn else {
             return
@@ -559,7 +583,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         reloadLists()
         guard cleared else {
             report(
-                failure: "無法清除使用者資料",
+                failure: isDestructive
+                    ? "無法清除使用者資料"
+                    : "無法恢復內建詞",
                 informative: "資料庫目前無法寫入，既有資料仍然保留。"
             )
             return
@@ -586,4 +612,5 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         formatter.dateFormat = "yyyyMMdd"
         return "JiukongZhuyin-UserData-\(formatter.string(from: Date())).json"
     }
+
 }

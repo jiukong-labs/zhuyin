@@ -39,6 +39,13 @@ struct ArchivedPhrase: Equatable, Codable {
     }
 }
 
+/// One exported built-in phrase the user removed from the candidate window.
+struct ArchivedSuppressedPhrase: Equatable, Codable {
+    let phrase: String
+    let readings: [String]
+    let suppressedAt: Int64
+}
+
 enum UserDataArchiveError: LocalizedError, Equatable {
     case malformedDocument
     case unknownFormat(String)
@@ -61,9 +68,12 @@ enum UserDataArchiveError: LocalizedError, Equatable {
 struct UserDataArchiveIssues: Equatable {
     var skippedCharacters = 0
     var skippedPhrases = 0
+    var skippedSuppressions = 0
 
     var isEmpty: Bool {
-        skippedCharacters == 0 && skippedPhrases == 0
+        skippedCharacters == 0
+            && skippedPhrases == 0
+            && skippedSuppressions == 0
     }
 }
 
@@ -71,6 +81,7 @@ struct UserDataArchiveIssues: Equatable {
 struct UserDataMergeSummary: Equatable {
     var mergedCharacters = 0
     var mergedPhrases = 0
+    var mergedSuppressions = 0
 }
 
 /// The portable, versioned representation of everything this Mac has learned.
@@ -80,35 +91,58 @@ struct UserDataMergeSummary: Equatable {
 /// unreadable file, a foreign format, or a newer version is refused outright.
 struct UserDataArchive: Equatable, Codable {
     static let formatIdentifier = "jiukong-zhuyin-user-data"
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     let format: String
     let version: Int
     let exportedAt: Int64
     let characters: [ArchivedCharacter]
     let phrases: [ArchivedPhrase]
+    /// Absent in version 1 and 2 documents, which had no way to remove a
+    /// built-in phrase. Decoding treats a missing list as empty so an older
+    /// export still imports in full.
+    let suppressions: [ArchivedSuppressedPhrase]
 
     init(
         format: String = UserDataArchive.formatIdentifier,
         version: Int = UserDataArchive.currentVersion,
         exportedAt: Int64,
         characters: [ArchivedCharacter],
-        phrases: [ArchivedPhrase]
+        phrases: [ArchivedPhrase],
+        suppressions: [ArchivedSuppressedPhrase] = []
     ) {
         self.format = format
         self.version = version
         self.exportedAt = exportedAt
         self.characters = characters
         self.phrases = phrases
+        self.suppressions = suppressions
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        format = try container.decode(String.self, forKey: .format)
+        version = try container.decode(Int.self, forKey: .version)
+        exportedAt = try container.decode(Int64.self, forKey: .exportedAt)
+        characters = try container.decode(
+            [ArchivedCharacter].self,
+            forKey: .characters
+        )
+        phrases = try container.decode([ArchivedPhrase].self, forKey: .phrases)
+        suppressions = try container.decodeIfPresent(
+            [ArchivedSuppressedPhrase].self,
+            forKey: .suppressions
+        ) ?? []
     }
 
     var isEmpty: Bool {
-        characters.isEmpty && phrases.isEmpty
+        characters.isEmpty && phrases.isEmpty && suppressions.isEmpty
     }
 
     static func make(
         characters: [CharacterLearningRecord],
         phrases: [UserPhraseRecord],
+        suppressions: [SuppressedPhraseRecord] = [],
         exportedAt: Date
     ) -> UserDataArchive {
         UserDataArchive(
@@ -131,6 +165,13 @@ struct UserDataArchive: Equatable, Codable {
                     createdAt: milliseconds(from: record.createdAt),
                     lastUsedAt: record.lastUsedAt.map(milliseconds(from:)),
                     pinned: record.pinned
+                )
+            },
+            suppressions: suppressions.map { record in
+                ArchivedSuppressedPhrase(
+                    phrase: record.phrase,
+                    readings: record.pronunciationSequence,
+                    suppressedAt: milliseconds(from: record.suppressedAt)
                 )
             }
         )
@@ -189,13 +230,29 @@ struct UserDataArchive: Equatable, Codable {
             phrases.append(normalized)
         }
 
+        var suppressions: [ArchivedSuppressedPhrase] = []
+        var seenSuppressions: Set<String> = []
+        for entry in decoded.suppressions {
+            guard let normalized = entry.normalized(),
+                  let key = try? UserPhrasePronunciationKey.encode(
+                      normalized.readings
+                  ),
+                  seenSuppressions.insert(key + "\u{1}" + normalized.phrase)
+                    .inserted else {
+                issues.skippedSuppressions += 1
+                continue
+            }
+            suppressions.append(normalized)
+        }
+
         return (
             UserDataArchive(
                 format: decoded.format,
                 version: decoded.version,
                 exportedAt: decoded.exportedAt,
                 characters: characters,
-                phrases: phrases
+                phrases: phrases,
+                suppressions: suppressions
             ),
             issues
         )
@@ -265,6 +322,25 @@ private extension ArchivedPhrase {
             createdAt: createdAt,
             lastUsedAt: lastUsedAt,
             pinned: pinned
+        )
+    }
+}
+
+private extension ArchivedSuppressedPhrase {
+    /// A suppression names an exact phrase identity, so it is validated the
+    /// same way a stored phrase is.
+    func normalized() -> ArchivedSuppressedPhrase? {
+        guard let identity = try? UserPhraseValidator.validate(
+            phrase: phrase,
+            pronunciationSequence: readings
+        ) else {
+            return nil
+        }
+
+        return ArchivedSuppressedPhrase(
+            phrase: identity.phrase,
+            readings: identity.pronunciationSequence,
+            suppressedAt: suppressedAt
         )
     }
 }

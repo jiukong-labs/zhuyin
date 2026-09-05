@@ -50,6 +50,13 @@ leaving the default gate.
 | Direct bracket and slash punctuation mappings | `brackets` | `「我」、／` |
 | Shift-Left phrase selection | `phrase` | `九空` |
 | Shift-Right phrase selection | `phrase-right` | `九空` |
+| Removing a phrase candidate, built-in ones included | mouse only — unit tests | the exact text+reading identity stops appearing and stays gone across dictionary updates |
+
+The candidate window's inline `×` is a mouse-only control, so the keystroke
+harness cannot drive it. That row is covered by unit tests over
+`CharacterCandidateProvider`, `UserLearningStore`, and the archive and cloud
+record models instead, matching how the pre-existing user-phrase delete is
+covered.
 
 `eten` and `ibm` remain opt-in because they require changing the persisted
 keyboard arrangement before the input-method process starts. They must still

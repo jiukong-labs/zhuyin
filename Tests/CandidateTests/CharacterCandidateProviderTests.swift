@@ -608,6 +608,254 @@ final class CharacterCandidateProviderTests: XCTestCase {
         )
     }
 
+    func testDeletedBuiltInPhraseStopsAppearingAsACandidate() throws {
+        let learning = LearningSpy()
+        let date = Date(timeIntervalSince1970: 789)
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            now: { date }
+        )
+        var buffer = CompositionBuffer()
+        XCTAssertTrue(
+            buffer.acceptCandidate(
+                Candidate(text: "冊", pronunciation: "ㄘㄜˋ"),
+                reason: .implicitPassThrough
+            )
+        )
+        let queries = buffer.phraseLookupQueries(appending: "ㄕˋ")
+
+        let before = try provider.candidates(
+            for: "ㄕˋ",
+            phraseQueries: queries
+        )
+        XCTAssertEqual(before.first?.text, "測試")
+        XCTAssertEqual(before.first?.isUserPhrase, false)
+
+        XCTAssertTrue(
+            provider.deletePhraseCandidate(
+                phrase: "測試",
+                pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+                isUserPhrase: false
+            )
+        )
+
+        // A built-in phrase is not in the user's phrase store, so nothing is
+        // deleted there; the suppression is what removes it.
+        XCTAssertEqual(learning.deletedPhrases, [])
+        XCTAssertEqual(
+            learning.suppressions,
+            [
+                PhraseOperation(
+                    phrase: "測試",
+                    readings: ["ㄘㄜˋ", "ㄕˋ"],
+                    date: date
+                ),
+            ]
+        )
+
+        let after = try provider.candidates(
+            for: "ㄕˋ",
+            phraseQueries: queries
+        )
+        XCTAssertFalse(after.contains { $0.text == "測試" })
+        XCTAssertTrue(after.allSatisfy { $0.type == .character })
+    }
+
+    func testRestoringADeletedBuiltInPhraseBringsItBack() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        var buffer = CompositionBuffer()
+        XCTAssertTrue(
+            buffer.acceptCandidate(
+                Candidate(text: "冊", pronunciation: "ㄘㄜˋ"),
+                reason: .implicitPassThrough
+            )
+        )
+        let queries = buffer.phraseLookupQueries(appending: "ㄕˋ")
+        XCTAssertTrue(
+            provider.deletePhraseCandidate(
+                phrase: "測試",
+                pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+                isUserPhrase: false
+            )
+        )
+
+        XCTAssertTrue(
+            provider.restorePhrase(
+                phrase: "測試",
+                pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"]
+            )
+        )
+
+        XCTAssertEqual(
+            learning.restorations,
+            [PhraseIdentity(phrase: "測試", readings: ["ㄘㄜˋ", "ㄕˋ"])]
+        )
+        let candidates = try provider.candidates(
+            for: "ㄕˋ",
+            phraseQueries: queries
+        )
+        XCTAssertEqual(candidates.first?.text, "測試")
+    }
+
+    /// Removing a built-in phrase hides the dictionary's own row only, so the
+    /// user can put the same text and readings back by creating it themselves.
+    /// It then behaves as their own word, deletable on its own terms.
+    func testARemovedBuiltInPhraseCanBeRebuiltAsAUserPhrase() throws {
+        let learning = LearningSpy()
+        let date = Date(timeIntervalSince1970: 500)
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            now: { date }
+        )
+        let readings = ["ㄘㄜˋ", "ㄕˋ"]
+        var buffer = CompositionBuffer()
+        XCTAssertTrue(
+            buffer.acceptCandidate(
+                Candidate(text: "冊", pronunciation: "ㄘㄜˋ"),
+                reason: .implicitPassThrough
+            )
+        )
+        let queries = buffer.phraseLookupQueries(appending: "ㄕˋ")
+        XCTAssertTrue(
+            provider.deletePhraseCandidate(
+                phrase: "測試",
+                pronunciationSequence: readings,
+                isUserPhrase: false
+            )
+        )
+        XCTAssertFalse(
+            try provider.candidates(for: "ㄕˋ", phraseQueries: queries)
+                .contains { $0.text == "測試" }
+        )
+
+        XCTAssertTrue(
+            provider.addUserPhrase(
+                phrase: "測試",
+                pronunciationSequence: readings
+            )
+        )
+        learning.phraseRecordsByPronunciation[readings] = [
+            makePhraseRecord(id: 1, phrase: "測試", readings: readings),
+        ]
+
+        let candidates = try provider.candidates(
+            for: "ㄕˋ",
+            phraseQueries: queries
+        )
+        let rebuilt = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(rebuilt.text, "測試")
+        XCTAssertTrue(rebuilt.isUserPhrase)
+        // The dictionary's own row stays suppressed, so the rebuilt phrase is
+        // offered once rather than twice.
+        XCTAssertEqual(candidates.filter { $0.text == "測試" }.count, 1)
+    }
+
+    func testDeletingAPhraseCandidateAlsoRemovesTheUserAuthoredRow() throws {
+        let learning = LearningSpy()
+        let date = Date(timeIntervalSince1970: 42)
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning,
+            now: { date }
+        )
+        let readings = ["ㄘㄜˋ", "ㄕˋ"]
+        learning.phraseRecordsByPronunciation[readings] = [
+            makePhraseRecord(id: 1, phrase: "測試", readings: readings),
+        ]
+
+        XCTAssertTrue(
+            provider.deletePhraseCandidate(
+                phrase: "測試",
+                pronunciationSequence: readings,
+                isUserPhrase: true
+            )
+        )
+
+        XCTAssertEqual(
+            learning.deletedPhrases,
+            [PhraseIdentity(phrase: "測試", readings: readings)]
+        )
+        XCTAssertEqual(
+            learning.suppressions,
+            [PhraseOperation(phrase: "測試", readings: readings, date: date)]
+        )
+    }
+
+    func testDeletingAUserPhraseTheDictionaryNeverHadLeavesNoTombstone() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        // Not a built-in identity: 「久空」 is a built-in phrase, but only for
+        // its own readings.
+        let readings = ["ㄐㄧㄡˇ", "ㄎㄨㄥˋ"]
+
+        XCTAssertTrue(
+            provider.deletePhraseCandidate(
+                phrase: "久空",
+                pronunciationSequence: readings,
+                isUserPhrase: true
+            )
+        )
+
+        XCTAssertEqual(
+            learning.deletedPhrases,
+            [PhraseIdentity(phrase: "久空", readings: readings)]
+        )
+        XCTAssertEqual(learning.suppressions, [])
+    }
+
+    func testDeletingAPhraseCandidateRejectsAMalformedIdentity() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+
+        XCTAssertFalse(
+            provider.deletePhraseCandidate(
+                phrase: "錯誤",
+                pronunciationSequence: ["ASCII", "ㄨˋ"],
+                isUserPhrase: false
+            )
+        )
+        XCTAssertEqual(learning.deletedPhrases, [])
+        XCTAssertEqual(learning.suppressions, [])
+    }
+
+    func testSuppressionAppliesOnlyToTheExactReadingSequence() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        learning.suppressedByReadings[["ㄘㄜˋ", "ㄕˋ"]] = ["測試"]
+        var buffer = CompositionBuffer()
+        for (text, reading) in [("冊", "ㄘㄜˋ"), ("士", "ㄕˋ")] {
+            XCTAssertTrue(
+                buffer.acceptCandidate(
+                    Candidate(text: text, pronunciation: reading),
+                    reason: .implicitPassThrough
+                )
+            )
+        }
+
+        let candidates = try provider.candidates(
+            for: "ㄓㄨㄥ",
+            phraseQueries: buffer.phraseLookupQueries(appending: "ㄓㄨㄥ")
+        )
+
+        // 「測試中」 is a different identity and keeps its own row.
+        XCTAssertEqual(candidates.first?.text, "測試中")
+    }
+
     func testRecordCommittedSelectionRecordsPhraseCandidate() throws {
         let learning = LearningSpy()
         let date = Date(timeIntervalSince1970: 456)
@@ -778,6 +1026,9 @@ final class CharacterCandidateProviderTests: XCTestCase {
         var addedPhrases: [PhraseOperation] = []
         var recordedPhraseSelections: [PhraseOperation] = []
         var deletedPhrases: [PhraseIdentity] = []
+        var suppressedByReadings: [[String]: Set<String>] = [:]
+        var suppressions: [PhraseOperation] = []
+        var restorations: [PhraseIdentity] = []
 
         func records(
             for pronunciation: String
@@ -854,6 +1105,43 @@ final class CharacterCandidateProviderTests: XCTestCase {
                     readings: pronunciationSequence
                 )
             )
+            return true
+        }
+
+        func suppressedPhrases(
+            for pronunciationSequence: [String]
+        ) -> Set<String> {
+            suppressedByReadings[pronunciationSequence] ?? []
+        }
+
+        func suppressPhrase(
+            phrase: String,
+            pronunciationSequence: [String],
+            at date: Date
+        ) -> Bool {
+            suppressions.append(
+                PhraseOperation(
+                    phrase: phrase,
+                    readings: pronunciationSequence,
+                    date: date
+                )
+            )
+            suppressedByReadings[pronunciationSequence, default: []]
+                .insert(phrase)
+            return true
+        }
+
+        func restorePhrase(
+            phrase: String,
+            pronunciationSequence: [String]
+        ) -> Bool {
+            restorations.append(
+                PhraseIdentity(
+                    phrase: phrase,
+                    readings: pronunciationSequence
+                )
+            )
+            suppressedByReadings[pronunciationSequence]?.remove(phrase)
             return true
         }
     }

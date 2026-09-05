@@ -1882,10 +1882,16 @@ extension InputController: CandidateWindowPresenterDelegate {
             }
             removesCandidate = false
         } else {
-            guard candidate.isUserPhrase,
-                  candidateProvider.deleteUserPhrase(
+            // Built-in phrases are removable too: the tombstone lives in the
+            // user's own database, so an updated dictionary cannot restore
+            // one and a user's word list keeps converging on what they type.
+            // Characters stay non-deletable; the whole reading would lose its
+            // candidate.
+            guard candidate.type == .phrase,
+                  candidateProvider.deletePhraseCandidate(
                       phrase: candidate.text,
-                      pronunciationSequence: candidate.pronunciationSequence
+                      pronunciationSequence: candidate.pronunciationSequence,
+                      isUserPhrase: candidate.isUserPhrase
                   ) else {
                 return
             }

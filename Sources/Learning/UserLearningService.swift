@@ -285,6 +285,94 @@ final class UserLearningService: UserLearningProviding {
         }
     }
 
+    func suppressedPhrases(
+        for pronunciationSequence: [String]
+    ) -> Set<String> {
+        queue.sync {
+            guard let store else {
+                return []
+            }
+            do {
+                return try store.suppressedPhrases(for: pronunciationSequence)
+            } catch {
+                Self.logger.error(
+                    "Could not read removed built-in phrases; they stay visible."
+                )
+                return []
+            }
+        }
+    }
+
+    /// Removes one built-in phrase from the candidate window for good. The
+    /// tombstone lives in the user's database, so a dictionary shipped with a
+    /// later update cannot bring the phrase back.
+    @discardableResult
+    func suppressPhrase(
+        phrase: String,
+        pronunciationSequence: [String],
+        at date: Date
+    ) -> Bool {
+        queue.sync {
+            guard let store else {
+                return false
+            }
+            do {
+                try store.suppressPhrase(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence,
+                    at: date
+                )
+                noteSuppressionUpsert(
+                    phrase: phrase,
+                    pronunciationSequence: pronunciationSequence
+                )
+                return true
+            } catch {
+                Self.logger.error(
+                    "Could not remove a built-in phrase; input will continue."
+                )
+                return false
+            }
+        }
+    }
+
+    @discardableResult
+    func restorePhrase(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) -> Bool {
+        clear(
+            "a removed built-in phrase",
+            identities: { _ in
+                [try CloudUserDataIdentity(
+                    suppressedPhrase: phrase,
+                    readings: pronunciationSequence
+                )]
+            }
+        ) {
+            try $0.restorePhrase(
+                phrase: phrase,
+                pronunciationSequence: pronunciationSequence
+            )
+        }
+    }
+
+    @discardableResult
+    func clearSuppressedPhrases() -> Bool {
+        clear(
+            "removed built-in phrases",
+            identities: { store in
+                try store.allSuppressedPhrases().compactMap {
+                    try? CloudUserDataIdentity(
+                        suppressedPhrase: $0.phrase,
+                        readings: $0.pronunciationSequence
+                    )
+                }
+            },
+            operation: { try $0.clearSuppressedPhrases() }
+        )
+    }
+
     /// Reports success so the settings window can tell the user that a clear
     /// request did not take effect instead of silently appearing to succeed.
     @discardableResult
@@ -336,7 +424,14 @@ final class UserLearningService: UserLearningProviding {
                         readings: $0.pronunciationSequence
                     )
                 }
-                return characters + phrases
+                let suppressions = try store.allSuppressedPhrases()
+                    .compactMap {
+                        try? CloudUserDataIdentity(
+                            suppressedPhrase: $0.phrase,
+                            readings: $0.pronunciationSequence
+                        )
+                    }
+                return characters + phrases + suppressions
             },
             operation: { try $0.clearAllUserData() }
         )
@@ -368,6 +463,22 @@ final class UserLearningService: UserLearningProviding {
             } catch {
                 Self.logger.error(
                     "Could not list user phrases; the settings list is empty."
+                )
+                return []
+            }
+        }
+    }
+
+    func allSuppressedPhrases() -> [SuppressedPhraseRecord] {
+        queue.sync {
+            guard let store else {
+                return []
+            }
+            do {
+                return try store.allSuppressedPhrases()
+            } catch {
+                Self.logger.error(
+                    "Could not list removed built-in phrases; the settings list is empty."
                 )
                 return []
             }
@@ -426,6 +537,7 @@ final class UserLearningService: UserLearningProviding {
                 return UserDataArchive.make(
                     characters: try store.allCharacterRecords(),
                     phrases: try store.allPhraseRecords(),
+                    suppressions: try store.allSuppressedPhrases(),
                     exportedAt: date
                 )
             } catch {
@@ -452,6 +564,12 @@ final class UserLearningService: UserLearningProviding {
                 }
                 for entry in archive.phrases {
                     notePhraseUpsert(
+                        phrase: entry.phrase,
+                        pronunciationSequence: entry.readings
+                    )
+                }
+                for entry in archive.suppressions {
+                    noteSuppressionUpsert(
                         phrase: entry.phrase,
                         pronunciationSequence: entry.readings
                     )
@@ -510,6 +628,19 @@ final class UserLearningService: UserLearningProviding {
     ) {
         guard let identity = try? CloudUserDataIdentity(
             phrase: phrase,
+            readings: pronunciationSequence
+        ) else {
+            return
+        }
+        cloudSync?.noteUpsert(identity)
+    }
+
+    private func noteSuppressionUpsert(
+        phrase: String,
+        pronunciationSequence: [String]
+    ) {
+        guard let identity = try? CloudUserDataIdentity(
+            suppressedPhrase: phrase,
             readings: pronunciationSequence
         ) else {
             return

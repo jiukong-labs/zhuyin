@@ -206,6 +206,103 @@ final class UserDataArchiveTests: XCTestCase {
         XCTAssertTrue(issues.isEmpty)
     }
 
+    func testArchiveCarriesRemovedBuiltInPhrases() throws {
+        let archive = UserDataArchive.make(
+            characters: [],
+            phrases: [],
+            suppressions: [
+                SuppressedPhraseRecord(
+                    phrase: "測試",
+                    pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"],
+                    suppressedAt: Date(timeIntervalSince1970: 300.25)
+                ),
+            ],
+            exportedAt: Date(timeIntervalSince1970: 2_000)
+        )
+
+        let (decoded, issues) = try UserDataArchive.decoded(
+            from: try archive.encoded()
+        )
+
+        XCTAssertEqual(decoded, archive)
+        XCTAssertTrue(issues.isEmpty)
+        XCTAssertFalse(decoded.isEmpty)
+        XCTAssertEqual(decoded.suppressions.first?.phrase, "測試")
+        XCTAssertEqual(
+            decoded.suppressions.first?.readings,
+            ["ㄘㄜˋ", "ㄕˋ"]
+        )
+        XCTAssertEqual(decoded.suppressions.first?.suppressedAt, 300_250)
+    }
+
+    /// Version 1 and 2 documents predate removable built-in phrases. They must
+    /// still import in full rather than being refused for a missing list.
+    func testOlderDocumentWithoutSuppressionsStillImports() throws {
+        let data = try JSONSerialization.data(
+            withJSONObject: [
+                "format": UserDataArchive.formatIdentifier,
+                "version": 2,
+                "exportedAt": 0,
+                "characters": [
+                    [
+                        "character": "鍵",
+                        "pronunciation": "ㄐㄧㄢˋ",
+                        "selectionCount": 3,
+                        "pinned": false,
+                    ],
+                ],
+                "phrases": [],
+            ]
+        )
+
+        let (decoded, issues) = try UserDataArchive.decoded(from: data)
+
+        XCTAssertEqual(decoded.characters.count, 1)
+        XCTAssertEqual(decoded.suppressions, [])
+        XCTAssertTrue(issues.isEmpty)
+    }
+
+    func testUnusableRemovedBuiltInPhrasesAreSkippedAndCounted() throws {
+        let data = try JSONSerialization.data(
+            withJSONObject: [
+                "format": UserDataArchive.formatIdentifier,
+                "version": UserDataArchive.currentVersion,
+                "exportedAt": 0,
+                "characters": [],
+                "phrases": [],
+                "suppressions": [
+                    [
+                        "phrase": "測試",
+                        "readings": ["ㄘㄜˋ", "ㄕˋ"],
+                        "suppressedAt": 1,
+                    ],
+                    [
+                        "phrase": "測試",
+                        "readings": ["ㄘㄜˋ", "ㄕˋ"],
+                        "suppressedAt": 2,
+                    ],
+                    [
+                        "phrase": "錯誤",
+                        "readings": ["ASCII", "ㄨˋ"],
+                        "suppressedAt": 3,
+                    ],
+                    [
+                        "phrase": "太長",
+                        "readings": ["ㄊㄞˋ"],
+                        "suppressedAt": 4,
+                    ],
+                ],
+            ]
+        )
+
+        let (decoded, issues) = try UserDataArchive.decoded(from: data)
+
+        XCTAssertEqual(decoded.suppressions.count, 1)
+        XCTAssertEqual(decoded.suppressions.first?.suppressedAt, 1)
+        XCTAssertEqual(issues.skippedSuppressions, 3)
+        XCTAssertFalse(issues.isEmpty)
+    }
+
     func testEmptyArchiveIsValid() throws {
         let archive = UserDataArchive.make(
             characters: [],

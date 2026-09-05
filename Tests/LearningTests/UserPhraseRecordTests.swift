@@ -151,4 +151,43 @@ final class UserPhraseRecordTests: XCTestCase {
             ["ㄅㄧ", "ㄚ"].joined()
         )
     }
+
+    /// A suppression row stores only the key, so decoding has to return the
+    /// same readings the phrase was removed for.
+    func testPronunciationKeyDecodesBackToItsExactReadings() throws {
+        for readings in [
+            ["ㄅ", "ㄧㄚ"],
+            ["ㄅㄧ", "ㄚ"],
+            ["ㄘㄜˋ", "ㄕˋ"],
+            ["˙ㄇㄚ"],
+            Array(repeating: "ㄅㄚ", count: 64),
+        ] {
+            let key = try UserPhrasePronunciationKey.encode(readings)
+            XCTAssertEqual(try UserPhrasePronunciationKey.decode(key), readings)
+        }
+    }
+
+    func testMalformedPronunciationKeysAreRefused() {
+        for key in [
+            "",
+            "v1|",
+            "ㄅㄚ",
+            "v2|6:ㄅㄚ",
+            "v1|6ㄅㄚ",
+            "v1|9:ㄅㄚ",
+            "v1|0:",
+            "v1|6:ASCII!",
+            "v1|6:ㄅㄚ3:",
+        ] {
+            XCTAssertThrowsError(
+                try UserPhrasePronunciationKey.decode(key),
+                "expected \(key) to be refused"
+            ) { error in
+                XCTAssertEqual(
+                    error as? UserPhraseValidationError,
+                    .malformedPronunciationKey
+                )
+            }
+        }
+    }
 }

@@ -44,6 +44,7 @@ enum UserPhraseValidationError: LocalizedError, Equatable {
     case unsupportedPunctuation(index: Int)
     case emptyPronunciation(index: Int)
     case invalidPronunciation(index: Int)
+    case malformedPronunciationKey
 
     var errorDescription: String? {
         switch self {
@@ -61,6 +62,8 @@ enum UserPhraseValidationError: LocalizedError, Equatable {
             return "User phrase reading \(index) cannot be empty."
         case let .invalidPronunciation(index):
             return "User phrase reading \(index) is not canonical Bopomofo."
+        case .malformedPronunciationKey:
+            return "A stored phrase reading key is not readable."
         }
     }
 }
@@ -200,5 +203,57 @@ enum UserPhrasePronunciationKey {
         return prefix + normalizedReadings.map { reading in
             "\(reading.utf8.count):\(reading)"
         }.joined()
+    }
+
+    /// Recovers the ordered readings a key was built from.
+    ///
+    /// The encoding is length prefixed, so a key is self-delimiting and needs
+    /// no separate readings table. Rows that suppress a built-in phrase store
+    /// only the key; listing, exporting, and syncing them all read the
+    /// readings back through here.
+    static func decode(_ key: String) throws -> [String] {
+        let prefixBytes = Array(prefix.utf8)
+        var bytes = Array(key.utf8)[...]
+        guard bytes.starts(with: prefixBytes) else {
+            throw UserPhraseValidationError.malformedPronunciationKey
+        }
+        bytes = bytes.dropFirst(prefixBytes.count)
+
+        let digits = UInt8(ascii: "0") ... UInt8(ascii: "9")
+        var readings: [String] = []
+        while !bytes.isEmpty {
+            guard let separator = bytes.firstIndex(of: UInt8(ascii: ":")) else {
+                throw UserPhraseValidationError.malformedPronunciationKey
+            }
+            let lengthBytes = bytes[bytes.startIndex ..< separator]
+            guard !lengthBytes.isEmpty,
+                  lengthBytes.count <= 3,
+                  lengthBytes.allSatisfy({ digits.contains($0) }),
+                  let length = Int(String(decoding: lengthBytes, as: UTF8.self)),
+                  length > 0 else {
+                throw UserPhraseValidationError.malformedPronunciationKey
+            }
+
+            let valueStart = bytes.index(after: separator)
+            guard let valueEnd = bytes.index(
+                valueStart,
+                offsetBy: length,
+                limitedBy: bytes.endIndex
+            ) else {
+                throw UserPhraseValidationError.malformedPronunciationKey
+            }
+            let reading = String(decoding: bytes[valueStart ..< valueEnd], as: UTF8.self)
+            guard CanonicalBopomofoReading.isValid(reading) else {
+                throw UserPhraseValidationError.malformedPronunciationKey
+            }
+            readings.append(reading)
+            bytes = bytes[valueEnd...]
+        }
+
+        guard (1 ... UserPhraseValidator.allowedUnitCount.upperBound)
+            .contains(readings.count) else {
+            throw UserPhraseValidationError.malformedPronunciationKey
+        }
+        return readings
     }
 }
