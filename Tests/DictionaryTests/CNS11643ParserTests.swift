@@ -78,9 +78,9 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(
             dataset.statistics,
             JiukongPhraseStatistics(
-                entryCount: 1_965,
-                uniquePhraseCount: 1_964,
-                pronunciationSequenceCount: 1_957
+                entryCount: 2_137,
+                uniquePhraseCount: 2_129,
+                pronunciationSequenceCount: 2_127
             )
         )
         XCTAssertEqual(dataset.entries.first?.phrase, "測試")
@@ -90,7 +90,13 @@ final class CNS11643ParserTests: XCTestCase {
         )
     }
 
-    func testFirstPartyPhraseReadingsMatchPinnedOfficialCharacterData() throws {
+    /// Every syllable a first-party phrase claims must be backed by a reading
+    /// this project already ships for that character: the pinned CNS11643
+    /// snapshot, or the reviewed supplemental readings in
+    /// `Data/JiukongCharacters/characters.tsv`. A phrase must never be the
+    /// only place a reading exists, which is how a typo learned from real
+    /// typing would otherwise reach the shipped lexicon.
+    func testFirstPartyPhraseReadingsMatchShippedCharacterReadings() throws {
         let phraseURL = repositoryRoot
             .appendingPathComponent("Data", isDirectory: true)
             .appendingPathComponent("JiukongPhrases", isDirectory: true)
@@ -105,9 +111,21 @@ final class CNS11643ParserTests: XCTestCase {
             sourceDirectory: sourceDirectory,
             manifest: manifest
         )
-        let officialPairs = Set(official.entries.map {
+        let supplementURL = repositoryRoot
+            .appendingPathComponent("Data", isDirectory: true)
+            .appendingPathComponent("JiukongCharacters", isDirectory: true)
+            .appendingPathComponent("characters.tsv")
+        let supplement = try JiukongCharacterParser.parse(
+            sourceURL: supplementURL
+        )
+        var officialPairs = Set(official.entries.map {
             $0.character + "\u{1F}" + $0.pronunciation
         })
+        officialPairs.formUnion(
+            supplement.entries.map {
+                $0.character + "\u{1F}" + $0.pronunciation
+            }
+        )
 
         var mismatches: [String] = []
         for entry in phrases.entries {
