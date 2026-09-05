@@ -18,6 +18,14 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
   them, and 「清除全部」 does too. Removals synchronize through iCloud as their
   own record kind and travel with a JSON export, so neither another Mac nor a
   restored backup resurrects a deleted phrase.
+- A shareable word list. 「匯出詞庫…」 writes a phrase pack one person can hand
+  to another: their own phrases and which built-in phrases they removed, with
+  no selection counts, timestamps, or pins. The bundled dictionary is not
+  copied into a pack — both Macs ship the identical lexicon — so the file
+  stays small and the recipient's list matches the sender's. 「匯入詞庫…」
+  merges a pack without lowering a count or clearing a pin the recipient set,
+  and applying the sender's removals is a separate opt-out.
+
 ### Changed
 
 - The user database schema is now version 4. The upgrade adds the removed

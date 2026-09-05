@@ -10,6 +10,7 @@
 		0221946AE3DE12AFE25C110C /* UpdatePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E0343E61DE79606410917D /* UpdatePrompt.swift */; };
 		02E7FB9F1FFB463D76068A0A /* CandidateWindowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */; };
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
+		03A5AFB61D796C596C9EB50D /* PhraseSharePackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A850040170F27250CEED2EF1 /* PhraseSharePackTests.swift */; };
 		062DE77B1B3A7186707494E8 /* CharacterCandidateProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A684017D608CC4FA5BF19D4 /* CharacterCandidateProviderTests.swift */; };
 		06D29E90ABC8C6BCE74BE0E8 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
 		0900B59259AD85876B14603A /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
@@ -35,6 +36,7 @@
 		21E3AD251A8F91C2BABCE41D /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 3949A14825AABD914BE95424 /* LICENSE */; };
 		2207DC03991162132E2D24A9 /* CloudKitUserDataTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */; };
 		221A51110211C7971ECB3808 /* BopomofoSyllable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F47A2FE1EDD014C1ED067B9 /* BopomofoSyllable.swift */; };
+		22CC5F6302F212F5159CE886 /* PhraseSharePack.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E727327737679FC09CB07D /* PhraseSharePack.swift */; };
 		2385FE7B04A31B19DEC22090 /* JiukongDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */; };
 		24AB213BDD66DFC7BFAF095A /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB37C26BAC573ED8275147C /* Preferences.swift */; };
 		24B027157A39DC76BEF86D6C /* SuppressedPhraseStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03882DC24F667E03BC04E7D /* SuppressedPhraseStoreTests.swift */; };
@@ -65,6 +67,7 @@
 		466E8160ED9E56F8243CE8ED /* CloudUserDataModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50D6DFC84E6B94322309AF5 /* CloudUserDataModelsTests.swift */; };
 		48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */; };
 		4B22755BB5E4DC9E01F7CE03 /* CursorIndicatorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */; };
+		4C2697D4B248C11AC56E130B /* PhraseSharePack.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E727327737679FC09CB07D /* PhraseSharePack.swift */; };
 		4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
 		4D5DBCC7D8EFBB4B3646C391 /* SuppressedPhraseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */; };
 		4DE5097304E0676C4EDECE03 /* CompositionSelectionCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66A01410C21B39C42BD6E35 /* CompositionSelectionCommandRouter.swift */; };
@@ -307,6 +310,7 @@
 		A096BED47B33FD3425B6DF35 /* Jiukong Zhuyin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jiukong Zhuyin.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A34FE8366ECC04BA9E927190 /* CharacterCandidateProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterCandidateProvider.swift; sourceTree = "<group>"; };
 		A66A01410C21B39C42BD6E35 /* CompositionSelectionCommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionSelectionCommandRouter.swift; sourceTree = "<group>"; };
+		A850040170F27250CEED2EF1 /* PhraseSharePackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseSharePackTests.swift; sourceTree = "<group>"; };
 		AB7307E6AF04437571E89464 /* CandidateSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSessionTests.swift; sourceTree = "<group>"; };
 		AD9DDBF2EF58C7464499850B /* CompositionActivityStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionActivityStateTests.swift; sourceTree = "<group>"; };
 		ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
@@ -330,6 +334,7 @@
 		D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowPresenter.swift; sourceTree = "<group>"; };
 		D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorController.swift; sourceTree = "<group>"; };
 		D54FE3D81889F06781B4BBD5 /* CNS11643ParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CNS11643ParserTests.swift; sourceTree = "<group>"; };
+		D8E727327737679FC09CB07D /* PhraseSharePack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseSharePack.swift; sourceTree = "<group>"; };
 		DB6A7847C769C7EBFA02807B /* UserLearningServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningServiceTests.swift; sourceTree = "<group>"; };
 		DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CNS11643_NOTICE.txt; sourceTree = "<group>"; };
 		DB8DC81AD20B395557D783DA /* DictionaryDatabaseBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryDatabaseBuilder.swift; sourceTree = "<group>"; };
@@ -432,6 +437,7 @@
 				5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */,
 				0B2D193AE0A0EB6D678E9964 /* CloudSyncStateStore.swift */,
 				B65E2ED9B9B0619D268501FA /* CloudUserDataModels.swift */,
+				D8E727327737679FC09CB07D /* PhraseSharePack.swift */,
 				5E02E22713564B559C471CEE /* ProcessEntitlements.swift */,
 				4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */,
 				FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */,
@@ -535,6 +541,7 @@
 			isa = PBXGroup;
 			children = (
 				E50D6DFC84E6B94322309AF5 /* CloudUserDataModelsTests.swift */,
+				A850040170F27250CEED2EF1 /* PhraseSharePackTests.swift */,
 				F03882DC24F667E03BC04E7D /* SuppressedPhraseStoreTests.swift */,
 				E94452FDF698E1AC4A512804 /* UserDataArchiveTests.swift */,
 				7B186CA5B924FBF653433399 /* UserDataClearingTests.swift */,
@@ -1074,6 +1081,7 @@
 				8BD01F9CBA8CF49E13B52119 /* LanguageModeHUD.swift in Sources */,
 				B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */,
 				0900B59259AD85876B14603A /* PhraseOutputPattern.swift in Sources */,
+				22CC5F6302F212F5159CE886 /* PhraseSharePack.swift in Sources */,
 				A42FED9E91B02027F0F587BD /* Preferences.swift in Sources */,
 				10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */,
 				C79D565EE382F7DF72B0B86E /* PreferencesStore.swift in Sources */,
@@ -1170,6 +1178,8 @@
 				CA9939E6A9E47F07A760DF9C /* LanguageMode.swift in Sources */,
 				DFAB5EC9BDD65F6D06466116 /* MacVirtualKeyResolver.swift in Sources */,
 				E81211C53220DB0622314336 /* PhraseOutputPattern.swift in Sources */,
+				4C2697D4B248C11AC56E130B /* PhraseSharePack.swift in Sources */,
+				03A5AFB61D796C596C9EB50D /* PhraseSharePackTests.swift in Sources */,
 				24AB213BDD66DFC7BFAF095A /* Preferences.swift in Sources */,
 				8956540EC92A556EE2F15536 /* PreferencesController.swift in Sources */,
 				48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */,
