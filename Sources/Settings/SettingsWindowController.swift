@@ -276,6 +276,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         transferRow.orientation = .horizontal
         transferRow.spacing = 10
 
+        let shareRow = NSStackView(views: [
+            makeButton("匯出詞庫…", action: #selector(exportPhrasePack(_:))),
+            makeButton("匯入詞庫…", action: #selector(importPhrasePack(_:))),
+        ])
+        shareRow.orientation = .horizontal
+        shareRow.spacing = 10
+
         let clearRow = NSStackView(views: [
             makeButton("清除選字紀錄…", action: #selector(clearCharacterLearning(_:))),
             makeButton("清除使用者詞…", action: #selector(clearUserPhrases(_:))),
@@ -296,6 +303,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     title: "匯出與匯入",
                     controls: [transferRow],
                     note: "匯出為 JSON 檔。匯入會與現有資料合併：次數與時間取較大者，置頂取聯集，重複匯入同一個檔案不會重複累加。"
+                ),
+                SettingsPaneBuilder.section(
+                    title: "分享詞庫",
+                    controls: [shareRow],
+                    note: "把自己的詞庫做成可以給別人的檔案：包含所有自己造的詞，以及你刪掉了哪些內建詞。內建字典本身兩邊都一樣，不會複製進檔案裡。分享檔不含使用次數、時間與置頂，匯入是合併而非覆蓋，不會蓋掉對方原有的詞或次數。"
                 ),
                 SettingsPaneBuilder.section(
                     title: "清除",
@@ -491,10 +503,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 from: try Data(contentsOf: url)
             )
         } catch {
-            report(
-                failure: "無法匯入這個檔案",
-                informative: error.localizedDescription
-            )
+            var informative = error.localizedDescription
+            if case let UserDataArchiveError.unknownFormat(format) = error,
+               format == PhraseSharePack.formatIdentifier {
+                informative = "這是分享用的詞庫檔，請改用「匯入詞庫…」。"
+            }
+            report(failure: "無法匯入這個檔案", informative: informative)
             return
         }
 
@@ -516,6 +530,138 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         let done = NSAlert()
         done.messageText = "已匯入使用者資料"
+        done.informativeText = informative
+        done.addButton(withTitle: "好")
+        done.runModal()
+    }
+
+    @objc private func exportPhrasePack(_ sender: Any?) {
+        guard let pack = learning.exportPhrasePack() else {
+            report(
+                failure: "無法讀取詞庫",
+                informative: "資料庫目前無法讀取，沒有寫出任何檔案。"
+            )
+            return
+        }
+        guard !pack.isEmpty else {
+            report(
+                failure: "目前沒有可以分享的詞",
+                informative: "還沒有自己造的詞，也沒有刪除過任何內建詞。"
+            )
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = Self.phrasePackFileName()
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        do {
+            try pack.encoded().write(to: url, options: .atomic)
+        } catch {
+            report(
+                failure: "無法寫入詞庫檔",
+                informative: error.localizedDescription
+            )
+            return
+        }
+
+        let done = NSAlert()
+        done.messageText = "已匯出詞庫"
+        done.informativeText =
+            "包含 \(pack.phrases.count) 個自己造的詞與 \(pack.removedBuiltInPhrases.count) 個已刪除的內建詞。這個檔案可以直接給別人匯入。"
+        done.addButton(withTitle: "好")
+        done.runModal()
+    }
+
+    @objc private func importPhrasePack(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        let pack: PhraseSharePack
+        let issues: PhraseSharePackIssues
+        do {
+            (pack, issues) = try PhraseSharePack.decoded(
+                from: try Data(contentsOf: url)
+            )
+        } catch {
+            var informative = error.localizedDescription
+            if case PhraseSharePackError.personalBackupDocument = error {
+                informative = "這是個人資料備份檔，請改用上方「匯入…」。"
+            }
+            report(failure: "無法匯入這個詞庫檔", informative: informative)
+            return
+        }
+        guard !pack.isEmpty else {
+            report(
+                failure: "這個詞庫檔沒有可以匯入的詞",
+                informative: "檔案可以讀取，但裡面沒有任何有效的詞。"
+            )
+            return
+        }
+
+        // Applying someone else's removals hides words this Mac can still use,
+        // so it stays an explicit choice rather than a side effect of import.
+        let applyRemovals = NSButton(
+            checkboxWithTitle:
+                "同時隱藏對方刪除的 \(pack.removedBuiltInPhrases.count) 個內建詞",
+            target: nil,
+            action: nil
+        )
+        applyRemovals.state = .on
+        // An NSAlert accessory view is placed by frame, not by constraints.
+        applyRemovals.sizeToFit()
+        applyRemovals.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: max(applyRemovals.frame.width, 260),
+            height: applyRemovals.frame.height
+        )
+
+        let confirmation = NSAlert()
+        confirmation.messageText = "匯入這個詞庫？"
+        confirmation.informativeText =
+            "會把 \(pack.phrases.count) 個詞合併進你的使用者詞庫。你原有的詞、使用次數與置頂都會保留。"
+        if !pack.removedBuiltInPhrases.isEmpty {
+            confirmation.accessoryView = applyRemovals
+        }
+        confirmation.addButton(withTitle: "匯入")
+        confirmation.addButton(withTitle: "取消")
+        guard confirmation.runModal() == .alertFirstButtonReturn else {
+            return
+        }
+
+        let includesRemovals = !pack.removedBuiltInPhrases.isEmpty
+            && applyRemovals.state == .on
+        guard let summary = learning.importPhrasePack(
+            pack,
+            includesRemovals: includesRemovals
+        ) else {
+            report(
+                failure: "無法匯入這個詞庫",
+                informative: "資料庫目前無法寫入，既有資料仍然保留。"
+            )
+            return
+        }
+
+        reloadLists()
+
+        var informative =
+            "加入了 \(summary.mergedPhrases) 個詞，並隱藏了 \(summary.mergedSuppressions) 個內建詞。"
+        if !issues.isEmpty {
+            informative +=
+                "\n略過 \(issues.skippedPhrases + issues.skippedRemovals) 個無法辨識的詞。"
+        }
+        let done = NSAlert()
+        done.messageText = "已匯入詞庫"
         done.informativeText = informative
         done.addButton(withTitle: "好")
         done.runModal()
@@ -613,4 +759,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         return "JiukongZhuyin-UserData-\(formatter.string(from: Date())).json"
     }
 
+    private static func phrasePackFileName() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd"
+        return "JiukongZhuyin-Phrases-\(formatter.string(from: Date())).json"
+    }
 }

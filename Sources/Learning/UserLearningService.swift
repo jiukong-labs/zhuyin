@@ -549,6 +549,45 @@ final class UserLearningService: UserLearningProviding {
         }
     }
 
+    /// Builds the word list this Mac would hand to another person: the user's
+    /// own phrases plus the built-in phrases they removed. Selection counts,
+    /// timestamps, and pins are deliberately left out of a shared pack.
+    func exportPhrasePack(at date: Date = Date()) -> PhraseSharePack? {
+        queue.sync {
+            guard let store else {
+                return nil
+            }
+            do {
+                return PhraseSharePack.make(
+                    phrases: try store.allPhraseRecords(),
+                    removedBuiltInPhrases: try store.allSuppressedPhrases(),
+                    exportedAt: date
+                )
+            } catch {
+                Self.logger.error(
+                    "Could not read the phrase list for sharing; nothing was written."
+                )
+                return nil
+            }
+        }
+    }
+
+    /// Merges someone else's word list into this one. Nothing is replaced: a
+    /// shared phrase arrives with a zero count and no pin, so an existing
+    /// entry keeps the recipient's own statistics.
+    func importPhrasePack(
+        _ pack: PhraseSharePack,
+        includesRemovals: Bool,
+        at date: Date = Date()
+    ) -> UserDataMergeSummary? {
+        merge(
+            pack.archive(
+                importedAt: date,
+                includesRemovals: includesRemovals
+            )
+        )
+    }
+
     func merge(_ archive: UserDataArchive) -> UserDataMergeSummary? {
         queue.sync {
             guard let store else {
