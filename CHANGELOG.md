@@ -4,6 +4,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- The 「正在準備久空輸入法 x.y.z」 window shown while an update downloads no
+  longer displays AppKit's raw alert template. It was built as an `NSAlert`
+  but ordered on screen without a modal session, and an alert lays its panel
+  out only while it runs, so the window carried an unlocalized
+  `<Do not show this message again>` checkbox and two title-less buttons while
+  its progress bar never appeared. Download progress must stay modeless, so it
+  is now a plain panel that shows exactly its own title, message, and a
+  running progress bar. Present since 0.1.3.
+
 ## [0.1.16] - 2026-09-06
 
 ### Changed

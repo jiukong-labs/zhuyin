@@ -170,6 +170,7 @@
 		C0D2E8687417E57F472D6278 /* BopomofoComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5D0B1D084CF9D4932B4A8 /* BopomofoComponent.swift */; };
 		C22E96D6B767D834A219EA83 /* BopomofoInputSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 419FC6A3D62C119C46323262 /* BopomofoInputSession.swift */; };
 		C246AB747EDFD6E92B592CF2 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
+		C47A748C14AA776ADDC40212 /* UpdatePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E0343E61DE79606410917D /* UpdatePrompt.swift */; };
 		C68A40019CFABADFB86AFB8F /* CandidateRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE8FC4D53161F2C3FC97182 /* CandidateRanker.swift */; };
 		C784F5A3F57A6FB557A6B56E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE5DFE6245A13D720524505 /* main.swift */; };
 		C7906F10CB967DEFEBDF4FF9 /* UserDataListSorting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CD0B1E6E9D416A5928F87F /* UserDataListSorting.swift */; };
@@ -1198,6 +1199,7 @@
 				24B027157A39DC76BEF86D6C /* SuppressedPhraseStoreTests.swift in Sources */,
 				B11BA7A4A4CE188EFFBE8D6F /* UpdateController.swift in Sources */,
 				0953F6ECA2B01FF78B6B0628 /* UpdateInstaller.swift in Sources */,
+				C47A748C14AA776ADDC40212 /* UpdatePrompt.swift in Sources */,
 				28C87A93BE87685EF9970314 /* UpdateRelease.swift in Sources */,
 				0F69218859DCF22A1B408FE2 /* UpdateTests.swift in Sources */,
 				9D4AA24580EE764F6247165D /* UserDataArchive.swift in Sources */,

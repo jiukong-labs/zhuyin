@@ -188,6 +188,7 @@ targets:
       - path: Sources/Overlay/CursorIndicatorController.swift
       - path: Sources/Overlay/JiukongDebugLog.swift
       - path: Sources/Preferences
+      - path: Sources/Settings/UpdatePrompt.swift
       - path: Sources/Settings/UserDataListSorting.swift
       - path: Sources/Update
       - path: Tools/DictionaryBuilder/CNS11643Manifest.swift

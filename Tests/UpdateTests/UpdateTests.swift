@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 
@@ -318,6 +319,46 @@ private final class StubUpdateReleaseFetcher: UpdateReleaseFetching {
     ) {
         callCount += 1
         completion(result)
+    }
+}
+
+/// The preparation window is shown without a modal session. Building it from
+/// an NSAlert left AppKit's unlaid-out template on screen: an unlocalized
+/// `<Do not show this message again>` checkbox, title-less buttons, and a
+/// missing progress bar. Assert on the assembled window instead.
+final class UpdateProgressWindowTests: XCTestCase {
+    @MainActor
+    func testPreparationWindowShowsOnlyItsOwnTextAndRunningProgressBar() throws {
+        let window = UpdatePrompt.makeProgressWindow(
+            title: "正在準備久空輸入法 0.1.16",
+            message: "正在下載並驗證安裝套件。"
+        )
+        let contentView = try XCTUnwrap(window.contentView)
+        let views = Self.descendants(of: contentView)
+
+        let labels = views.compactMap { $0 as? NSTextField }
+        XCTAssertEqual(
+            labels.map(\.stringValue),
+            ["正在準備久空輸入法 0.1.16", "正在下載並驗證安裝套件。"]
+        )
+
+        let progress = try XCTUnwrap(
+            UpdatePrompt.progressIndicator(in: window)
+        )
+        XCTAssertTrue(progress.isIndeterminate)
+
+        XCTAssertTrue(
+            views.compactMap { $0 as? NSButton }.isEmpty,
+            "A modeless progress window must not carry alert buttons."
+        )
+        // A window sized from an unlaid-out template collapses; this one is
+        // sized from its own fitting size.
+        XCTAssertGreaterThanOrEqual(window.frame.width, 320)
+        XCTAssertGreaterThanOrEqual(window.frame.height, 150)
+    }
+
+    private static func descendants(of view: NSView) -> [NSView] {
+        view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
 }
 
