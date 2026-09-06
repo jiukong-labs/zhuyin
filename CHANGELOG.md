@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-09-06
+
 ### Changed
 
 - An open candidate chooser now keeps every arrow key. Left and Right move one
