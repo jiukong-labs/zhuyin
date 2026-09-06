@@ -304,6 +304,52 @@ final class UpdateControllerTests: XCTestCase {
         XCTAssertFalse(controller.checkAutomaticallyIfNeeded())
         XCTAssertEqual(fetcher.callCount, 0)
     }
+
+    /// A standing cached offer must never answer a requested check. The
+    /// settings button and the menu item ask for the newest release, so a
+    /// version published after the cache was written has to replace it.
+    func testRequestedCheckReplacesACachedOfferWithTheNewestRelease() throws {
+        let cached = UpdateRelease(
+            version: try XCTUnwrap(AppVersion("0.1.16")),
+            pageURL: try XCTUnwrap(URL(string: "https://github.com/jiukong-labs/zhuyin/releases/tag/v0.1.16"))
+        )
+        let newest = UpdateRelease(
+            version: try XCTUnwrap(AppVersion("0.1.17")),
+            pageURL: try XCTUnwrap(URL(string: "https://github.com/jiukong-labs/zhuyin/releases/tag/v0.1.17"))
+        )
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        let store = MemoryUpdateCheckStore()
+        store.lastAutomaticCheckDate = now.addingTimeInterval(-60)
+        store.cachedRelease = cached
+        let fetcher = StubUpdateReleaseFetcher(result: .success(newest))
+        let controller = UpdateController(
+            installedVersion: "0.1.15",
+            fetcher: fetcher,
+            store: store,
+            now: { now }
+        )
+
+        XCTAssertEqual(
+            controller.state,
+            .updateAvailable(release: cached, installedVersion: "0.1.15")
+        )
+
+        let checked = expectation(description: "requested check finished")
+        var reported: UpdateCheckState?
+        controller.checkNow { state in
+            reported = state
+            checked.fulfill()
+        }
+        wait(for: [checked], timeout: 1)
+
+        XCTAssertEqual(fetcher.callCount, 1)
+        XCTAssertEqual(
+            reported,
+            .updateAvailable(release: newest, installedVersion: "0.1.15")
+        )
+        XCTAssertEqual(controller.state, reported)
+        XCTAssertEqual(store.cachedRelease, newest)
+    }
 }
 
 private final class StubUpdateReleaseFetcher: UpdateReleaseFetching {

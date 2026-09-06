@@ -347,12 +347,13 @@ final class InputController: IMKInputController {
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: client())
 
-        let updater = UpdateController.shared
-        if case .updateAvailable = updater.state {
-            UpdatePrompt.present(updater.state)
-            return
-        }
-        updater.checkNow { state in
+        // A person asking to check is asking about the newest release, not the
+        // one this process happens to have cached. Reusing a cached offer kept
+        // pointing at whichever version was newest when it was stored, so a
+        // release published since then stayed invisible. Always re-fetch; the
+        // controller still falls back to the cached release when the request
+        // fails, so an offline Mac keeps its standing offer.
+        UpdateController.shared.checkNow { state in
             UpdatePrompt.present(state)
         }
     }

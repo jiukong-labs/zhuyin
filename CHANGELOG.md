@@ -4,6 +4,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Checking for updates now always reports the newest release. The settings
+  button and the menu item reused a cached offer whenever one was already
+  standing, so once a version had been cached the app kept offering exactly
+  that version and a release published afterwards stayed invisible — an
+  installation two releases behind could only be told about the next one. A
+  requested check now re-fetches; the controller still falls back to the
+  cached release when the request fails, so an offline Mac keeps its standing
+  offer.
+
 ## [0.1.17] - 2026-09-06
 
 ### Fixed

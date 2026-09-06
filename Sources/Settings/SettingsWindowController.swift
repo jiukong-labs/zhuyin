@@ -245,7 +245,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "軟體更新",
                     controls: [updateButton, statusLabel],
-                    note: "久空每天最多向 GitHub 檢查一次正式版本。發現新版後可自動下載、驗證並開啟 macOS 安裝程式；不會傳送輸入內容或使用者資料，安裝新版仍需管理員授權。"
+                    note: "久空每天最多自動向 GitHub 檢查一次正式版本；按上方按鈕會立即重新檢查，顯示的一律是目前最新的正式版。發現新版後可自動下載、驗證並開啟 macOS 安裝程式；不會傳送輸入內容或使用者資料，安裝新版仍需管理員授權。"
                 ),
             ]
         )
@@ -411,12 +411,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     @objc private func checkForUpdates(_ sender: Any?) {
-        let updater = UpdateController.shared
-        if case .updateAvailable = updater.state {
-            UpdatePrompt.present(updater.state)
-            return
-        }
-        updater.checkNow { state in
+        // A person asking to check is asking about the newest release, not the
+        // one this process happens to have cached. Reusing a cached offer kept
+        // pointing at whichever version was newest when it was stored, so a
+        // release published since then stayed invisible. Always re-fetch; the
+        // controller still falls back to the cached release when the request
+        // fails, so an offline Mac keeps its standing offer.
+        UpdateController.shared.checkNow { state in
             UpdatePrompt.present(state)
         }
     }
