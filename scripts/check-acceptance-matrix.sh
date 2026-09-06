@@ -28,6 +28,7 @@ typeset -a required=(
   sentence
   revision-arrows
   revision-candidate-rows
+  candidate-wrap
   revision-backspace
   revision-backspace-exhausted
   revision-forward-delete

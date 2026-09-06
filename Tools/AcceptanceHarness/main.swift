@@ -351,9 +351,9 @@ let scripts: [String: AcceptanceScript] = [
         expectation: "測試中請稍後"
     ),
     // Revision is intentionally two-stage. Left/Right first position the caret,
-    // Down opens candidates for the reading immediately before that caret,
-    // arrows then move the candidate highlight, and Up or Escape returns to
-    // windowless text positioning without moving the caret.
+    // Down opens candidates for the reading immediately before that caret, and
+    // every arrow then belongs to the chooser. Only Escape returns to
+    // windowless text positioning, and it leaves the caret where it was.
     "revision-arrows": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -363,18 +363,20 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_Space),
             Keystroke(kVK_LeftArrow),
             Keystroke(kVK_DownArrow), Keystroke(kVK_RightArrow),
-            Keystroke(kVK_UpArrow), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_UpArrow), Keystroke(kVK_Escape),
+            Keystroke(kVK_RightArrow),
             Keystroke(kVK_DownArrow), Keystroke(kVK_LeftArrow),
             Keystroke(kVK_Escape), Keystroke(kVK_LeftArrow),
             Keystroke(kVK_Return),
         ],
         expectation: "測試"
     ),
-    // Every row of the expanded grid must stay reachable. With 試 focused, two
-    // Downs open and expand the grid, a third moves to the second row, and Up
-    // must move back to the first row instead of closing the window. Slot 1 of
-    // that row then commits ㄕˋ's first candidate 是. If Up had closed the
-    // chooser, `1` would start a new ㄅ syllable and commit 測試ㄅ instead.
+    // Revision opens the same full grid ordinary typing opens: one Down, not
+    // two. With 試 focused, the second Down therefore moves one row down and
+    // Up moves back to it, leaving ㄕˋ's first row addressed by 1-9, so slot 1
+    // commits 是. Under the old two-stage chooser the second Down would only
+    // expand and Up would close the window, making `1` start a ㄅ syllable and
+    // commit 測試ㄅ instead.
     "revision-candidate-rows": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -384,11 +386,29 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_Space),
             Keystroke(kVK_LeftArrow), Keystroke(kVK_RightArrow),
             Keystroke(kVK_DownArrow), Keystroke(kVK_DownArrow),
-            Keystroke(kVK_DownArrow), Keystroke(kVK_UpArrow),
+            Keystroke(kVK_UpArrow),
             Keystroke(kVK_ANSI_1),
             Keystroke(kVK_Return),
         ],
         expectation: "測是"
+    ),
+    // Arrows wrap in both directions, so an open chooser can be circled
+    // without ever closing. ㄧㄡˇ fills three rows: from the first candidate
+    // Up wraps to the last row's first column and Down wraps back, then Left
+    // wraps to the very last candidate and Right wraps back. Return therefore
+    // still commits the first candidate 有. Without wrapping the same keys
+    // would end one row down and commit 羑.
+    "candidate-wrap": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_U), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_DownArrow),
+            Keystroke(kVK_UpArrow), Keystroke(kVK_DownArrow),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "有"
     ),
     // With 試 focused, Backspace restores the preceding 測 reading ㄘㄜˋ and
     // removes its tone. Return commits the remaining raw ㄘㄜ before 試.

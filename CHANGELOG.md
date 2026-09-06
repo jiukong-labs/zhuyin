@@ -4,6 +4,20 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- An open candidate chooser now keeps every arrow key. Left and Right move one
+  candidate and wrap around the ends of the list; Up and Down move one row,
+  wrap between the first and last rows, and land on the last candidate when
+  the destination row is too short to hold the current column. The `1`–`9`
+  slots still address the highlighted row, so the keys reach every candidate
+  by circling in either direction. The chooser is now left only by choosing a
+  candidate, by Escape, or with the mouse: Up no longer returns to text
+  positioning.
+- Revising an existing character opens the same full candidate grid ordinary
+  typing opens. Its Down Arrow used to show a single row that a second Down
+  expanded, which made the two chooser paths behave differently for no reason.
+
 ## [0.1.18] - 2026-09-06
 
 ### Fixed

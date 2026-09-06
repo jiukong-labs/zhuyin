@@ -41,7 +41,8 @@ leaving the default gate.
 | Exact built-in phrase replacement | `builtin-phrase` | `測試` |
 | Longest exact sentence replacement | `sentence` | `測試中請稍後` |
 | Revision caret and candidate arrows remain two-stage | `revision-arrows` | unchanged `測試` |
-| Up moves between expanded candidate rows before it returns to positioning | `revision-candidate-rows` | `測是` |
+| Revision opens the full candidate grid with one Down, and rows move with Up/Down | `revision-candidate-rows` | `測是` |
+| Candidate arrows wrap in both directions instead of stopping at an edge | `candidate-wrap` | `有` |
 | Backspace edits the reading left of the revision caret | `revision-backspace` | `ㄘㄜ試` |
 | Backspace keeps working after a revised reading is fully erased | `revision-backspace-exhausted` | `ㄨㄛ試` |
 | Forward Delete edits the reading right of the revision caret | `revision-forward-delete` | `測ㄕ` |

@@ -88,16 +88,9 @@ struct CandidateSession: Equatable {
         presentationMode == .expanded
     }
 
-    /// True while the expanded grid still shows a row above the highlight.
-    /// Up moves the highlight for as long as this holds, so leaving candidate
-    /// choosing with Up stays possible only from the grid's first row.
-    var hasCandidateRowAbove: Bool {
-        isExpanded && highlightedIndex >= Self.expandedColumnCount
-    }
-
-    /// Ordinary compact conversion is windowless. Revision choosing may use a
-    /// compact, visible nine-candidate row after its first Down Arrow and only
-    /// expands to the full grid after a second Down Arrow.
+    /// Ordinary compact conversion is windowless. Revision choosing always
+    /// shows the full grid, because its Down Arrow opens the same chooser
+    /// ordinary typing gets.
     var presentsCandidatePanel: Bool {
         isExpanded || revisionMode == .choosing
     }
@@ -159,15 +152,6 @@ struct CandidateSession: Equatable {
     }
 
     @discardableResult
-    mutating func beginRevisionChoosing() -> Bool {
-        guard revisionFocus != nil, !isRevisionChoosing else {
-            return false
-        }
-        isRevisionChoosing = true
-        return true
-    }
-
-    @discardableResult
     mutating func collapse() -> Bool {
         guard presentationMode == .expanded else {
             return false
@@ -193,20 +177,21 @@ struct CandidateSession: Equatable {
         let targetIndex: Int
 
         switch navigation {
+        // Arrows inside an open chooser only ever move the highlight, so all
+        // four wrap rather than stopping at an edge: the chooser is left by
+        // choosing a candidate, by Escape, or with the mouse.
         case .previous:
-            targetIndex = max(candidates.startIndex, highlightedIndex - 1)
+            targetIndex = highlightedIndex == candidates.startIndex
+                ? lastIndex
+                : highlightedIndex - 1
         case .next:
-            targetIndex = min(lastIndex, highlightedIndex + 1)
+            targetIndex = highlightedIndex == lastIndex
+                ? candidates.startIndex
+                : highlightedIndex + 1
         case .up:
-            let candidateIndex = highlightedIndex - Self.expandedColumnCount
-            targetIndex = candidates.indices.contains(candidateIndex)
-                ? candidateIndex
-                : highlightedIndex
+            targetIndex = index(rowsBelow: -1)
         case .down:
-            let candidateIndex = highlightedIndex + Self.expandedColumnCount
-            targetIndex = candidates.indices.contains(candidateIndex)
-                ? candidateIndex
-                : highlightedIndex
+            targetIndex = index(rowsBelow: 1)
         case .first:
             targetIndex = candidates.startIndex
         case .last:
@@ -228,6 +213,22 @@ struct CandidateSession: Equatable {
 
         highlightedIndex = targetIndex
         return candidates[highlightedIndex]
+    }
+
+    /// The highlight one row away, wrapping past the first and last rows.
+    ///
+    /// A shorter destination row has no cell in the current column, so the
+    /// move lands on that row's last candidate instead of refusing to move.
+    private func index(rowsBelow offset: Int) -> Int {
+        let columns = Self.expandedColumnCount
+        let lastIndex = candidates.index(before: candidates.endIndex)
+        let lastRow = lastIndex / columns
+        let column = highlightedIndex % columns
+        let rowCount = lastRow + 1
+        let row = (
+            (highlightedIndex / columns) + offset + rowCount
+        ) % rowCount
+        return min((row * columns) + column, lastIndex)
     }
 
     func candidate(atSelectionKeyIndex selectionKeyIndex: Int) -> Candidate? {

@@ -181,9 +181,7 @@ final class InputController: IMKInputController {
             modifierFlags: event.modifierFlags,
             hasRevisionCaret: isRevisionCaretActive,
             isChoosingCandidates:
-                candidateSession?.revisionMode == .choosing,
-            hasCandidateRowAbove:
-                candidateSession?.hasCandidateRowAbove ?? false
+                candidateSession?.revisionMode == .choosing
         ), handleCompositionRevisionCandidateCommand(
             command,
             inputClient: inputClient
@@ -817,12 +815,6 @@ final class InputController: IMKInputController {
                 inputClient: inputClient
             )
             return true
-        case .returnToPositioning:
-            guard candidateSession?.revisionMode == .choosing else {
-                return false
-            }
-            returnToRevisionPositioning(inputClient: inputClient)
-            return true
         }
     }
 
@@ -867,7 +859,7 @@ final class InputController: IMKInputController {
             }) {
                 session.updateHighlightedCandidate(currentCandidate.id)
             }
-            _ = session.beginRevisionChoosing()
+            _ = session.expand()
 
             lastCandidateAnchor = nil
             revisionCandidateUnitID = unit.id

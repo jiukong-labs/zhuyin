@@ -46,15 +46,13 @@ enum CompositionCursorCommand: Equatable {
 
 enum CompositionRevisionCandidateCommand: Equatable {
     case openCandidates
-    case returnToPositioning
 }
 
 /// Down opens candidates only after a revision caret has been positioned.
-/// While those candidates are open, Up first moves the highlight to the row
-/// above and returns to text positioning only from the grid's first row, so
-/// every displayed row stays reachable. Keeping this route ahead of ordinary
-/// candidate navigation gives the two modes an explicit, reversible boundary;
-/// Escape returns from any row.
+/// Once they are open every arrow belongs to the chooser, which is left by
+/// choosing a candidate, by Escape, or with the mouse. Keeping this route
+/// ahead of ordinary candidate navigation stops the opening Down from also
+/// moving the highlight it just placed.
 enum CompositionRevisionCandidateCommandRouter {
     private static let rejectedModifiers: NSEvent.ModifierFlags = [
         .command,
@@ -67,8 +65,7 @@ enum CompositionRevisionCandidateCommandRouter {
         keyCode: UInt16,
         modifierFlags: NSEvent.ModifierFlags,
         hasRevisionCaret: Bool,
-        isChoosingCandidates: Bool,
-        hasCandidateRowAbove: Bool
+        isChoosingCandidates: Bool
     ) -> CompositionRevisionCandidateCommand? {
         let modifiers = modifierFlags.intersection(.deviceIndependentFlagsMask)
         guard modifiers.intersection(rejectedModifiers).isEmpty else {
@@ -78,8 +75,6 @@ enum CompositionRevisionCandidateCommandRouter {
         switch Int(keyCode) {
         case kVK_DownArrow where hasRevisionCaret && !isChoosingCandidates:
             return .openCandidates
-        case kVK_UpArrow where isChoosingCandidates && !hasCandidateRowAbove:
-            return .returnToPositioning
         default:
             return nil
         }

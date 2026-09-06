@@ -92,7 +92,7 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         XCTAssertNil(cursorCommand(kVK_ANSI_A, modifiers: []))
     }
 
-    func testDownOpensRevisionCandidatesAndUpReturnsToPositioning() {
+    func testDownOpensRevisionCandidatesOnlyWhileTheyAreClosed() {
         XCTAssertEqual(
             revisionCandidateCommand(
                 kVK_DownArrow,
@@ -102,50 +102,29 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
             ),
             .openCandidates
         )
-        XCTAssertEqual(
+        XCTAssertNil(
             revisionCandidateCommand(
-                kVK_UpArrow,
+                kVK_DownArrow,
                 modifiers: [.function, .numericPad],
                 hasRevisionCaret: true,
                 isChoosingCandidates: true
-            ),
-            .returnToPositioning
+            )
         )
     }
 
-    /// Up belongs to the candidate grid for as long as the highlight has a row
-    /// above it, so every displayed row can be reached without leaving
-    /// candidate choosing. Only the first row hands Up back to positioning.
-    func testUpStaysInTheGridWhileARowAboveTheHighlightRemains() {
-        XCTAssertNil(
-            revisionCandidateCommand(
-                kVK_UpArrow,
-                modifiers: [.function],
-                hasRevisionCaret: true,
-                isChoosingCandidates: true,
-                hasCandidateRowAbove: true
+    /// An open chooser owns every arrow, so this router must never claim Up:
+    /// the highlight wraps instead, and Escape is what returns to positioning.
+    func testUpIsAlwaysLeftToTheCandidateGrid() {
+        for isChoosing in [true, false] {
+            XCTAssertNil(
+                revisionCandidateCommand(
+                    kVK_UpArrow,
+                    modifiers: [.function],
+                    hasRevisionCaret: true,
+                    isChoosingCandidates: isChoosing
+                )
             )
-        )
-        XCTAssertEqual(
-            revisionCandidateCommand(
-                kVK_UpArrow,
-                modifiers: [.function],
-                hasRevisionCaret: true,
-                isChoosingCandidates: true,
-                hasCandidateRowAbove: false
-            ),
-            .returnToPositioning
-        )
-        XCTAssertEqual(
-            revisionCandidateCommand(
-                kVK_DownArrow,
-                modifiers: [.function],
-                hasRevisionCaret: true,
-                isChoosingCandidates: false,
-                hasCandidateRowAbove: true
-            ),
-            .openCandidates
-        )
+        }
     }
 
     func testRevisionCandidateModeOwnsOnlyItsMatchingVerticalArrow() {
@@ -246,15 +225,13 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         _ keyCode: Int,
         modifiers: NSEvent.ModifierFlags,
         hasRevisionCaret: Bool,
-        isChoosingCandidates: Bool,
-        hasCandidateRowAbove: Bool = false
+        isChoosingCandidates: Bool
     ) -> CompositionRevisionCandidateCommand? {
         CompositionRevisionCandidateCommandRouter.command(
             keyCode: UInt16(keyCode),
             modifierFlags: modifiers,
             hasRevisionCaret: hasRevisionCaret,
-            isChoosingCandidates: isChoosingCandidates,
-            hasCandidateRowAbove: hasCandidateRowAbove
+            isChoosingCandidates: isChoosingCandidates
         )
     }
 }

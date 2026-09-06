@@ -116,22 +116,17 @@ final class CandidateSessionTests: XCTestCase {
             "定位 1／3：測　ㄘㄜˋ　⇧←／→ 造詞　⌫ 改左字音　Del 改右字音　↓ 選字"
         )
 
-        XCTAssertTrue(session.beginRevisionChoosing())
+        // Opening revision candidates goes straight to the full grid, the
+        // same chooser ordinary typing opens.
+        XCTAssertTrue(session.expand())
         XCTAssertEqual(session.revisionMode, .choosing)
-        XCTAssertEqual(session.presentationMode, .compact)
+        XCTAssertEqual(session.presentationMode, .expanded)
         XCTAssertEqual(
             session.revisionDisplayText,
             "選字 1／3：測　←／→ 選候選　↑／↓ 換列　⌫ 改左字音　Del 改右字音　Esc 返回"
         )
         XCTAssertTrue(session.presentsCandidatePanel)
-
-        XCTAssertTrue(session.expand())
-        XCTAssertEqual(session.presentationMode, .expanded)
-        XCTAssertEqual(session.revisionMode, .choosing)
-
-        XCTAssertTrue(session.collapse())
-        XCTAssertEqual(session.revisionMode, .choosing)
-        XCTAssertFalse(session.collapse())
+        XCTAssertFalse(session.expand())
     }
 
     func testRevisionInteractionRoutesArrowsByCurrentMode() throws {
@@ -171,7 +166,7 @@ final class CandidateSessionTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(session.beginRevisionChoosing())
+        XCTAssertTrue(session.expand())
         XCTAssertFalse(
             CandidateRevisionInteractionPolicy.routesCompositionCursor(
                 candidateSession: session
@@ -298,10 +293,14 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.navigate(.last).text, "2")
     }
 
-    func testClampsCandidateNavigationAtListAndPageBoundaries() throws {
+    /// Left and Right wrap around the ends of the list. Page jumps keep
+    /// clamping, because they are a way to travel a long list rather than a
+    /// way to walk between neighbouring candidates.
+    func testWrapsLeftAndRightWhilePageJumpsStillClamp() throws {
         var session = try makeSession(count: 20)
 
-        XCTAssertEqual(session.navigate(.previous).text, "0")
+        XCTAssertEqual(session.navigate(.previous).text, "19")
+        XCTAssertEqual(session.navigate(.next).text, "0")
         XCTAssertEqual(session.navigate(.previousPage).text, "0")
         XCTAssertEqual(session.navigate(.nextPage).text, "9")
 
@@ -310,7 +309,6 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.navigate(.nextPage).text, "15")
 
         session.updateHighlightedCandidate(session.candidates[19].id)
-        XCTAssertEqual(session.navigate(.next).text, "19")
         XCTAssertEqual(session.navigate(.nextPage).text, "19")
     }
 
@@ -327,43 +325,34 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.navigate(.previousPage).text, "9")
 
         session.updateHighlightedCandidate(session.candidates[98].id)
-        XCTAssertEqual(session.navigate(.down).text, "98")
+        XCTAssertEqual(session.navigate(.down).text, "99")
         XCTAssertEqual(session.navigate(.nextPage).text, "99")
     }
 
-    func testExpandedVerticalNavigationStaysInTheSameColumn() throws {
+    /// Up and Down keep their column, wrap past the first and last rows, and
+    /// land on the last candidate when the destination row is too short to
+    /// hold that column. Twenty-eight candidates leave a final row of one.
+    func testWrapsVerticalNavigationAndLandsOnShortRows() throws {
         var session = try makeSession(count: 28)
         _ = session.expand()
 
         session.updateHighlightedCandidate(session.candidates[8].id)
-        XCTAssertEqual(session.navigate(.up).text, "8")
+        XCTAssertEqual(session.navigate(.up).text, "27")
+        // The short final row holds only column 0, so coming back down wraps
+        // from that column rather than returning to column 8.
+        XCTAssertEqual(session.navigate(.down).text, "0")
 
         session.updateHighlightedCandidate(session.candidates[18].id)
         XCTAssertEqual(session.navigate(.down).text, "27")
 
         session.updateHighlightedCandidate(session.candidates[26].id)
-        XCTAssertEqual(session.navigate(.down).text, "26")
-    }
+        XCTAssertEqual(session.navigate(.down).text, "27")
 
-    /// The expanded grid reports whether Up still has a row to move to. Only a
-    /// highlight in the first row leaves that key free to return to revision
-    /// positioning; a compact single row never claims it.
-    func testReportsWhetherTheExpandedGridHasARowAboveTheHighlight() throws {
-        var session = try makeSession(count: 28)
+        session.updateHighlightedCandidate(session.candidates[4].id)
+        XCTAssertEqual(session.navigate(.up).text, "27")
 
-        XCTAssertFalse(session.hasCandidateRowAbove)
-
-        session.updateHighlightedCandidate(session.candidates[9].id)
-        XCTAssertFalse(session.hasCandidateRowAbove)
-
-        _ = session.expand()
-        XCTAssertTrue(session.hasCandidateRowAbove)
-
-        session.updateHighlightedCandidate(session.candidates[27].id)
-        XCTAssertTrue(session.hasCandidateRowAbove)
-
-        session.updateHighlightedCandidate(session.candidates[8].id)
-        XCTAssertFalse(session.hasCandidateRowAbove)
+        session.updateHighlightedCandidate(session.candidates[13].id)
+        XCTAssertEqual(session.navigate(.up).text, "4")
     }
 
     func testNumberSelectionUsesTheHighlightedNineCandidatePage() throws {
