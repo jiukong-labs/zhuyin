@@ -27,6 +27,7 @@ typeset -a required=(
   builtin-phrase
   sentence
   revision-arrows
+  revision-candidate-rows
   revision-backspace
   revision-backspace-exhausted
   revision-forward-delete

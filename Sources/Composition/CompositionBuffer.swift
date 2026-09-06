@@ -132,7 +132,7 @@ struct CompositionRevisionFocus: Equatable {
     }
 
     var choosingDisplayText: String {
-        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　⌫ 改左字音　Del 改右字音　↑／Esc 返回"
+        "選字 \(readingPosition)／\(readingCount)：\(text)　←／→ 選候選　↑／↓ 換列　⌫ 改左字音　Del 改右字音　Esc 返回"
     }
 }
 

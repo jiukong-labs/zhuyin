@@ -121,7 +121,7 @@ final class CandidateSessionTests: XCTestCase {
         XCTAssertEqual(session.presentationMode, .compact)
         XCTAssertEqual(
             session.revisionDisplayText,
-            "選字 1／3：測　←／→ 選候選　⌫ 改左字音　Del 改右字音　↑／Esc 返回"
+            "選字 1／3：測　←／→ 選候選　↑／↓ 換列　⌫ 改左字音　Del 改右字音　Esc 返回"
         )
         XCTAssertTrue(session.presentsCandidatePanel)
 
@@ -343,6 +343,27 @@ final class CandidateSessionTests: XCTestCase {
 
         session.updateHighlightedCandidate(session.candidates[26].id)
         XCTAssertEqual(session.navigate(.down).text, "26")
+    }
+
+    /// The expanded grid reports whether Up still has a row to move to. Only a
+    /// highlight in the first row leaves that key free to return to revision
+    /// positioning; a compact single row never claims it.
+    func testReportsWhetherTheExpandedGridHasARowAboveTheHighlight() throws {
+        var session = try makeSession(count: 28)
+
+        XCTAssertFalse(session.hasCandidateRowAbove)
+
+        session.updateHighlightedCandidate(session.candidates[9].id)
+        XCTAssertFalse(session.hasCandidateRowAbove)
+
+        _ = session.expand()
+        XCTAssertTrue(session.hasCandidateRowAbove)
+
+        session.updateHighlightedCandidate(session.candidates[27].id)
+        XCTAssertTrue(session.hasCandidateRowAbove)
+
+        session.updateHighlightedCandidate(session.candidates[8].id)
+        XCTAssertFalse(session.hasCandidateRowAbove)
     }
 
     func testNumberSelectionUsesTheHighlightedNineCandidatePage() throws {

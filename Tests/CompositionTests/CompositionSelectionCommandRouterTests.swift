@@ -113,6 +113,41 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         )
     }
 
+    /// Up belongs to the candidate grid for as long as the highlight has a row
+    /// above it, so every displayed row can be reached without leaving
+    /// candidate choosing. Only the first row hands Up back to positioning.
+    func testUpStaysInTheGridWhileARowAboveTheHighlightRemains() {
+        XCTAssertNil(
+            revisionCandidateCommand(
+                kVK_UpArrow,
+                modifiers: [.function],
+                hasRevisionCaret: true,
+                isChoosingCandidates: true,
+                hasCandidateRowAbove: true
+            )
+        )
+        XCTAssertEqual(
+            revisionCandidateCommand(
+                kVK_UpArrow,
+                modifiers: [.function],
+                hasRevisionCaret: true,
+                isChoosingCandidates: true,
+                hasCandidateRowAbove: false
+            ),
+            .returnToPositioning
+        )
+        XCTAssertEqual(
+            revisionCandidateCommand(
+                kVK_DownArrow,
+                modifiers: [.function],
+                hasRevisionCaret: true,
+                isChoosingCandidates: false,
+                hasCandidateRowAbove: true
+            ),
+            .openCandidates
+        )
+    }
+
     func testRevisionCandidateModeOwnsOnlyItsMatchingVerticalArrow() {
         XCTAssertNil(
             revisionCandidateCommand(
@@ -211,13 +246,15 @@ final class CompositionSelectionCommandRouterTests: XCTestCase {
         _ keyCode: Int,
         modifiers: NSEvent.ModifierFlags,
         hasRevisionCaret: Bool,
-        isChoosingCandidates: Bool
+        isChoosingCandidates: Bool,
+        hasCandidateRowAbove: Bool = false
     ) -> CompositionRevisionCandidateCommand? {
         CompositionRevisionCandidateCommandRouter.command(
             keyCode: UInt16(keyCode),
             modifierFlags: modifiers,
             hasRevisionCaret: hasRevisionCaret,
-            isChoosingCandidates: isChoosingCandidates
+            isChoosingCandidates: isChoosingCandidates,
+            hasCandidateRowAbove: hasCandidateRowAbove
         )
     }
 }

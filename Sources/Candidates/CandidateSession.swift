@@ -88,6 +88,13 @@ struct CandidateSession: Equatable {
         presentationMode == .expanded
     }
 
+    /// True while the expanded grid still shows a row above the highlight.
+    /// Up moves the highlight for as long as this holds, so leaving candidate
+    /// choosing with Up stays possible only from the grid's first row.
+    var hasCandidateRowAbove: Bool {
+        isExpanded && highlightedIndex >= Self.expandedColumnCount
+    }
+
     /// Ordinary compact conversion is windowless. Revision choosing may use a
     /// compact, visible nine-candidate row after its first Down Arrow and only
     /// expands to the full grid after a second Down Arrow.

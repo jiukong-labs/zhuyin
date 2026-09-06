@@ -4,6 +4,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Every row of the expanded revision candidate grid can now be selected with
+  Up. Up previously always closed the chooser, so a highlight below the first
+  row could only be moved back one cell at a time with Left. It now moves the
+  highlight one row up while a row above it remains, and returns to text
+  positioning only from the first row; Down still moves one row down. The
+  displayed `1`–`9` continue to address the highlighted row, so a number key
+  commits from the row just moved to. Escape is unchanged and still returns
+  from any row.
+
 ## [0.1.15] - 2026-09-05
 
 ### Added

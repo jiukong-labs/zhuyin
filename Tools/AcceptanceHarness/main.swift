@@ -370,6 +370,26 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試"
     ),
+    // Every row of the expanded grid must stay reachable. With 試 focused, two
+    // Downs open and expand the grid, a third moves to the second row, and Up
+    // must move back to the first row instead of closing the window. Slot 1 of
+    // that row then commits ㄕˋ's first candidate 是. If Up had closed the
+    // chooser, `1` would start a new ㄅ syllable and commit 測試ㄅ instead.
+    "revision-candidate-rows": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
+            Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_DownArrow), Keystroke(kVK_DownArrow),
+            Keystroke(kVK_DownArrow), Keystroke(kVK_UpArrow),
+            Keystroke(kVK_ANSI_1),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測是"
+    ),
     // With 試 focused, Backspace restores the preceding 測 reading ㄘㄜˋ and
     // removes its tone. Return commits the remaining raw ㄘㄜ before 試.
     "revision-backspace": AcceptanceScript(

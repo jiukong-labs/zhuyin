@@ -610,7 +610,7 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.revisionFocus(for: second.id)?.choosingDisplayText,
-            "選字 2／2：試　←／→ 選候選　⌫ 改左字音　Del 改右字音　↑／Esc 返回"
+            "選字 2／2：試　←／→ 選候選　↑／↓ 換列　⌫ 改左字音　Del 改右字音　Esc 返回"
         )
         XCTAssertNil(buffer.revisionFocus(for: UUID()))
     }

@@ -181,7 +181,9 @@ final class InputController: IMKInputController {
             modifierFlags: event.modifierFlags,
             hasRevisionCaret: isRevisionCaretActive,
             isChoosingCandidates:
-                candidateSession?.revisionMode == .choosing
+                candidateSession?.revisionMode == .choosing,
+            hasCandidateRowAbove:
+                candidateSession?.hasCandidateRowAbove ?? false
         ), handleCompositionRevisionCandidateCommand(
             command,
             inputClient: inputClient
