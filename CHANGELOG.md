@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-09-06
+
 ### Changed
 
 - Every row of the expanded revision candidate grid can now be selected with
