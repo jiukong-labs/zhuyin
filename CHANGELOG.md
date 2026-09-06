@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-09-06
+
 ### Fixed
 
 - Checking for updates now always reports the newest release. The settings
