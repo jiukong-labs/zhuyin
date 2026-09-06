@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-09-06
+
 ### Fixed
 
 - The 「正在準備久空輸入法 x.y.z」 window shown while an update downloads no
