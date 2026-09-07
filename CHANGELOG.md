@@ -4,6 +4,24 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-09-07
+
+### Added
+
+- Integrate the maintainer-provided, ChatGPT-authored expanded phrase pack.
+  Review corrected or normalized 378 entries; after deduplication, 2,070
+  phrase/reading pairs were added, bringing the first-party lexicon to 5,368
+  entries. All 4,377 corrected input entries are represented in the bundled
+  dictionary; 14 existing government entries keep their original attribution.
+- Record the input file hash and every spelling/reading correction in
+  `Data/JiukongPhrases/import-20260907.md` and its correction table. Examples
+  include 平安, 晚安, 肚子, 發行, 機制, 回憶, and 紮實.
+
+### Changed
+
+- Rebuild the default dictionary and its first-party phrase evidence. Captured
+  selection counts are unchanged; ties can reorder with the expanded lexicon.
+
 ## [0.1.20] - 2026-09-07
 
 ### Added

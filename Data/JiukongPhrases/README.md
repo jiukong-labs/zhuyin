@@ -15,3 +15,6 @@ candidate-order signal. Government-sourced phrase datasets are explicitly
 excluded from that count, and the signal is not described as corpus frequency.
 Additions should be reviewed for Traditional Chinese spelling, reading
 accuracy, and practical usefulness.
+
+The 2026-09-07 maintainer-provided ChatGPT phrase-pack additions and review
+record are documented in [import-20260907.md](import-20260907.md).
