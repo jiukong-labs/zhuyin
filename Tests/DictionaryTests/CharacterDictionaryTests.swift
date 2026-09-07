@@ -132,8 +132,8 @@ final class CharacterDictionaryTests: XCTestCase {
             try dictionary.metadataValue(for: "first_party_character_entries"),
             "4"
         )
-        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "2137")
-        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "2129")
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "3298")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "3277")
         XCTAssertEqual(
             try dictionary.metadataValue(for: "default_character_ranking_entries"),
             "804"
@@ -154,13 +154,13 @@ final class CharacterDictionaryTests: XCTestCase {
             try dictionary.metadataValue(
                 for: "first_party_attested_character_readings"
             ),
-            "1259"
+            "1408"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(
                 for: "first_party_character_reading_attestations"
             ),
-            "5185"
+            "7657"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "phrase_dataset_name"),
@@ -215,8 +215,8 @@ final class CharacterDictionaryTests: XCTestCase {
                 .firstPartyPhraseCount
         }
 
-        XCTAssertEqual(try count("意", reading: "ㄧˋ"), 11)
-        XCTAssertEqual(try count("食", reading: "ㄕˊ"), 4)
+        XCTAssertEqual(try count("意", reading: "ㄧˋ"), 18)
+        XCTAssertEqual(try count("食", reading: "ㄕˊ"), 7)
         XCTAssertEqual(try count("食", reading: "ㄧˋ"), 0)
         XCTAssertEqual(try count("射", reading: "ㄧˋ"), 0)
     }

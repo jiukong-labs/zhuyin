@@ -4,6 +4,21 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- The built-in phrase lexicon grew from 2,137 to 3,298 entries, taking in
+  1,161 reviewed everyday words: family and daily life, food and shopping,
+  travel and directions, work and study, computing and text input, health and
+  weather, feelings, and common requests and replies. Each added reading was
+  checked against the pinned CNS11643 character readings and the project's own
+  supplemental table, and 216 readings were corrected to the Taiwan reading
+  before inclusion — mostly neutral-tone spellings that Taiwan Mandarin keeps
+  toned (「朋友」as `ㄆㄥˊ ㄧㄡˇ`, 「上面」as `ㄕㄤˋ ㄇㄧㄢˋ`), plus a
+  handful of outright non-Taiwan readings (「廣播」`ㄅㄛˋ` not `ㄅㄛ`,
+  「突然」`ㄊㄨˊ` not `ㄊㄨ`, 「理髮」`ㄈㄚˇ` not `ㄈㄚˋ`). One word,
+  「幹嗎」, was left out: Taiwan writes it 「幹嘛」and `ㄇㄚˊ` is not an
+  attested reading of 嗎.
+
 ## [0.1.19] - 2026-09-06
 
 ### Changed

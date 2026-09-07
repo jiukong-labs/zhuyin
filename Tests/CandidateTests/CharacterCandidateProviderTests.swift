@@ -321,11 +321,11 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(
             Array(texts.prefix(16)),
             [
-                "意", "譯", "議", "益", "施", "異", "義", "憶",
-                // 藝 rises on the phrase-attestation tier once the reviewed
-                // lexicon carries 「藝能」; the captured-selection order above
-                // it is unchanged.
-                "藝", "易", "疫", "翌", "逸", "溢", "億", "毅",
+                "意", "譯", "議", "益", "施", "異",
+                // 易 rises on the phrase-attestation tier once the reviewed
+                // lexicon carries 「容易」「交易」「貿易」; the
+                // captured-selection order above it is unchanged.
+                "易", "義", "憶", "藝", "疫", "翌", "逸", "溢", "億", "毅",
             ]
         )
     }
