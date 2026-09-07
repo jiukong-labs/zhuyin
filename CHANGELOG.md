@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-09-07
+
 ### Added
 
 - The built-in phrase lexicon grew from 2,137 to 3,298 entries, taking in
