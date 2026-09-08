@@ -1,51 +1,51 @@
 # Jiukong Zhuyin 久空輸入法
 
-> 久空輸入法 — A Traditional Chinese Zhuyin input method for macOS.
-
 久空輸入法是一套為 macOS 設計的繁體中文注音輸入法，著重於快速而實用的候選字、單按 Shift 切換中英文，以及離線優先、可透過 iCloud 自動還原的個人選字與詞組學習。
 
-Jiukong Zhuyin is a Traditional Chinese Zhuyin input method for macOS, focused on fast and practical candidate selection, single-Shift Chinese/English switching, and offline-first character and phrase learning with optional iCloud restoration.
+> 開發狀態：選字、使用者詞與游標外觀偏好已具備 CloudKit 私有資料庫同步實作；正式連線須使用 Apple Developer Team 簽署、既有的 CloudKit 容器與已部署的正式環境資料結構。
 
-> 開發狀態：選字、使用者詞與游標外觀偏好已具備 CloudKit 私有資料庫同步實作；正式連線須使用 Apple Developer Team 簽署、既有 container 與已部署的 production schema。
+## ☕ 支持久空輸入法
+
+如果你喜歡久空輸入法，或希望支持後續持續開發與維護，可以透過 Buy Me a Coffee 支持久空實驗室：
+
+[☕ Buy Me a Coffee — 支持久空實驗室](https://buymeacoffee.com/jiukong)
 
 ## AI 製作聲明
 
-久空輸入法完全由 AI 製作，包括產品設計、程式碼、測試、文件與本專案原創的內建詞表。第三方平台、工具與官方標準資料不屬於本專案的創作內容，其範圍與授權另見 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
-
-Jiukong Zhuyin is made entirely by AI, including its product design, source code, tests, documentation, and original built-in lexicon. Third-party platforms, tools, and official standards data are not project-authored content; their scope and licenses are documented in [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+久空輸入法完全由 AI 製作，包括產品設計、程式碼、測試、文件與本專案原創的內建詞表。第三方平台、工具與官方標準資料不屬於本專案的創作內容，其範圍與授權另見 [第三方資料與授權聲明](THIRD_PARTY_NOTICES.md)。
 
 ## 原創開發原則
 
 久空輸入法採完全自主設計：輸入法核心、組字流程、候選排序、學習機制、資料庫格式、介面與第一方詞表，均針對本專案自行設計與實作，不複製、移植或改寫其他輸入法的程式碼、演算法實作或詞庫資料。這是本專案後續開發的永久原則。
 
-例外範圍固定為 Apple 平台 SDK／系統程式庫、僅供開發使用的工具、數位發展部公布的 CNS11643 官方字碼與注音資料，以及教育部的常用／次常用國字標準字體表、《成語典》與《重編國語辭典修訂本》。教育部字表只用於粗略的候選字分級；後兩者只保留已釘選四字條目的原文詞目與讀音，作為獨立標示的政府來源詞資料，不屬於第一方詞表或 AI 創作內容。各項版本、轉換方式與授權列於 [Third-Party Notices](THIRD_PARTY_NOTICES.md)，未經明確同意不再擴大例外。
+例外範圍固定為 Apple 平台 SDK／系統程式庫、僅供開發使用的工具、數位發展部公布的 CNS11643 官方字碼與注音資料，以及教育部的常用／次常用國字標準字體表、《成語典》與《重編國語辭典修訂本》。教育部字表只用於粗略的候選字分級；後兩者只保留已釘選四字條目的原文詞目與讀音，作為獨立標示的政府來源詞資料，不屬於第一方詞表或 AI 創作內容。各項版本、轉換方式與授權列於 [第三方資料與授權聲明](THIRD_PARTY_NOTICES.md)，未經明確同意不再擴大例外。
 
-## Current features
+## 目前功能
 
-- Traditional Chinese Zhuyin composition
-- Native macOS input method with a custom nonactivating candidate window
-- CNS11643 base character candidates
-- Compact and 27-item expanded candidate views with scrolling
-- Standalone left/right Shift Chinese/English switching
-- Persistent, local character-selection learning and deterministic ranking
-- Multi-character marked composition and exact user-phrase learning
-- Original first-party phrase lexicon maintained by this project
-- Pinned MOE idiom and revised-dictionary four-character phrase candidates
-- Persistent settings for Shift switching and automatic learning
-- Searchable user-dictionary management with pinning, deletion, and clearing
-- Local JSON export and merging import of personal learning data
-- Full-width Chinese punctuation on every arrangement
-- Standard, Eten Traditional, and IBM Bopomofo arrangements
-- Optional cursor-following indicator for the current input mode
-- Offline-first input with optional private iCloud learning sync
-- Open source
-- MIT-licensed source code
+- 繁體中文注音組字
+- macOS 原生輸入法，搭配不搶走輸入焦點的自訂候選視窗
+- 以 CNS11643 為基礎的單字候選
+- 精簡候選檢視與可捲動的 27 格展開檢視
+- 單獨按左／右 Shift 切換中英文
+- 可持久保存的本機選字學習，以及依固定規則決定的候選排序
+- 多字組字暫存與精確讀音的使用者詞學習
+- 由本專案維護的原創第一方詞表
+- 採用固定版本的教育部《成語典》與《重編國語辭典修訂本》四字詞候選
+- 可保存 Shift 切換與自動學習設定
+- 可搜尋的使用者詞庫管理，支援置頂、刪除與清除
+- 個人學習資料的本機 JSON 匯出與合併匯入
+- 所有鍵盤配置皆支援全形中文標點
+- 標準、倚天傳統與 IBM 注音鍵盤配置
+- 可選擇開啟跟隨游標的輸入模式指示器
+- 離線優先的輸入體驗，可選擇透過 iCloud 私密同步學習資料
+- 開放原始碼
+- 原始碼採 MIT 授權
 
-## Planned features
+## 規劃功能
 
-- Punctuation candidate window and remappable symbol tables
+- 標點候選視窗與可自訂鍵位對應的符號表
 
-## Milestone 11 input
+## 輸入方式
 
 預設使用台灣標準（大千）注音實體鍵位，與目前選用的英文字母鍵盤配置無關：
 
@@ -75,15 +75,15 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 三種配置都是一鍵一符號，Space 都是一聲。切換配置會先送出尚未完成的組字，下一次按鍵立即生效，不需重新啟動。倚天26鍵與許氏這類一鍵多符號的配置不在目前範圍內。標點不受配置影響。
 
-例如 `j i 3` 會完成 `ㄨㄛˇ`，並直接在 marked composition 中預覽第一候選「我」；`r u 0 4` 會預覽 `ㄐㄧㄢˋ` 的第一候選。完成音節時不主動顯示候選窗，按 ↓ 才開啟完整選字模式；開啟後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看，原本第一候選仍保持反白。一般模式只採 CNS 第 1、2 字面的常用與次常用字；第 3 字面以後的罕用、異體、戶政與其他專門用字須在設定中開啟「顯示罕用字」才會加入。若 macOS 對某字只能提供 LastResort 缺字符號，則無論設定為何都會略過，避免候選窗出現方框問號。
+例如 `j i 3` 會完成 `ㄨㄛˇ`，並直接在組字暫存區中預覽第一候選「我」；`r u 0 4` 會預覽 `ㄐㄧㄢˋ` 的第一候選。完成音節時不主動顯示候選窗，按 ↓ 才開啟完整選字模式；開啟後同時顯示最多 27 個候選，更多內容可用滑鼠滾輪查看，原本第一候選仍保持反白。一般模式只採 CNS 第 1、2 字面的常用與次常用字；第 3 字面以後的罕用、異體、戶政與其他專門用字須在設定中開啟「顯示罕用字」才會加入。若 macOS 對某字只能提供 LastResort 缺字符號，則無論設定為何都會略過，避免候選窗出現方框問號。
 
-一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段 marked composition 中逐個顯示單位移動游標，標點的前後也各自是可停靠位置，例如 `名？｜ → 名｜？ → ｜名？`；這個定位階段不顯示候選窗，也不替任何字加底色或底線。此時 Shift+← 會從游標左側開始造詞，Shift+→ 則從游標右側開始。退格鍵（⌫／Backspace）會把游標左邊緊鄰的讀音字恢復成原注音並先刪除聲調，例如 `路｜鏡 → ㄌㄨ｜鏡 → ㄌ｜鏡 → ｜鏡`；它不會跨越標點，游標在第一字前時也不會改動文字。前向 Del（Fn+Backspace）則以同樣方式倒退編輯游標右邊的字，例如 `路｜鏡 → 路ㄐㄧㄥ｜ → 路ㄐㄧ｜ → 路ㄐ｜ → 路｜`。按 ↓ 才開啟游標左邊緊鄰字的候選格，例如 `路｜鏡` 會顯示「選字 1／2：路」，而 `路鏡｜` 會顯示「選字 2／2：鏡」；開啟的是與一般輸入相同的完整候選格，不需要再按第二次 ↓。候選窗開啟後仍把同一個零長度游標留在原位，不把任何字或整段組字當成 selection。候選格開啟後，四個方向鍵都只移動反白，而且都會繞圈：←／→ 逐個移動，在頭尾之間循環；↑／↓ 逐列移動，最上一列往上會繞到最後一列，最後一列往下會繞回最上一列，目標列太短時就落在該列最後一個候選。畫面上的 `1`–`9` 永遠對應反白所在的那一列。關閉候選格只有三種方式：選定候選、按 Esc 回到文字定位、或用滑鼠點選；回到定位後 ←／→ 又會移動游標。Return、數字鍵或滑鼠可確認候選；只有候選窗開啟後，畫面列出的 `1`–`9` 才代表候選編號。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末，仍可按 ↓ 修改最後一字或直接繼續輸入。
+一般輸入的候選尚未開啟時，←／→ 與數字列都保留給文字定位或下一個注音；按 ↓ 後才由候選格接管方向鍵與 `1`–`9`。已有未送出的文字後，逐字修改分成兩層：先用 ←／→ 在整段組字暫存區中逐個顯示單位移動游標，標點的前後也各自是可停靠位置，例如 `名？｜ → 名｜？ → ｜名？`；這個定位階段不顯示候選窗，也不替任何字加底色或底線。此時 Shift+← 會從游標左側開始造詞，Shift+→ 則從游標右側開始。退格鍵（⌫／Backspace）會把游標左邊緊鄰的讀音字恢復成原注音並先刪除聲調，例如 `路｜鏡 → ㄌㄨ｜鏡 → ㄌ｜鏡 → ｜鏡`；它不會跨越標點，游標在第一字前時也不會改動文字。前向 Del（Fn+Backspace）則以同樣方式倒退編輯游標右邊的字，例如 `路｜鏡 → 路ㄐㄧㄥ｜ → 路ㄐㄧ｜ → 路ㄐ｜ → 路｜`。按 ↓ 才開啟游標左邊緊鄰字的候選格，例如 `路｜鏡` 會顯示「選字 1／2：路」，而 `路鏡｜` 會顯示「選字 2／2：鏡」；開啟的是與一般輸入相同的完整候選格，不需要再按第二次 ↓。候選窗開啟後仍把同一個零長度游標留在原位，不把任何字或整段組字當成選取範圍。候選格開啟後，四個方向鍵都只移動反白，而且都會繞圈：←／→ 逐個移動，在頭尾之間循環；↑／↓ 逐列移動，最上一列往上會繞到最後一列，最後一列往下會繞回最上一列，目標列太短時就落在該列最後一個候選。畫面上的 `1`–`9` 永遠對應反白所在的那一列。關閉候選格只有三種方式：選定候選、按 Esc 回到文字定位、或用滑鼠點選；回到定位後 ←／→ 又會移動游標。Return、數字鍵或滑鼠可確認候選；只有候選窗開啟後，畫面列出的 `1`–`9` 才代表候選編號。確認後仍停在同一個文字位置，方便再用 ←／→ 定位。移到最後一字再按 → 會回到文末，仍可按 ↓ 修改最後一字或直接繼續輸入。
 
 當游標位於整段組字的第一字前方時，左邊沒有可選文字；此時按 ↓ 會改為開啟右邊第一字的候選。其他游標位置仍以左邊緊鄰字為選字目標。
 
-完成一個音節後可直接輸入下一個音節，久空會先把目前預覽的第一候選收進 marked composition；這也適用於標準、倚天與 IBM 配置中位於數字列的聲母、介音或韻母。候選窗未開啟時，主鍵區 `1`–`9` 不選候選，而是照鍵盤配置繼續輸入；要改選時先按 ↓，開窗後 `1`–`9` 才全部明確代表候選編號。Return／Keypad Enter 會接受預覽並直接提交整段組字，Space 接受第一候選並留在組字中，也可開窗後用方向鍵、數字或滑鼠選定。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
+完成一個音節後可直接輸入下一個音節，久空會先把目前預覽的第一候選收進組字暫存區；這也適用於標準、倚天與 IBM 配置中位於數字列的聲母、介音或韻母。候選窗未開啟時，主鍵區 `1`–`9` 不選候選，而是照鍵盤配置繼續輸入；要改選時先按 ↓，開窗後 `1`–`9` 才全部明確代表候選編號。Return／Keypad Enter 會接受預覽並直接提交整段組字，Space 接受第一候選並留在組字中，也可開窗後用方向鍵、數字或滑鼠選定。對沒有候選的讀音，或字典無法使用時，會安全地送出字面注音。Enter 仍可直接送出尚未加聲調的音節。
 
-- Backspace：組字時刪除最後輸入的注音 component；第一候選預覽或一般候選窗開啟時，回到該字注音並由聲調開始倒退刪除；逐字定位／選字時，改為倒退編輯定位字左邊緊鄰字的注音；造詞範圍存在時刪除整個範圍。
+- Backspace：組字時刪除最後輸入的注音符號；第一候選預覽或一般候選窗開啟時，回到該字注音並由聲調開始倒退刪除；逐字定位／選字時，改為倒退編輯定位字左邊緊鄰字的注音；造詞範圍存在時刪除整個範圍。
 - Forward Delete（Del／Fn+Backspace）：逐字定位或選字時，倒退編輯游標右邊字的注音；造詞範圍存在時刪除整個範圍。沒有明確的輸入法範圍或定位字時交回 App。
 - Escape：候選窗開啟時先回到隱藏的第一候選預覽；再按一次才丟棄目前音節。
 - 未組字時的 Space、Enter、Escape 與 Backspace：交回目前 App 正常處理。
@@ -91,13 +91,13 @@ z ㄡ  x ㄢ  c ㄣ  v ㄤ  b ㄥ  n ㄦ  m ˊ   , ˇ   . ˋ   / ˙
 
 中文模式下，`⌥ Option` 搭配主鍵區 `0`–`9` 會直接輸入半形數字，搭配 `A`–`Z` 會輸入小寫英文字母，`Option+Shift+A`–`Z` 則輸入大寫英文字母；其他 Option 組合鍵仍交由目前 App 與 macOS 鍵盤配置處理。若久空正在組字，會先完成目前組字。英文模式不改寫任何 Option 組合鍵。
 
-候選選定後會先留在輸入法自己的 marked composition，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄 raw 注音、取消範圍選取或丟棄整段 buffer；Backspace 會從候選回到該候選的注音編輯，或從定位字向左進入前一字的注音編輯，再逐一刪除注音 component；造詞範圍存在時則刪除整個範圍。
+候選選定後會先留在輸入法自己的組字暫存區，而不是立刻寫入 App。可以直接開始下一個音節；隱藏預覽時按 Return／Keypad Enter 會接受預覽並一次提交整段組字。Escape 依序關閉已開啟的候選窗、取消目前預覽、關閉逐字修改、丟棄未轉換的注音、取消範圍選取或丟棄整段組字暫存內容；Backspace 會從候選回到該候選的注音編輯，或從定位字向左進入前一字的注音編輯，再逐一刪除注音符號；造詞範圍存在時則刪除整個範圍。
 
 未學習過且在目前候選範圍內、系統也能顯示的單字候選，先依教育部常用、次常用與其他字表分成三級；個別罕見破音可由久空逐筆審訂降級。同級內再依該「字＋讀音」出現在久空自製內建詞表的次數排序，完全沒有自製詞例時才保留 CNS11643 的相對來源順序。第一方詞例加分永遠小於一級，不會讓次常用字跨級超越常用字；這是久空自身詞表的排序訊號，並非匯入語料字頻。使用者實際提交選字後，該字會在下一次同音單字查詢時優先於未選過的字；同音字依「手動置頂、選用次數由多到少、次數相同時最近選用、內建排序」依序排列。已開啟的候選快照不會在操作途中跳動，尚未送進 App 就被丟棄的組字也不會留下學習紀錄。
 
 完成第二個以上的音節時，久空也會查詢內建詞資料與個人詞庫，最長的完整尾端讀音優先。例如依序輸入 `h k 4 g 4`（`ㄘㄜˋ ㄕˋ`），第一音會依第一方詞例預覽「測」，第二音完成後第一候選成為「測試」；按 Return、Space 或直接輸入下一音即可用整詞取代暫存單字。第一方詞表位於 `Data/JiukongPhrases/phrases.tsv`，目前有 5,368 筆，涵蓋日常對話、時間、人物、生活、交通、工作學習、電腦操作與常見描述。全部為本專案逐筆編寫與審閱：多數由 AI 為本專案撰寫，另有一批由維護者從自己實際輸入用過的詞中挑出、逐筆審閱後收錄（人名、錯字與切錯的片段不予收錄）。另於 2026-09-07 收錄維護者提供、確認由 ChatGPT 編寫的擴充詞庫，經字音與用字修正、去重後新增 2,070 筆，詳見 `Data/JiukongPhrases/import-20260907.md`。字音以專案內釘選的 CNS11643 資料與本專案自己的補充讀音表自動檢查，不含外部詞庫或匯入詞頻；未收錄的詞仍可透過 Shift 範圍造詞與本機學習補充。
 
-同一個唯讀字典另外合併教育部《成語典》的 1,642 筆四字主條，以及《重編國語辭典修訂本》的 33,295 筆四字條目。這些政府來源資料不是第一方詞表或 AI 創作內容；專案只保留來源的詞目與讀音，不匯入釋義或詞頻，也不把它們計入第一方詞例排序訊號。詳細來源、篩選方式與 CC BY-ND 3.0 TW 授權說明見 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
+同一個唯讀字典另外合併教育部《成語典》的 1,642 筆四字主條，以及《重編國語辭典修訂本》的 33,295 筆四字條目。這些政府來源資料不是第一方詞表或 AI 創作內容；專案只保留來源的詞目與讀音，不匯入釋義或詞頻，也不把它們計入第一方詞例排序訊號。詳細來源、篩選方式與 CC BY-ND 3.0 TW 授權說明見 [第三方資料與授權聲明](THIRD_PARTY_NOTICES.md)。
 
 若 CNS11643 缺少久空需要支援的常用單字讀音，會逐筆記錄在 `Data/JiukongCharacters/characters.tsv`，由建置器驗證後合併；例如「麼／˙ㄇㄛ」與「剔／ㄊㄧˋ」，因此輸入對應讀音即可直接選到這些字。補充項目必須是 CNS 已收字元，並沿用其 CNS 字碼與來源位置。
 
@@ -121,15 +121,15 @@ Shift+[  『      Shift+]  』      Shift+\  ／
 
 `…` 與 `—` 每次插入一個，慣用的 `……`、`——` 請按兩下。`[`、`]`、`\` 不在注音鍵盤配置內，所以不必按 Shift；`\` 輸入 `、`，`Shift+\` 輸入 `／`。表格以外的鍵仍交回目前 App 與 macOS 鍵盤配置，英文模式完全不受影響；也就是說中文模式下 `[` 不會再打出半形 `[`，需要半形時請切到英文模式。
 
-標點會結束目前的讀音但不結束整段組字：按下標點時會先把反白候選或未完成注音收進 buffer，再把標點接在後面，仍是 marked text，Return 時才一起送出，Backspace 也能直接刪掉標點。標點本身沒有讀音，不會單獨成為查詢音節；但可作為原文單位納入使用者詞，例如把 `嗎？` 造成一個「一音＋標點」的精確詞組。
+標點會結束目前的讀音但不結束整段組字：按下標點時會先把反白候選或未完成注音收進組字暫存區，再把標點接在後面，仍是尚未提交的組字文字，Return 時才一起送出，Backspace 也能直接刪掉標點。標點本身沒有讀音，不會單獨成為查詢音節；但可作為原文單位納入使用者詞，例如把 `嗎？` 造成一個「一音＋標點」的精確詞組。
 
 ### 中英文切換
 
-中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換會選取久空對應的 macOS 輸入 mode，使選單列圖示同步顯示紅「中」或藍 `A`；macOS 也可能短暫顯示其原生輸入來源提示。若已開啟游標指示器，久空會直接把它更新為相應的「中」或 `A`。
+中文模式下單獨按一下左 Shift 或右 Shift，會切換到英文模式；再單獨按一次會切回中文。按住 Shift 搭配字母、數字、方向鍵或其他修飾鍵時不會切換；即使 Word 先把 Shift 放開事件送給輸入法、稍後才送組合鍵，久空仍以 macOS 的系統按鍵計數辨認它是組合鍵，所以英文模式的 `Shift+9` 會保持英文並輸入半形 `(`。切換會選取久空對應的 macOS 輸入模式，使選單列圖示同步顯示紅「中」或藍 `A`；macOS 也可能短暫顯示其原生輸入來源提示。若已開啟游標指示器，久空會直接把它更新為相應的「中」或 `A`。
 
-英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、dead key 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法 process 的所有 client 間共享，process 重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
+英文模式不合成注音，也不自行產生 ASCII；久空會把字母、數字、標點、Space、Return、Backspace、死鍵（dead key） 與 App 快捷鍵原樣交給目前的 macOS 鍵盤配置處理。目前中英文狀態在同一個輸入法處理程序服務的所有用戶端間共享，處理程序重新啟動後預設回到中文。要用哪一側 Shift（左右皆可／只用左／只用右／關閉）可在設定視窗選擇，並會保存下來。
 
-若切換模式時仍有未完成注音或候選，久空會先完成一次目前組字再切換，避免吃字或重複插入。因 Milestone 5 需要接收 Shift 的 modifier 事件，久空也會透過 InputMethodKit 公開事件路徑處理 client 內的滑鼠按下：先完成現有組字，再把點擊交回 App。
+若切換模式時仍有未完成注音或候選，久空會先完成一次目前組字再切換，避免吃字或重複插入。因第 5 階段需要接收 Shift 的修飾鍵事件，久空也會透過 InputMethodKit 公開事件路徑處理 用戶端內的滑鼠按下：先完成現有組字，再把點擊交回 App。
 
 ### 游標指示器
 
@@ -145,15 +145,15 @@ Shift+[  『      Shift+]  』      Shift+\  ／
 
 ### 個人選字學習
 
-Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與字面注音 fallback 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，置頂候選會顯示 `★ ×`，點 `×` 只會取消置頂而不刪除使用次數。也可在設定視窗的清單中逐項調整。
+Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前實際提交的候選，都只會學習一次。Escape、Backspace、方向鍵移動、空的數字槽與退回字面注音的處理 不會改變學習資料。相同文字的不同讀音分開統計；置頂狀態是獨立的最高排序層級，置頂候選會顯示 `★ ×`，點 `×` 只會取消置頂而不刪除使用次數。也可在設定視窗的清單中逐項調整。
 
 在設定視窗關閉「自動學習」後，就不再累積新的使用次數；既有紀錄仍會影響排序，Shift 造詞也仍可使用。
 
-選定候選只會先建立待提交事件；整段 composition 真正送進 App 後才會學習。被 Escape 丟棄、被 Backspace 刪除或被詞候選取代的內容不會留下錯誤計數。
+選定候選只會先建立待提交事件；整段組字內容真正送進 App 後才會學習。被 Escape 丟棄、被 Backspace 刪除或被詞候選取代的內容不會留下錯誤計數。
 
 ### 使用者造詞
 
-每個已選候選都保留其精確注音。先用 ←／→ 把游標定位在造詞範圍的一側：Shift+← 會選取游標左邊最多兩個相鄰讀音字，例如 `合併｜成` 會選到「合併」；Shift+→ 會選取游標右邊最多兩個相鄰讀音字。進入範圍選取後，Shift+← 與 Shift+→ 可繼續擴張範圍的左、右邊界，久空自己的綠色浮動提示會明確框出目前範圍，例如「造詞範圍 2 音／2 字：【載入】」，不依賴目前 App 是否正確顯示 marked-text 反白。若沒有先定位，Shift+← 由 buffer 尾端開始，Shift+→ 由 buffer 開頭開始。範圍可包含相鄰標點；選取至少兩個讀音單位，或一個讀音加標點後按 Return，即把範圍文字、逐音注音與標點位置加入使用者詞庫，再一次提交整段 composition。儲存成功後，游標旁會顯示例如「已儲存：【載入】」並保留約十秒；若選錯，可按右側 `×` 精確刪除剛儲存的使用者詞與該組逐音注音，不會刪除文件中已送出的文字。這個功能只處理輸入法尚未提交的 buffer，不會讀取其他 App 已有的文字。
+每個已選候選都保留其精確注音。先用 ←／→ 把游標定位在造詞範圍的一側：Shift+← 會選取游標左邊最多兩個相鄰讀音字，例如 `合併｜成` 會選到「合併」；Shift+→ 會選取游標右邊最多兩個相鄰讀音字。進入範圍選取後，Shift+← 與 Shift+→ 可繼續擴張範圍的左、右邊界，久空自己的綠色浮動提示會明確框出目前範圍，例如「造詞範圍 2 音／2 字：【載入】」，不依賴目前 App 是否正確顯示組字文字的反白。若沒有先定位，Shift+← 由組字暫存區尾端開始，Shift+→ 由組字暫存區開頭開始。範圍可包含相鄰標點；選取至少兩個讀音單位，或一個讀音加標點後按 Return，即把範圍文字、逐音注音與標點位置加入使用者詞庫，再一次提交整段組字內容。儲存成功後，游標旁會顯示例如「已儲存：【載入】」並保留約十秒；若選錯，可按右側 `×` 精確刪除剛儲存的使用者詞與該組逐音注音，不會刪除文件中已送出的文字。這個功能只處理輸入法尚未提交的組字暫存內容，不會讀取其他 App 已有的文字。
 
 之後重打相同的完整逐音序列時，使用者詞會出現在最後一個音節的候選中。查詢是完整相等、最長後綴優先；目前不做詞首聯想，也不會未經確認自動補完整詞。置頂仍是最高排序層，未置頂的精確使用者詞則優先於一般未置頂單字。
 
@@ -161,9 +161,9 @@ Space、Return、數字鍵、滑鼠點選，以及切換欄位／輸入來源前
 
 被刪除的內建詞可在設定視窗的「已刪除內建詞」分頁查看並逐筆恢復，也可在「資料」分頁一次全部恢復。如果同一個詞既是內建詞又已存在使用者詞庫，`×` 會同時移除兩者；純粹自己造的詞（內建詞庫沒有這個文字＋讀音）刪掉後不會列進「已刪除內建詞」；用 Shift+←／→ 造詞後那十秒內的 `×` 則只是撤銷剛剛的儲存，不會刪除同名的內建詞。
 
-學習資料使用具 schema 版本的 SQLite，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` bundle。schema v4 原地保留選字頻率、使用者詞與有順序的逐音讀音，記錄詞內注音與標點的對應，並保存已刪除內建詞的清單。內建字典另含專案自有的預設選字基準；個人資料庫無法使用時，輸入仍會安全使用這份內建排序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
+學習資料使用附有資料結構版本的 SQLite 資料庫，存放於 `~/Library/Application Support/JiukongZhuyin/user.sqlite`，不會寫進 `.app` 應用程式套件。第 4 版資料結構 原地保留選字頻率、使用者詞與有順序的逐音讀音，記錄詞內注音與標點的對應，並保存已刪除內建詞的清單。內建字典另含專案自有的預設選字基準；個人資料庫無法使用時，輸入仍會安全使用這份內建排序。重新安裝或執行 `scripts/uninstall.sh` 不會刪除 Application Support 中的使用者資料。
 
-iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即同步。輸入與候選查詢永遠使用本機 SQLite，不等待網路；啟動時與持續使用期間會從同一 Apple Account 的 CloudKit 私有資料庫合併變更，本機異動則短暫合併後在背景上傳。同步的是逐筆學習記錄與游標外觀偏好，而非 SQLite 或偏好檔案；學習資料刪除會留下雲端 tombstone，避免離線的另一台 Mac 或重灌後把舊資料復活。CloudKit record name 只含穩定雜湊或偏好欄位識別，個人文字、注音、次數、時間、置頂值及偏好值均使用 CloudKit encrypted values。完整設計與部署前置條件見 [iCloud sync notes](docs/CLOUD_SYNC.md)。
+iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即同步。輸入與候選查詢永遠使用本機 SQLite，不等待網路；啟動時與持續使用期間會從同一 Apple Account 的 CloudKit 私有資料庫合併變更，本機異動則短暫合併後在背景上傳。同步的是逐筆學習記錄與游標外觀偏好，而非 SQLite 或偏好檔案；學習資料刪除會留下雲端刪除標記，避免離線的另一台 Mac 或重灌後把舊資料復活。CloudKit 記錄名稱只含穩定雜湊或偏好欄位識別，個人文字、注音、次數、時間、置頂值及偏好值均使用 CloudKit 加密欄位值。完整設計與部署前置條件見 [iCloud 同步說明](docs/CLOUD_SYNC.md)。
 
 ### 設定視窗
 
@@ -176,7 +176,7 @@ iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即�
 - **選字紀錄**：列出所有已學習的單字讀音、次數與置頂狀態，可搜尋、置頂或刪除單筆；
 - **資料**：iCloud 同步開關、狀態與立即同步，個人資料的 JSON 匯出／匯入，可分享的詞庫匯出／匯入，以及清除選字紀錄、清除使用者詞、恢復內建詞、清除全部。
 
-設定存放在輸入法自己的 defaults domain，重新啟動後仍然有效；所有刪除與清除動作只影響個人學習資料並會送出同步 tombstone，不會動到內建字典本身，且都需要再次確認。刪除內建詞同樣只是在個人資料庫記下要隱藏哪一筆，內建字典檔案不會被修改，「清除全部」則會恢復所有被刪除的內建詞。開啟設定視窗前會先完成目前的組字。
+設定存放在輸入法自己的偏好設定網域，重新啟動後仍然有效；所有刪除與清除動作只影響個人學習資料並會送出同步刪除標記，不會動到內建字典本身，且都需要再次確認。刪除內建詞同樣只是在個人資料庫記下要隱藏哪一筆，內建字典檔案不會被修改，「清除全部」則會恢復所有被刪除的內建詞。開啟設定視窗前會先完成目前的組字。
 
 刪除是以「文字 + 完整讀音」為單位，所以刪掉 `行／ㄒㄧㄥˊ` 不會影響 `行／ㄏㄤˊ`。
 
@@ -194,36 +194,21 @@ iCloud 同步預設開啟，可在「資料」分頁關閉或手動要求立即�
 
 個人資料匯出是**備份**而不是分享用的詞庫：它包含選字紀錄與使用次數。匯出會寫出帶版本的 JSON，時間一律使用 UTC 毫秒，不含本機的內部 ID，並且包含已刪除的內建詞清單，所以還原備份不會把刪掉的詞救回來。匯入是合併而非覆蓋：次數與時間取較大／較新者、建立時間與刪除時間取較早者、置頂取聯集，因此重複匯入同一個檔案不會重複累加，也不會把次數變小或取消置頂。0.1.14 以前匯出的檔案沒有這份清單，仍然可以完整匯入。無法辨識的資料列會被略過並回報數量；若其中一筆無法套用，整次匯入會完整回復原狀。匯出檔沒有加密，內容是你打過與選過的字，請比照個人檔案保管。
 
-## Requirements
+## 系統需求
 
-- macOS 13 or later for the input method
-- macOS 14 or later for the current unit-test target
-- Xcode 26.6 or a compatible Xcode version with the macOS SDK
+- 輸入法需要 macOS 13 或以上版本
+- 目前的單元測試目標需要 macOS 14 或以上版本
+- Xcode 26.6，或含有 macOS SDK 的相容 Xcode 版本
 
-## Download and install
+## 下載與安裝
 
-Public versions are distributed from [GitHub Releases](https://github.com/jiukong-labs/zhuyin/releases)
-as universal, Developer ID-signed and Apple-notarized `.pkg` installers. The
-installer places 久空輸入法 in `/Library/Input Methods`; macOS still requires
-each user to approve and enable a newly installed input method in System
-Settings. After every install or update, sign out of macOS and sign back in,
-or restart the Mac, so macOS replaces its cached input-method process. Save
-your work first. The installer shows this reminder on its completion screen.
+公開版本透過 [GitHub Releases](https://github.com/jiukong-labs/zhuyin/releases) 發布，提供通用架構（Universal）、經 Developer ID 簽署及 Apple 公證的 `.pkg` 安裝套件。安裝程式會將久空輸入法放在 `/Library/Input Methods`；每位使用者仍須在 macOS「系統設定」中核准並啟用新安裝的輸入法。每次安裝或更新後，請先儲存工作，再登出 macOS 並重新登入，或重新啟動 Mac，讓 macOS 替換快取中的輸入法處理程序。安裝程式的完成畫面也會顯示這項提醒。
 
-See the [installation guide](docs/INSTALL.md) for verification, enablement,
-updates, and removal. Maintainers should use the guarded release process in
-[Public release](docs/RELEASING.md); the local script below is only for
-development builds.
+驗證、啟用、更新與移除方式請見[安裝指南](docs/INSTALL.md)。維護者應遵循[公開版本發布流程](docs/RELEASING.md)中的防護檢查；下方的本機安裝腳本僅供開發版本使用。
 
-After installation, 久空 checks GitHub for a complete published release at
-most once every 24 hours. The check sends no composition, learning, or user
-phrase data. When an update is available, the input-source menu and Update
-settings pane can download the `.pkg` and adjacent checksum, verify SHA-256,
-the expected Developer ID Installer team, and Gatekeeper acceptance, then
-open the verified package in macOS Installer. Installer still requests
-administrator approval because the package updates `/Library/Input Methods`.
+安裝後，久空最多每 24 小時向 GitHub 檢查一次是否有已完整發布的版本。檢查不會傳送組字、學習或使用者詞資料。有更新時，可透過輸入來源選單與設定視窗的「更新」分頁下載 `.pkg` 及隨附的校驗碼檔案，驗證 SHA-256、預期的 Developer ID Installer 團隊身分，以及是否通過 Gatekeeper 檢查，再以 macOS「安裝程式」開啟驗證通過的套件。由於套件會更新 `/Library/Input Methods`，安裝程式仍會要求管理者核准。
 
-## Build and test
+## 建置與測試
 
 ```sh
 xcodebuild \
@@ -243,127 +228,112 @@ xcodebuild \
   test
 ```
 
-The checked-in Xcode project builds without XcodeGen. Maintainers who add a file or change `project.yml` must regenerate it with XcodeGen 2.46 or later and commit the result:
+儲存庫內的 Xcode 專案不需要 XcodeGen 即可建置。維護者新增檔案或修改 `project.yml` 後，必須使用 XcodeGen 2.46 或以上版本重新產生專案，並提交產生的結果：
 
 ```sh
 xcodegen generate
 ```
 
-A file that exists on disk but is missing from the checked-in project is silently not compiled and its tests never run, so verify membership before committing:
+若檔案存在於磁碟上，卻未納入儲存庫內的專案，建置時會直接略過，不會編譯，也不會執行其中的測試。因此提交前請確認來源檔案都已納入專案：
 
 ```sh
 ./scripts/check-project-sources.sh
 ```
 
-GitHub Actions runs the same checks on every push and pull request: the source-membership check, the Debug test suite, a universal Release build, and a rebuild of the dictionary from its pinned snapshot that must reproduce the checked-in artifact byte for byte. A separate advisory job reports when the checked-in project no longer matches `project.yml`.
+GitHub Actions 會在每次推送與 Pull Request 時執行相同檢查：來源檔案是否納入專案、Debug 測試套件、通用架構的 Release 建置，以及使用固定版本快照重建字典；重建結果必須與儲存庫內的成品逐位元組一致。另外也有獨立的提示性工作，會在儲存庫內的專案與 `project.yml` 不一致時提出報告。
 
-The runtime dictionary is already checked in. To verify or regenerate it without network access, the builder uses the pinned, hash-validated CNS11643 snapshot; Jiukong's first-party character, phrase, and heteronym-override files; the MOE common/semi-common character tables; and the pinned MOE idiom and revised-dictionary phrase extracts:
+執行時使用的字典已納入儲存庫。建置器可在無網路環境下驗證或重新產生字典，使用的來源包括：固定版本且通過雜湊驗證的 CNS11643 快照、久空的第一方單字與詞組及破音字排序覆寫檔案、教育部常用／次常用字表，以及固定版本的教育部《成語典》與《重編國語辭典修訂本》詞目與讀音擷取資料：
 
 ```sh
 ./scripts/build-dictionary.sh
 ```
 
-Normal app builds never download or parse the raw dictionary-source files.
+一般應用程式建置不會下載或解析原始字典來源檔案。
 
-## Install for local development
+## 本機開發安裝
 
-The installer builds a Release configuration, copies it to the current user's supported Input Methods directory, validates the bundle, then registers it and requests enablement through Apple's public Text Input Sources APIs. It does not switch away from your current input source:
+安裝腳本會建置 Release 版本，複製到目前使用者受支援的 Input Methods 目錄，驗證應用程式套件後，再透過 Apple 公開的 Text Input Sources API 註冊並要求啟用。執行後仍會保留目前的輸入來源：
 
 ```sh
 ./scripts/install.sh
 ```
 
-The helper refuses to install when the public package is already present at
-`/Library/Input Methods/Jiukong Zhuyin.app`. A user-level development copy and
-the system-level public copy would have the same bundle identifier, allowing
-the ad-hoc build to shadow the signed release and break launching or settings.
-Use a dedicated test account/Mac, or remove the public installation before
-installing a development build.
+若 `/Library/Input Methods/Jiukong Zhuyin.app` 已有公開版本，安裝腳本會拒絕安裝。使用者層級的開發版與系統層級的公開版會共用相同的應用程式套件識別碼，可能讓 ad-hoc 建置版本遮蔽已簽署的公開版，造成啟動或設定異常。請使用專用測試帳號或 Mac，或先移除公開版再安裝開發版。
 
-The default build uses an ad-hoc local signature. A maintainer with an Apple Development certificate can select it without changing the project:
+預設建置使用本機 ad-hoc 簽章。持有 Apple Development 憑證的維護者可以指定憑證，無須修改專案：
 
 ```sh
 SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" ./scripts/install.sh
 ```
 
-The bundle identifier is `tw.idv.jiukong.inputmethod.zhuyin`. Two constraints were established by experiment on macOS 26 and both make registration fail silently:
+應用程式套件識別碼為 `tw.idv.jiukong.inputmethod.zhuyin`。套件包含兩個可直接從 macOS 輸入選單選取的模式：`tw.idv.jiukong.inputmethod.zhuyin.Chinese` 與 `tw.idv.jiukong.inputmethod.zhuyin.English`。專案自行製作的彩色圖示分別顯示紅色「中」與藍色 `A`。單獨按 Shift 會選取對應模式，讓 macOS 輸入選單圖示與久空可選擇開啟的游標指示器同步更新。macOS 也可能短暫顯示原生的輸入來源提示。
 
-The bundle is the parent of two modes that remain directly selectable from the
-macOS input menu:
-`tw.idv.jiukong.inputmethod.zhuyin.Chinese` and
-`tw.idv.jiukong.inputmethod.zhuyin.English`. Their first-party color icons
-show red `中` and blue `A`. A standalone Shift selects the corresponding mode,
-so the macOS input-menu icon and Jiukong's optional cursor indicator both
-update to report the change. macOS may also show its native transient
-input-source indicator.
+在 macOS 26 上實測確認了兩項限制，違反任一項都會讓註冊失敗，卻不回報錯誤：
 
-- **The identifier must contain an `inputmethod` component that is not the last one.** `tw.idv.jiukong.inputmethod.zhuyin` and `tw.idv.inputmethod.zhuyin` register; `tw.idv.jiukong.zhuyin`, `tw.idv.jiukong.zhuyinim`, and `tw.idv.jiukong.zhuyin.inputmethod` do not. `TISRegisterInputSource` still returns `noErr` for the rejected ones, so the only symptom is that the source never appears.
-- **No other bundle may claim the same identifier in LaunchServices.** A build product under `.build/`, or a deleted bundle whose record survives, can take the identifier over and make an already-registered input source disappear. Repair it with:
+- **識別碼必須包含 `inputmethod` 區段，而且不能放在最後。** `tw.idv.jiukong.inputmethod.zhuyin` 與 `tw.idv.inputmethod.zhuyin` 可註冊；`tw.idv.jiukong.zhuyin`、`tw.idv.jiukong.zhuyinim` 與 `tw.idv.jiukong.zhuyin.inputmethod` 則無法註冊。即使識別碼被拒絕，`TISRegisterInputSource` 仍會回傳 `noErr`，唯一可見的現象就是輸入來源始終未出現。
+- **LaunchServices 中不能有其他應用程式套件使用相同識別碼。** `.build/` 下的建置成品，或套件刪除後留下的註冊紀錄，都可能占用識別碼，讓已註冊的輸入來源消失。可用以下指令修復：
 
 ```sh
 ./scripts/register-input-source.sh
 ```
 
-If the installer reports that macOS did not register the input source, check both of those before anything else.
+若安裝腳本回報 macOS 未註冊輸入來源，請優先檢查上述兩項條件。
 
-A registered source still has to be enabled, and that is a user decision macOS does not delegate: `TISEnableInputSource` returns `noErr` while leaving the source disabled, and `TISSelectInputSource` then fails with `-50`. A newly registered identifier may also not appear in **System Settings > Keyboard > Text Input > Edit… > +** until the next login, so log out and back in once if it is missing there.
+已註冊的輸入來源仍須啟用，而 macOS 要求這項決定由使用者自行操作：`TISEnableInputSource` 會回傳 `noErr`，卻讓來源保持停用，接著呼叫 `TISSelectInputSource` 就會以 `-50` 失敗。新註冊的識別碼也可能要等到下次登入，才出現在「**系統設定 > 鍵盤 > 文字輸入 > 編輯⋯ > +**」中；若找不到，請先登出並重新登入一次。
 
-On current macOS versions, enabling a newly installed third-party input method can also require explicit user approval. Then verify or approve the input source:
+目前的 macOS 版本在啟用新安裝的第三方輸入法時，也可能要求使用者明確核准。請依以下步驟確認或核准輸入來源：
 
-1. Open **System Settings**.
-2. Choose **Keyboard**.
-3. Under **Text Input**, click **Edit…**.
-4. Confirm **久空輸入法** is present. If it is not already enabled, click **+**, select **Traditional Chinese**, choose **久空輸入法**, and approve the prompt.
-5. If the newly installed input method does not appear immediately, sign out and back in once, then repeat the steps.
+1. 開啟「**系統設定**」。
+2. 選擇「**鍵盤**」。
+3. 在「**文字輸入**」下按「**編輯⋯**」。
+4. 確認清單中有「**久空輸入法**」。若尚未啟用，按「**+**」，選擇「**繁體中文**」與「**久空輸入法**」，並核准提示。
+5. 若新安裝的輸入法沒有立即出現，請登出並重新登入一次，再重複上述步驟。
 
-## Installed acceptance
+## 安裝後驗收
 
-Unit tests cannot reach the InputMethodKit event path, so the behavior that only exists in a real client is checked by driving the installed bundle:
+單元測試無法涵蓋 InputMethodKit 的事件傳遞路徑，因此必須操作已安裝的輸入法套件，驗證實際用戶端中的行為：
 
 ```sh
 ./scripts/install.sh
-./scripts/run-acceptance.sh              # release-blocking input behavior matrix
-./scripts/run-release-preflight.sh       # unit tests plus the installed matrix
-./scripts/run-acceptance.sh eten         # after setting the arrangement preference
+./scripts/run-acceptance.sh              # 發布前必須通過的輸入行為矩陣
+./scripts/run-release-preflight.sh       # 單元測試與安裝後的輸入行為矩陣
+./scripts/run-acceptance.sh eten         # 先將鍵盤配置設為倚天傳統再執行
 ```
 
-Each run launches its own TextEdit instance, types with real `CGEvent` delivery, compares the resulting text with the expectation, then restores the previous input source and closes the instance it launched. Existing TextEdit windows are untouched.
+每次執行都會另行啟動一個「文字編輯」（TextEdit）執行個體，透過實際的 `CGEvent` 事件輸入文字，比對結果與預期文字，接著還原原先的輸入來源，並關閉這次啟動的執行個體。既有的「文字編輯」視窗不受影響。
 
-Every run first requires Option-A and Option-Z to produce Jiukong's literal
-`az` before it types the requested scenario. The system keyboard layouts
-produce different Option characters, so this proves that the client reached
-Jiukong without mistaking its cursor indicator for a candidate panel. A run
-that cannot prove the connection aborts instead of reporting a result.
+每次執行都會先確認 Option-A 與 Option-Z 能透過久空輸入字面文字 `az`，才開始輸入指定情境。系統鍵盤配置會產生不同的 Option 字元，因此這項檢查可確認用戶端確實連上久空，也避免把游標指示器誤認為候選視窗。無法確認連線時，驗收會中止，不會回報測試結果。
 
-The complete release-blocking contract and its script mapping are recorded in
-[`docs/INPUT_BEHAVIOR_MATRIX.md`](docs/INPUT_BEHAVIOR_MATRIX.md). The default
-script list comes from the Harness itself and CI verifies that none of those
-required scenarios disappears silently.
+完整的發布必要驗收規範與對應腳本記錄於[輸入行為矩陣](docs/INPUT_BEHAVIOR_MATRIX.md)。預設腳本清單直接由驗收工具提供，持續整合（CI）會確認所有必要情境都仍在清單中，避免被無聲略過。
 
-The `phrase` script creates the user phrase 九空 in the local learning database, and every run that commits text advances that character's count. Clear them from the settings window if the data is unwanted. The harness needs Accessibility and event-posting permission for the terminal running it, which is why it is not part of continuous integration.
+`phrase` 腳本會在本機學習資料庫建立使用者詞「九空」；每次執行只要提交文字，就會增加對應字的使用次數。不需要這些資料時，可在設定視窗清除。執行驗收工具的終端機需要「輔助使用」與傳送事件的權限，因此這項驗收未納入持續整合。
 
-To disable the development input source and remove only its installed bundle:
+若要停用開發版輸入來源，並只移除其已安裝的應用程式套件：
 
 ```sh
 ./scripts/uninstall.sh
 ```
 
-No root access, SIP changes, or private APIs are required.
+上述本機開發安裝與驗收流程不需要 root 權限、修改 SIP 或使用私有 API。
 
-## Current milestone scope
+## 目前開發階段範圍
 
-Milestone 11 把獨立工具 `lang-cursor` 的免費功能併入輸入法：跟隨游標的模式指示器（位置、追蹤方式、五種大小、Caps Lock 指示、中／英文自訂文字與顏色），付費的 StoreKit 授權部分未移植。Milestone 10 提供倚天傳統與 IBM 兩種一鍵一符號的注音配置，可在設定視窗切換；配置只影響鍵位對應，組字、選字、學習與標點都不受影響。一鍵多符號的 26 鍵配置與自訂配置仍在後續里程碑。
+第 11 階段把獨立工具 `lang-cursor` 的免費功能併入輸入法：跟隨游標的模式指示器（位置、追蹤方式、五種大小、Caps Lock 指示、中／英文自訂文字與顏色），付費的 StoreKit 授權部分未移植。第 10 階段提供倚天傳統與 IBM 兩種一鍵一符號的注音配置，可在設定視窗切換；配置只影響鍵位對應，組字、選字、學習與標點都不受影響。一鍵多符號的 26 鍵配置與自訂配置仍在後續里程碑。
 
-詳見 [Milestone 11 notes](docs/MILESTONE_11.md)、[Milestone 10 notes](docs/MILESTONE_10.md)、[Milestone 9 notes](docs/MILESTONE_9.md)、[Milestone 8 notes](docs/MILESTONE_8.md)、[Milestone 7 notes](docs/MILESTONE_7.md)、[Milestone 6 notes](docs/MILESTONE_6.md)、[Milestone 5 notes](docs/MILESTONE_5.md)、[Milestone 4 notes](docs/MILESTONE_4.md)、[Milestone 3 notes](docs/MILESTONE_3.md)、[Milestone 2 notes](docs/MILESTONE_2.md)、[Milestone 1 notes](docs/MILESTONE_1.md) 與 [architecture](docs/ARCHITECTURE.md)。
+詳見 [第 11 階段開發紀錄](docs/MILESTONE_11.md)、[第 10 階段開發紀錄](docs/MILESTONE_10.md)、[第 9 階段開發紀錄](docs/MILESTONE_9.md)、[第 8 階段開發紀錄](docs/MILESTONE_8.md)、[第 7 階段開發紀錄](docs/MILESTONE_7.md)、[第 6 階段開發紀錄](docs/MILESTONE_6.md)、[第 5 階段開發紀錄](docs/MILESTONE_5.md)、[第 4 階段開發紀錄](docs/MILESTONE_4.md)、[第 3 階段開發紀錄](docs/MILESTONE_3.md)、[第 2 階段開發紀錄](docs/MILESTONE_2.md)、[第 1 階段開發紀錄](docs/MILESTONE_1.md) 與 [架構說明](docs/ARCHITECTURE.md)。
 
-## Privacy
+## 隱私
 
-Composition and candidate lookup stay on the Mac. When iCloud sync is enabled, Jiukong sends committed character-learning records, explicitly saved user phrases, and cursor-indicator appearance preferences to the current user's private CloudKit database; it does not upload uncommitted composition or document contents. Personal record values and preference values use CloudKit encrypted fields. Sync can be disabled in the Data settings pane, and manual JSON export/import remains available.
+組字與候選查詢都在 Mac 本機進行。開啟 iCloud 同步時，久空會將已提交的單字學習紀錄、明確儲存的使用者詞與游標指示器外觀偏好，傳送至目前使用者的 CloudKit 私有資料庫；不會上傳尚未提交的組字或文件內容。個人紀錄與偏好值均使用 CloudKit 加密欄位。可在設定視窗的「資料」分頁關閉同步，仍可手動使用 JSON 匯出／匯入。
 
-## Project
+## 專案資訊
 
-- GitHub: https://github.com/jiukong-labs/zhuyin
-- Website: https://jiukong.cloudgate.org.tw
-- License: [MIT](LICENSE)
+- GitHub：[jiukong-labs/zhuyin](https://github.com/jiukong-labs/zhuyin)
+- 網站：[久空實驗室](https://jiukong.cloudgate.org.tw)
+- 授權：[MIT](LICENSE)
 
-The project-authored implementation and first-party phrase lexicon are AI-created for Jiukong and MIT-licensed. Third-party data keeps its own terms: the CNS11643 snapshot is covered by Taiwan's Open Government Data License 1.0, the MOE standard character tables are treated as public-domain government promulgations, and the MOE dictionary extracts are covered by CC BY-ND 3.0 TW. See [Third-Party Notices](THIRD_PARTY_NOTICES.md) for attribution, scope, and license details.
+本專案自行開發的實作與第一方詞表由 AI 為久空製作，採 MIT 授權。第三方資料各自保留原有條款：CNS11643 快照適用「政府資料開放授權條款－第 1 版」；教育部標準字體表視為屬於公共領域的政府公告；教育部辭典擷取資料適用 CC BY-ND 3.0 TW。來源標示、使用範圍與授權細節請見[第三方資料與授權聲明](THIRD_PARTY_NOTICES.md)。
+
+---
+
+喜歡久空輸入法嗎？歡迎 [☕ 支持久空實驗室](https://buymeacoffee.com/jiukong)。
