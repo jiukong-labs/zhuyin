@@ -120,6 +120,11 @@ draft whose tag is the checked-out commit. It reruns the test suite and
 dictionary reproducibility check before importing signing credentials, then
 uploads the signed package and checksum to that draft.
 
+When the project owner explicitly authorizes skipping tests for a release,
+`skip_tests: true` skips the workflow's test suite and dictionary reproduction.
+The default is false. Record the skipped validation in the release notes;
+signing, notarization, and package verification still run.
+
 ## Clean-machine acceptance
 
 Before publishing, download the release asset through GitHub onto Macs that do

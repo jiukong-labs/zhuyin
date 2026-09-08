@@ -7,6 +7,11 @@ on:
         description: Existing tag and draft release, for example v0.1.0
         required: true
         type: string
+      skip_tests:
+        description: Skip tests and dictionary reproduction when explicitly authorized
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,6 +56,7 @@ jobs:
           zsh -n ./scripts/package-release.sh
 
       - name: Test release tag
+        if: ${{ !inputs.skip_tests }}
         run: |
           xcodebuild \
             -quiet \
@@ -66,6 +72,7 @@ jobs:
             test
 
       - name: Reproduce release dictionary
+        if: ${{ !inputs.skip_tests }}
         run: |
           ./scripts/build-dictionary.sh
           git diff --exit-code -- Resources/Dictionary/JiukongZhuyin.sqlite3 \

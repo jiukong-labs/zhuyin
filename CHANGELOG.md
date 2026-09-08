@@ -4,6 +4,21 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-09-08
+
+### Changed
+
+- Replace the application and input-source icons with the project owner's
+  supplied 久空輸入法 artwork, retaining the original PNG and a macOS resource
+  generation script.
+- Add an opt-in release workflow option to skip tests and dictionary
+  reproduction when explicitly authorized; signing and notarization still run.
+
+### Validation
+
+- Tests and installed-input acceptance were skipped at the project owner's
+  request for this release.
+
 ## [0.1.22] - 2026-09-08
 
 ### Fixed
