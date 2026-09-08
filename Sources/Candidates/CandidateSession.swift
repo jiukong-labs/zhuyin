@@ -99,6 +99,12 @@ struct CandidateSession: Equatable {
         revisionFocus == nil && !isExpanded
     }
 
+    func commitReason(for reason: CandidateCommitReason) -> CandidateCommitReason {
+        reason == .implicitPassThrough && isInlinePreview
+            ? .automaticContinuation
+            : reason
+    }
+
     var revisionMode: CandidateRevisionMode? {
         guard revisionFocus != nil else {
             return nil

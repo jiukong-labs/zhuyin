@@ -39,6 +39,8 @@ leaving the default gate.
 | Option ASCII finalizes an active candidate exactly once | `option-after-composition` | `我a1` |
 | Standalone Shift switches Chinese → English → Chinese | `shift-round-trip` | English `a`, then Chinese `我` |
 | Exact built-in phrase replacement | `builtin-phrase` | `測試` |
+| A provisional phrase can extend to a longer exact phrase | `provisional-phrase-extension` | `ㄒㄧㄥˊ ㄕˋ ㄌㄧˋ` previews `形式`, then becomes `行事曆`; never `形式立` |
+| Phrase extension preserves a preceding phrase's complete span | `phrase-homophone-boundary` | `室友` + `有沒有` remains `室友有沒有` |
 | Longest exact sentence replacement | `sentence` | `測試中請稍後` |
 | Revision caret and candidate arrows remain two-stage | `revision-arrows` | unchanged `測試` |
 | Revision opens the full candidate grid with one Down, and rows move with Up/Down | `revision-candidate-rows` | `測是` |

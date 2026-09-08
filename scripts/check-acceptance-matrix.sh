@@ -25,6 +25,8 @@ typeset -a required=(
   option-after-composition
   shift-round-trip
   builtin-phrase
+  provisional-phrase-extension
+  phrase-homophone-boundary
   sentence
   revision-arrows
   revision-candidate-rows

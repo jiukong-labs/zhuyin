@@ -121,6 +121,8 @@ enum CandidateCommitReason: Equatable, Hashable {
     case returnKey
     case number(Int)
     case mouse
+    /// A hidden preview accepted while typing continues; its phrase may grow.
+    case automaticContinuation
     case implicitPassThrough
     case lifecycle
     case clientHandoff
