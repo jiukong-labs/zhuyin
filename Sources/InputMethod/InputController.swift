@@ -1183,7 +1183,7 @@ final class InputController: IMKInputController {
 
         return acceptCandidate(
             session.preferredCandidate,
-            reason: reason
+            reason: session.commitReason(for: reason)
         )
     }
 

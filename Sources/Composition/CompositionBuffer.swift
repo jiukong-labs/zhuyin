@@ -623,10 +623,9 @@ struct CompositionBuffer: Equatable {
     /// from the longest useful phrase to the shortest. A one-reading query is
     /// emitted so punctuated shortcuts such as 「嗎？」 can participate.
     ///
-    /// Context never reaches past the end of an already-accepted multi-unit
-    /// phrase (see `unlockedContextStartIndex`), so a later homophone can
-    /// never re-segment through and overwrite a phrase the dictionary or the
-    /// user's own word list already resolved.
+    /// Explicitly accepted phrases bound the context. Automatically accepted
+    /// previews may extend into longer phrases, but a suffix cannot start
+    /// inside an existing phrase and consume only part of it.
     func phraseLookupQueries(
         appending pronunciation: String,
         minimumUnitCount: Int = Self.minimumPhraseUnitCount,
@@ -650,13 +649,16 @@ struct CompositionBuffer: Equatable {
             from: longestCount,
             through: minimumUnitCount,
             by: -1
-        ).map { unitCount in
+        ).compactMap { unitCount in
             let existingUnitCount = unitCount - 1
-            let suffixReadings = precedingReadingUnits.suffix(existingUnitCount)
             let suffix = suffixUnits(
                 endingAt: units.endIndex,
                 readingCount: existingUnitCount
             )
+            let suffixReadings = suffix.filter { $0.kind == .reading }
+            guard suffixReadings.count == existingUnitCount else {
+                return nil
+            }
             return CompositionPhraseQuery(
                 pronunciationSequence: suffixReadings.map(\.pronunciation)
                     + [pronunciation],
@@ -673,7 +675,7 @@ struct CompositionBuffer: Equatable {
     /// revision-focus navigation and the new reading is about to be inserted
     /// right before that unit, so a phrase can only combine with readings up
     /// to the insertion point rather than the anchor or anything after it.
-    /// Context is likewise walled off at an already-accepted phrase's end.
+    /// The same phrase boundaries apply at the insertion point.
     func phraseLookupQueries(
         appending pronunciation: String,
         before anchorUnitID: UUID,
@@ -700,15 +702,18 @@ struct CompositionBuffer: Equatable {
             from: longestCount,
             through: minimumUnitCount,
             by: -1
-        ).map { unitCount in
+        ).compactMap { unitCount in
             let existingUnitCount = unitCount - 1
-            let suffix = precedingReadingUnits.suffix(existingUnitCount)
             let contextSuffix = suffixUnits(
                 endingAt: anchorIndex,
                 readingCount: existingUnitCount
             )
+            let suffixReadings = contextSuffix.filter { $0.kind == .reading }
+            guard suffixReadings.count == existingUnitCount else {
+                return nil
+            }
             return CompositionPhraseQuery(
-                pronunciationSequence: suffix.map(\.pronunciation)
+                pronunciationSequence: suffixReadings.map(\.pronunciation)
                     + [pronunciation],
                 existingSuffixUnitIDs: contextSuffix.map(\.id),
                 existingOutputPattern: punctuationPattern(for: contextSuffix),
@@ -1099,7 +1104,9 @@ struct CompositionBuffer: Equatable {
     /// A selection whose covered units are no longer contiguous (already
     /// edited apart) is skipped rather than enforced, since it no longer
     /// describes one settled span.
-    private func lockedPhraseRanges() -> [Range<Int>] {
+    /// Automatic continuations are provisional: they protect against partial
+    /// consumption while allowing a longer exact phrase to replace the span.
+    private func acceptedPhraseRanges() -> [(range: Range<Int>, allowsExtension: Bool)] {
         guard !pendingCandidateSelections.isEmpty else {
             return []
         }
@@ -1110,7 +1117,7 @@ struct CompositionBuffer: Equatable {
 
         return pendingCandidateSelections
             .filter { $0.coveredUnitIDs.count > 1 }
-            .compactMap { selection -> Range<Int>? in
+            .compactMap { selection -> (range: Range<Int>, allowsExtension: Bool)? in
                 let indices = selection.coveredUnitIDs.compactMap {
                     indexByID[$0]
                 }
@@ -1121,20 +1128,21 @@ struct CompositionBuffer: Equatable {
                       maxIndex - minIndex + 1 == indices.count else {
                     return nil
                 }
-                return minIndex ..< (maxIndex + 1)
+                return (
+                    minIndex ..< (maxIndex + 1),
+                    selection.reason == .automaticContinuation
+                )
             }
     }
 
     /// The earliest index a suffix or preceding-context scan ending at
     /// `endIndex` may reach back to. Scanning stops immediately after the
-    /// nearest locked phrase lying entirely before `endIndex`, so later
-    /// typing can never re-segment through and split it apart — this is what
-    /// keeps an already-resolved phrase such as 「室友」 from being overwritten
-    /// by a later homophone (e.g. continuing with 「有沒有」).
+    /// nearest explicitly accepted phrase lying entirely before `endIndex`.
+    /// Automatic previews remain available for whole-phrase extension.
     private func unlockedContextStartIndex(before endIndex: Int) -> Int {
-        lockedPhraseRanges()
-            .filter { $0.upperBound <= endIndex }
-            .map(\.upperBound)
+        acceptedPhraseRanges()
+            .filter { !$0.allowsExtension && $0.range.upperBound <= endIndex }
+            .map { $0.range.upperBound }
             .max() ?? units.startIndex
     }
 
@@ -1155,6 +1163,15 @@ struct CompositionBuffer: Equatable {
             }
         }
         guard foundReadings == readingCount else {
+            return units[endIndex ..< endIndex]
+        }
+        // A longer match may absorb an entire automatic preview (形式 →
+        // 行事曆), but must not steal its trailing characters (室友 → 有沒有).
+        guard !acceptedPhraseRanges().contains(where: {
+            $0.range.lowerBound < startIndex
+                && startIndex < $0.range.upperBound
+                && $0.range.upperBound <= endIndex
+        }) else {
             return units[endIndex ..< endIndex]
         }
         return units[startIndex ..< endIndex]

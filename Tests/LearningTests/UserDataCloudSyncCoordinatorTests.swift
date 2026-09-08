@@ -498,7 +498,6 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         let preference = LockedBoolean(true)
         let firstFetchStarted = expectation(description: "first fetch started")
         let secondFetchStarted = expectation(description: "second fetch started")
-        let synchronized = expectation(description: "upgrade state synchronized")
         let account = CloudAccountIdentifier(stableIdentifier: "account-a")
         var oldState = CloudSyncPersistedState()
         oldState.completedInitialMerge = true
@@ -527,17 +526,17 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
             debounceInterval: 0,
             retryInterval: 60
         )
-        let statusObserver = notificationCenter.addObserver(
-            forName: UserDataCloudSyncCoordinator
-                .statusDidChangeNotification,
-            object: coordinator,
-            queue: nil
-        ) { _ in
-            if case .idle = coordinator.status {
-                synchronized.fulfill()
-            }
-        }
-        defer { notificationCenter.removeObserver(statusObserver) }
+        // Queued status notifications can observe the same final state.
+        // Wait for a completed sync instead of counting those notifications.
+        let synchronized = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                if case let .idle(lastSuccessfulSync) = coordinator.status {
+                    return lastSuccessfulSync != nil
+                }
+                return false
+            },
+            object: nil
+        )
 
         coordinator.start()
         wait(for: [firstFetchStarted], timeout: 2)
@@ -557,7 +556,6 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
         let preference = LockedBoolean(true)
         let firstFetchStarted = expectation(description: "first fetch started")
         let secondFetchStarted = expectation(description: "second fetch started")
-        let synchronized = expectation(description: "same account synchronized")
         let account = CloudAccountIdentifier(stableIdentifier: "account-a")
         var state = CloudSyncPersistedState()
         state.accountIdentifier = account
@@ -586,17 +584,17 @@ final class UserDataCloudSyncCoordinatorTests: XCTestCase {
             debounceInterval: 0,
             retryInterval: 60
         )
-        let statusObserver = notificationCenter.addObserver(
-            forName: UserDataCloudSyncCoordinator
-                .statusDidChangeNotification,
-            object: coordinator,
-            queue: nil
-        ) { _ in
-            if case .idle = coordinator.status {
-                synchronized.fulfill()
-            }
-        }
-        defer { notificationCenter.removeObserver(statusObserver) }
+        // Queued status notifications can observe the same final state.
+        // Wait for a completed sync instead of counting those notifications.
+        let synchronized = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                if case let .idle(lastSuccessfulSync) = coordinator.status {
+                    return lastSuccessfulSync != nil
+                }
+                return false
+            },
+            object: nil
+        )
 
         coordinator.start()
         wait(for: [firstFetchStarted], timeout: 2)

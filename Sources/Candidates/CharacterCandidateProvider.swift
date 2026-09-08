@@ -455,6 +455,7 @@ private extension CandidateCommitReason {
              .returnKey,
              .number,
              .mouse,
+             .automaticContinuation,
              .implicitPassThrough,
              .lifecycle,
              .clientHandoff,

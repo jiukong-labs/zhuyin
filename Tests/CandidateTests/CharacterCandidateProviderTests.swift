@@ -2,6 +2,44 @@ import Foundation
 import XCTest
 
 final class CharacterCandidateProviderTests: XCTestCase {
+    func testContinuousCalendarTypingExtendsPreviewAndLearnsOnlyFinalPhrase() throws {
+        let learning = LearningSpy()
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary(), learning: learning)
+        var buffer = CompositionBuffer()
+        let readings = ["ㄒㄧㄥˊ", "ㄕˋ", "ㄌㄧˋ"]
+
+        for (index, reading) in readings.enumerated() {
+            let candidates = try provider.candidates(
+                for: reading,
+                phraseQueries: buffer.phraseLookupQueries(appending: reading)
+            )
+            let session = try XCTUnwrap(CandidateSession(
+                pronunciation: reading, candidates: candidates
+            ))
+            let preview = try XCTUnwrap(CompositionPresentation.make(
+                buffer: buffer, previewing: session.preferredCandidate
+            ))
+            if index == 1 { XCTAssertEqual(preview.text, "形式") }
+            if index == 2 { XCTAssertEqual(preview.text, "行事曆") }
+            XCTAssertTrue(buffer.acceptCandidate(
+                session.preferredCandidate,
+                reason: session.commitReason(for: .implicitPassThrough)
+            ))
+        }
+
+        XCTAssertEqual(buffer.text, "行事曆")
+        XCTAssertEqual(buffer.pronunciationSequence, readings)
+        XCTAssertTrue(learning.recordedSelections.isEmpty)
+        XCTAssertTrue(learning.recordedPhraseSelections.isEmpty)
+        let snapshot = try XCTUnwrap(buffer.takeCommitSnapshot())
+        XCTAssertEqual(snapshot.pendingCandidateSelections.map { $0.candidate.text }, ["行事曆"])
+        for selection in snapshot.pendingCandidateSelections {
+            provider.recordCommittedSelection(selection.candidate, reason: selection.reason)
+        }
+        XCTAssertEqual(learning.recordedPhraseSelections.map(\.phrase), ["行事曆"])
+        XCTAssertTrue(learning.recordedSelections.isEmpty)
+    }
+
     func testProviderWithoutPersonalLearningUsesBuiltInDefaultRanking() throws {
         let dictionary = try makeDictionary()
         let provider = CharacterCandidateProvider(dictionary: dictionary)
@@ -345,6 +383,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
             .returnKey,
             .number(9),
             .mouse,
+            .automaticContinuation,
             .implicitPassThrough,
             .lifecycle,
             .clientHandoff,
@@ -930,6 +969,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
             .returnKey,
             .number(9),
             .mouse,
+            .automaticContinuation,
             .implicitPassThrough,
             .lifecycle,
             .clientHandoff,

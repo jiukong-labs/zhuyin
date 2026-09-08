@@ -4,6 +4,25 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-09-08
+
+### Fixed
+
+- Allow an automatically accepted provisional phrase to extend into a longer
+  exact phrase: typing `ㄒㄧㄥˊ ㄕˋ ㄌㄧˋ` now replaces the provisional
+  「形式」 with 「行事曆」. Explicit phrase choices remain hard boundaries,
+  and partial overlap remains blocked to preserve 「室友有沒有」.
+- Keep phrase lookup readings and covered unit identifiers aligned with the
+  same validated suffix, including insertion and revision at a positioned caret.
+
+### Known issues
+
+- Installed GUI acceptance passes 21 of 22 scenarios after correcting the
+  homophone scenario's keyboard sequence. `revision-candidate-rows` expects
+  「測是」 but produces 「測試」; the same result reproduces on the original
+  installed v0.1.21 build with isolated learning data. This difference remains
+  unresolved. Both phrase-segmentation regression scenarios pass.
+
 ## [0.1.21] - 2026-09-07
 
 ### Added

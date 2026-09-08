@@ -1,6 +1,18 @@
 import XCTest
 
 final class CandidateSessionTests: XCTestCase {
+    func testOnlyImplicitInlineAcceptanceAllowsAutomaticContinuation() throws {
+        var session = try XCTUnwrap(CandidateSession(
+            pronunciation: "ㄨㄛˇ", candidates: [makeCandidate("我", pronunciation: "ㄨㄛˇ")]
+        ))
+        XCTAssertEqual(session.commitReason(for: .implicitPassThrough), .automaticContinuation)
+        for reason: CandidateCommitReason in [.space, .returnKey, .number(1), .mouse, .punctuation, .lifecycle, .clientHandoff] {
+            XCTAssertEqual(session.commitReason(for: reason), reason)
+        }
+        XCTAssertTrue(session.expand())
+        XCTAssertEqual(session.commitReason(for: .implicitPassThrough), .implicitPassThrough)
+    }
+
     func testRejectsEmptyPronunciationAndCandidateList() {
         XCTAssertNil(
             CandidateSession(
@@ -107,6 +119,7 @@ final class CandidateSessionTests: XCTestCase {
             )
         )
 
+        XCTAssertEqual(session.commitReason(for: .implicitPassThrough), .implicitPassThrough)
         XCTAssertEqual(session.revisionFocus, focus)
         XCTAssertEqual(session.revisionMode, .locating)
         XCTAssertFalse(session.isInlinePreview)

@@ -274,6 +274,128 @@ final class CompositionBufferTests: XCTestCase {
         XCTAssertEqual(buffer.text, "室友有沒有")
     }
 
+    func testAutomaticPhraseExtendsToLongerExactPhraseAtBufferEnd() throws {
+        var buffer = CompositionBuffer()
+        buffer.append(text: "形", pronunciation: "ㄒㄧㄥˊ")
+        XCTAssertTrue(buffer.acceptCandidate(
+            phraseCandidate("形式", readings: ["ㄒㄧㄥˊ", "ㄕˋ"]),
+            reason: .automaticContinuation
+        ))
+        XCTAssertEqual(buffer.text, "形式")
+        let provisionalIDs = buffer.units.map(\.id)
+        let calendar = phraseCandidate("行事曆", readings: ["ㄒㄧㄥˊ", "ㄕˋ", "ㄌㄧˋ"])
+
+        XCTAssertEqual(buffer.phraseLookupQueries(appending: "ㄌㄧˋ"), [
+            CompositionPhraseQuery(
+                pronunciationSequence: calendar.pronunciationSequence,
+                existingSuffixUnitIDs: provisionalIDs
+            )
+        ])
+        XCTAssertEqual(
+            CompositionPresentation.make(buffer: buffer, previewing: calendar)?.text,
+            "行事曆"
+        )
+        XCTAssertTrue(buffer.acceptCandidate(calendar, reason: .automaticContinuation))
+        XCTAssertEqual(buffer.text, "行事曆")
+        XCTAssertNotEqual(buffer.text, "形式立")
+        XCTAssertEqual(buffer.pronunciationSequence, calendar.pronunciationSequence)
+        XCTAssertTrue(Set(provisionalIDs).isDisjoint(with: buffer.units.map(\.id)))
+        let snapshot = try XCTUnwrap(buffer.takeCommitSnapshot())
+        XCTAssertEqual(snapshot.pendingCandidateSelections.map { $0.candidate.text }, ["行事曆"])
+    }
+
+    func testAutomaticRoommatePhraseSurvivesFollowingHaveOrNotPhrase() {
+        var buffer = CompositionBuffer()
+        buffer.append(text: "室", pronunciation: "ㄕˋ")
+        XCTAssertTrue(buffer.acceptCandidate(
+            phraseCandidate("室友", readings: ["ㄕˋ", "ㄧㄡˇ"]),
+            reason: .automaticContinuation
+        ))
+        let roommateIDs = buffer.units.map(\.id)
+        buffer.append(text: "有", pronunciation: "ㄧㄡˇ")
+        buffer.append(text: "沒", pronunciation: "ㄇㄟˊ")
+        let phrase = phraseCandidate("有沒有", readings: ["ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"])
+        let queries = buffer.phraseLookupQueries(appending: "ㄧㄡˇ")
+        XCTAssertTrue(queries.contains {
+            $0.pronunciationSequence == phrase.pronunciationSequence
+                && $0.existingSuffixUnitIDs == buffer.units.suffix(2).map(\.id)
+        })
+        XCTAssertFalse(queries.contains {
+            $0.existingSuffixUnitIDs.first == roommateIDs.last
+        })
+        XCTAssertTrue(buffer.acceptCandidate(phrase, reason: .automaticContinuation))
+        XCTAssertEqual(buffer.text, "室友有沒有")
+        XCTAssertEqual(buffer.units.prefix(2).map(\.id), roommateIDs)
+    }
+
+    func testExplicitPhraseChoicesRemainProtectedFromLongerMatches() throws {
+        for reason: CandidateCommitReason in [.space, .returnKey, .number(1), .mouse, .implicitPassThrough] {
+            var buffer = CompositionBuffer()
+            buffer.append(text: "形", pronunciation: "ㄒㄧㄥˊ")
+            XCTAssertTrue(buffer.acceptCandidate(
+                phraseCandidate("形式", readings: ["ㄒㄧㄥˊ", "ㄕˋ"]), reason: reason
+            ))
+            let calendar = phraseCandidate("行事曆", readings: ["ㄒㄧㄥˊ", "ㄕˋ", "ㄌㄧˋ"])
+            XCTAssertTrue(buffer.phraseLookupQueries(appending: "ㄌㄧˋ").isEmpty)
+            XCTAssertFalse(buffer.acceptCandidate(calendar, reason: .automaticContinuation))
+            let anchor = try XCTUnwrap(buffer.append(text: "中", pronunciation: "ㄓㄨㄥ"))
+            XCTAssertTrue(buffer.phraseLookupQueries(appending: "ㄌㄧˋ", before: anchor.id).isEmpty)
+            XCTAssertTrue(buffer.insertCandidate(calendar, before: anchor.id, reason: .automaticContinuation).isEmpty)
+            XCTAssertEqual(buffer.text, "形式中")
+        }
+    }
+
+    func testAutomaticPhraseCannotBePartiallyConsumedByLaterHomophone() throws {
+        var buffer = CompositionBuffer()
+        buffer.append(text: "室", pronunciation: "ㄕˋ")
+        XCTAssertTrue(buffer.acceptCandidate(
+            phraseCandidate("室友", readings: ["ㄕˋ", "ㄧㄡˇ"]), reason: .automaticContinuation
+        ))
+        let roommateIDs = buffer.units.map(\.id)
+        buffer.append(text: "沒", pronunciation: "ㄇㄟˊ")
+        let intrudingPhrase = phraseCandidate("有沒有", readings: ["ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"])
+        XCTAssertEqual(buffer.phraseLookupQueries(appending: "ㄧㄡˇ").map(\.pronunciationSequence), [
+            ["ㄕˋ", "ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"], ["ㄇㄟˊ", "ㄧㄡˇ"]
+        ])
+        XCTAssertFalse(buffer.acceptCandidate(intrudingPhrase, reason: .automaticContinuation))
+        let anchor = try XCTUnwrap(buffer.append(text: "有", pronunciation: "ㄧㄡˇ"))
+        XCTAssertFalse(buffer.phraseLookupQueries(appending: "ㄧㄡˇ", before: anchor.id).contains {
+            $0.pronunciationSequence == intrudingPhrase.pronunciationSequence
+        })
+        XCTAssertTrue(buffer.insertCandidate(intrudingPhrase, before: anchor.id, reason: .automaticContinuation).isEmpty)
+        XCTAssertTrue(buffer.replaceRevisionSuffix(endingAt: anchor.id, candidate: intrudingPhrase, reason: .returnKey).isEmpty)
+        XCTAssertEqual(buffer.text, "室友沒有")
+        XCTAssertEqual(Array(buffer.units.prefix(2).map(\.id)), roommateIDs)
+    }
+
+    func testAutomaticPhraseExtensionWorksAtInsertionAndRevisionCaret() throws {
+        for revising in [false, true] {
+            var buffer = CompositionBuffer()
+            buffer.append(text: "形", pronunciation: "ㄒㄧㄥˊ")
+            XCTAssertTrue(buffer.acceptCandidate(
+                phraseCandidate("形式", readings: ["ㄒㄧㄥˊ", "ㄕˋ"]), reason: .automaticContinuation
+            ))
+            let anchor = try XCTUnwrap(buffer.append(
+                text: revising ? "立" : "中", pronunciation: revising ? "ㄌㄧˋ" : "ㄓㄨㄥ"
+            ))
+            let trailing = try XCTUnwrap(buffer.append(text: "文", pronunciation: "ㄨㄣˊ"))
+            let calendar = phraseCandidate("行事曆", readings: ["ㄒㄧㄥˊ", "ㄕˋ", "ㄌㄧˋ"])
+            let queries = buffer.phraseLookupQueries(appending: "ㄌㄧˋ", before: anchor.id)
+            XCTAssertEqual(queries.map(\.pronunciationSequence), [calendar.pronunciationSequence])
+            let replacements: [CompositionUnit]
+            if revising {
+                replacements = buffer.replaceRevisionSuffix(endingAt: anchor.id, candidate: calendar, reason: .number(1))
+            } else {
+                XCTAssertEqual(CompositionPresentation.make(buffer: buffer, previewing: calendar, insertionAnchorUnitID: anchor.id)?.text, "行事曆中文")
+                replacements = buffer.insertCandidate(calendar, before: anchor.id, reason: .automaticContinuation)
+            }
+            XCTAssertEqual(replacements.map(\.text).joined(), "行事曆")
+            XCTAssertEqual(buffer.text, revising ? "行事曆文" : "行事曆中文")
+            XCTAssertEqual(buffer.units.last, trailing)
+            XCTAssertEqual(buffer.pendingCandidateSelections.map { $0.candidate.text }, ["行事曆"])
+        }
+    }
+
     func testPhraseReplacementRequiresValidShapeAndExactExistingSuffix() {
         let invalidCandidates = [
             phraseCandidate("空", readings: ["ㄎㄨㄥ"]),

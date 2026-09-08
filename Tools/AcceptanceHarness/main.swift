@@ -313,6 +313,34 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試"
     ),
+    // The provisional 形式 must extend to the exact three-reading 行事曆.
+    "provisional-phrase-extension": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_V), Keystroke(kVK_ANSI_U),
+            Keystroke(kVK_ANSI_Slash), Keystroke(kVK_ANSI_6),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_X), Keystroke(kVK_ANSI_U),
+            Keystroke(kVK_ANSI_4), Keystroke(kVK_Return),
+        ],
+        expectation: "行事曆"
+    ),
+    // Automatic phrase extension must preserve 室友 while forming 有沒有.
+    "phrase-homophone-boundary": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_U), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_U), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_A), Keystroke(kVK_ANSI_O),
+            Keystroke(kVK_ANSI_6),
+            Keystroke(kVK_ANSI_U), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_3), Keystroke(kVK_Return),
+        ],
+        expectation: "室友有沒有"
+    ),
     // Holds a real marked composition so a maintainer can verify the
     // cursor-indicator breathing dot without changing committed text rules.
     "composition-indicator": AcceptanceScript(
