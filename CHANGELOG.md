@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-09-08
+
 ### Fixed
 
 - Allow an automatically accepted provisional phrase to extend into a longer
