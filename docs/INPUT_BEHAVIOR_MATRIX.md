@@ -43,7 +43,7 @@ leaving the default gate.
 | Phrase extension preserves a preceding phrase's complete span | `phrase-homophone-boundary` | `室友` + `有沒有` remains `室友有沒有` |
 | Longest exact sentence replacement | `sentence` | `測試中請稍後` |
 | Revision caret and candidate arrows remain two-stage | `revision-arrows` | unchanged `測試` |
-| Revision opens the full candidate grid with one Down, and rows move with Up/Down | `revision-candidate-rows` | `測是` |
+| Revision opens the full candidate grid with one Down, and rows move with Up/Down | `revision-candidate-rows` | `是室`: two standalone `ㄕˋ` compositions select row 1 after Down/Up, then row 2 after Down |
 | Candidate arrows wrap in both directions instead of stopping at an edge | `candidate-wrap` | `有` |
 | Backspace edits the reading left of the revision caret | `revision-backspace` | `ㄘㄜ試` |
 | Backspace keeps working after a revised reading is fully erased | `revision-backspace-exhausted` | `ㄨㄛ試` |
@@ -55,6 +55,18 @@ leaving the default gate.
 | Shift-Left phrase selection | `phrase` | `九空` |
 | Shift-Right phrase selection | `phrase-right` | `九空` |
 | Removing a phrase candidate, built-in ones included | mouse only — unit tests | the exact text+reading identity stops appearing and stays gone across dictionary updates |
+
+`revision-candidate-rows` uses isolated learning data and separate single-reading
+compositions, so preceding readings cannot introduce complete phrase candidates.
+The bundled `ㄕˋ` candidates span more than nine slots: row 1 starts with `是`,
+row 2 with `室`. Each composition accepts the preview with Space and positions
+the revision caret with Left/Right. The first Down must open the full grid.
+The next Down followed by Up and `1` must commit `是`; a second composition
+uses Down, Down, `1` to commit `室`. The combined `是室` checks both the return
+to row 1 and actual movement to row 2; ignoring both row arrows cannot pass.
+The first commit selects the already-first candidate and preserves the next
+lookup's order. This replaces the unstable `測是` expectation, whose revision
+lookup could put the complete phrase `測試` in slot 1.
 
 The candidate window's inline `×` is a mouse-only control, so the keystroke
 harness cannot drive it. That row is covered by unit tests over

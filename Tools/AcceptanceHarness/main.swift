@@ -399,17 +399,15 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試"
     ),
-    // Revision opens the same full grid ordinary typing opens: one Down, not
-    // two. With 試 focused, the second Down therefore moves one row down and
-    // Up moves back to it, leaving ㄕˋ's first row addressed by 1-9, so slot 1
-    // commits 是. Under the old two-stage chooser the second Down would only
-    // expand and Up would close the window, making `1` start a ㄅ syllable and
-    // commit 測試ㄅ instead.
+    // Two separate single-reading compositions exclude revision phrase matches.
+    // With isolated learning, ㄕˋ has more than nine candidates: row 1 starts
+    // with 是 and row 2 with 室. First verify Down opens the full grid, another
+    // Down moves a row, and Up returns to 是. Then select 室 without Up so
+    // no-op row navigation cannot pass merely by leaving 是 selected twice.
+    // Committing the already-first 是 keeps the second lookup's order stable.
     "revision-candidate-rows": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
-            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K),
-            Keystroke(kVK_ANSI_4),
             Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
             Keystroke(kVK_Space),
             Keystroke(kVK_LeftArrow), Keystroke(kVK_RightArrow),
@@ -417,8 +415,14 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_UpArrow),
             Keystroke(kVK_ANSI_1),
             Keystroke(kVK_Return),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space),
+            Keystroke(kVK_LeftArrow), Keystroke(kVK_RightArrow),
+            Keystroke(kVK_DownArrow), Keystroke(kVK_DownArrow),
+            Keystroke(kVK_ANSI_1),
+            Keystroke(kVK_Return),
         ],
-        expectation: "測是"
+        expectation: "是室"
     ),
     // Arrows wrap in both directions, so an open chooser can be circled
     // without ever closing. ㄧㄡˇ fills three rows: from the first candidate
