@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-09-09
+
 ### Fixed
 
 - Insert punctuation at the positioned composition caret and keep subsequent
