@@ -2,6 +2,30 @@ import Foundation
 import XCTest
 
 final class CompositionBufferTests: XCTestCase {
+    func testSavingSelectedPrefixPreservesCompositionForAnotherPhrase() throws {
+        var buffer = CompositionBuffer()
+        for (text, reading) in [("測", "ㄘㄜˋ"), ("試", "ㄕˋ"),
+                                ("久", "ㄐㄧㄡˇ"), ("空", "ㄎㄨㄥ")] {
+            buffer.append(text: text, pronunciation: reading)
+        }
+        let original = buffer.units
+        buffer.extendSelectionRight(from: .caret(followingUnitID: original[0].id))
+        XCTAssertEqual(buffer.selectedPhrase?.text, "測試")
+        let anchor = try XCTUnwrap(buffer.collapseSelectionToEnd())
+        XCTAssertEqual(anchor, original[2].id)
+        XCTAssertFalse(buffer.hasSelection)
+        XCTAssertEqual(buffer.units, original)
+        XCTAssertEqual(buffer.markedSelectionRange(focusedUnitID: anchor),
+                       NSRange(location: 2, length: 0))
+
+        buffer.extendSelectionRight(from: .caret(followingUnitID: anchor))
+        XCTAssertEqual(buffer.selectedPhrase?.text, "久空")
+        XCTAssertNil(buffer.collapseSelectionToEnd())
+        XCTAssertFalse(buffer.hasSelection)
+        XCTAssertEqual(buffer.units, original)
+        XCTAssertEqual(buffer.takeCommitSnapshot()?.text, "測試久空")
+    }
+
     func testAppendKeepsPerReadingUnitsAndRejectsMalformedOrDuplicateUnits() {
         var buffer = CompositionBuffer()
         let first = CompositionUnit(

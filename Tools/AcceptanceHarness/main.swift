@@ -523,6 +523,21 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測ㄕ？"
     ),
+    // Marks and a new reading must accumulate at the positioned caret.
+    "punctuation-insertion": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_ANSI_Slash, .maskShift),
+            Keystroke(kVK_ANSI_1, .maskShift),
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_Slash, .maskShift),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測？！我？試"
+    ),
     "brackets": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -550,7 +565,8 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_LeftArrow),
             Keystroke(kVK_RightArrow),
             Keystroke(kVK_LeftArrow, .maskShift),
-            Keystroke(kVK_Return),
+            Keystroke(kVK_Return), // Save the phrase, keeping marked text.
+            Keystroke(kVK_Return), // Explicitly commit the composition.
         ],
         expectation: "久空"
     ),
@@ -567,9 +583,23 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_Space),
             Keystroke(kVK_LeftArrow), Keystroke(kVK_LeftArrow),
             Keystroke(kVK_RightArrow, .maskShift),
-            Keystroke(kVK_Return),
+            Keystroke(kVK_Return), // Save the phrase, keeping marked text.
+            Keystroke(kVK_Return), // Explicitly commit the composition.
         ],
         expectation: "久空"
+    ),
+    // Saving a prefix must leave the suffix available for pronunciation edits.
+    "phrase-continue": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4), Keystroke(kVK_Space),
+            Keystroke(kVK_ANSI_J), Keystroke(kVK_ANSI_I), Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_Space), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_LeftArrow, .maskShift), Keystroke(kVK_Return),
+            Keystroke(kVK_ForwardDelete), Keystroke(kVK_Return),
+        ],
+        expectation: "測試ㄨㄛ"
     ),
     // Requires JiukongKeyboardArrangement = eten before the process starts.
     "eten": AcceptanceScript(

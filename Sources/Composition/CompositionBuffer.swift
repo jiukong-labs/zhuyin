@@ -880,6 +880,16 @@ struct CompositionBuffer: Equatable {
         }
     }
 
+    /// Finishes phrase selection without committing or changing any units.
+    /// Returns the unit after the saved range; nil places the caret at the end.
+    mutating func collapseSelectionToEnd() -> UUID? {
+        guard let range = selectedUnitRange else { return nil }
+        let followingUnitID = range.upperBound < units.endIndex
+            ? units[range.upperBound].id : nil
+        clearSelection()
+        return followingUnitID
+    }
+
     @discardableResult
     mutating func clearSelection() -> Bool {
         guard selectedUnitRange != nil else {

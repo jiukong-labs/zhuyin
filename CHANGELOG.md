@@ -4,6 +4,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Insert punctuation at the positioned composition caret and keep subsequent
+  punctuation and readings at that position.
+- Save a selected user phrase without committing the composition. Keep the
+  caret after the saved range so remaining text can be revised or saved as
+  another phrase; Return without a phrase range commits the composition.
+- Preserve the selected phrase and composition when saving fails.
+
 ## [0.1.23] - 2026-09-08
 
 ### Changed

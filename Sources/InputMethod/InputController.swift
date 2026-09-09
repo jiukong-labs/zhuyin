@@ -1007,26 +1007,25 @@ final class InputController: IMKInputController {
 
         switch key {
         case .returnKey, .keypadEnter:
-            let confirmation: SavedUserPhraseConfirmation?
-            if let phrase = compositionBuffer.selectedPhrase,
-               candidateProvider?.addUserPhrase(
+            if let phrase = compositionBuffer.selectedPhrase {
+                guard candidateProvider?.addUserPhrase(
                     phrase: phrase.text,
                     pronunciationSequence: phrase.pronunciationSequence,
                     outputPattern: phrase.outputPattern
-               ) == true {
-                confirmation = SavedUserPhraseConfirmation(
+                ) == true else {
+                    NSSound.beep()
+                    return true
+                }
+                let confirmation = SavedUserPhraseConfirmation(
                     phrase: phrase.text,
                     pronunciationSequence: phrase.pronunciationSequence
                 )
+                revisingUnitID = compositionBuffer.collapseSelectionToEnd()
+                isRevisionCaretActive = true
+                updateMarkedComposition(on: inputClient)
+                presentSavedPhraseConfirmation(confirmation, on: inputClient)
             } else {
-                confirmation = nil
-            }
-            flushComposition(reason: .returnKey, to: inputClient)
-            if let confirmation {
-                presentSavedPhraseConfirmation(
-                    confirmation,
-                    on: inputClient
-                )
+                flushComposition(reason: .returnKey, to: inputClient)
             }
             return true
         case .escape:
@@ -1141,13 +1140,17 @@ final class InputController: IMKInputController {
 
     /// Punctuation ends the active reading without ending the composition: the
     /// current candidate or raw syllable is accepted into the buffer, then the
-    /// mark itself is appended as a unit that carries no reading.
+    /// mark itself is inserted at the caret as a unit that carries no reading.
     private func handlePunctuation(
         _ punctuation: String,
         inputClient: any IMKTextInput
     ) -> Bool {
-        let insertionAnchorUnitID = pendingInsertionAnchorUnitID
+        let pendingAnchorUnitID = pendingInsertionAnchorUnitID
         _ = acceptPreferredCandidate(reason: .punctuation)
+        // Accepting a revision can replace the focused unit, so resolve the
+        // positioned caret after acceptance has repaired its anchor.
+        let insertionAnchorUnitID = pendingAnchorUnitID
+            ?? (isRevisionCaretActive ? revisingUnitID : nil)
         isRevisionCaretActive = false
         revisingUnitID = nil
 
@@ -1164,9 +1167,12 @@ final class InputController: IMKInputController {
                pronunciation: punctuation,
                before: insertionAnchorUnitID,
                kind: .punctuation
-           ) == nil {
-            _ = compositionBuffer.appendPunctuation(punctuation)
-        } else if insertionAnchorUnitID == nil {
+           ) != nil {
+            // Further punctuation or readings continue immediately after this
+            // mark, before the same surviving unit on the right.
+            isRevisionCaretActive = true
+            revisingUnitID = insertionAnchorUnitID
+        } else {
             _ = compositionBuffer.appendPunctuation(punctuation)
         }
         updateMarkedComposition(on: inputClient)

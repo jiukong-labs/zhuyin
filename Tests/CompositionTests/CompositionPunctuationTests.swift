@@ -13,6 +13,29 @@ final class CompositionPunctuationTests: XCTestCase {
         XCTAssertEqual(buffer.units.map(\.kind), [.reading, .punctuation])
     }
 
+    func testConsecutivePunctuationAtPositionedCaretPreservesSuffix() throws {
+        for boundary in 0..<2 {
+            var buffer = CompositionBuffer()
+            buffer.append(text: "測", pronunciation: "ㄘㄜˋ")
+            buffer.append(text: "試", pronunciation: "ㄕˋ")
+            let anchor = buffer.units[boundary].id
+
+            for mark in ["？", "！"] {
+                let unit = try XCTUnwrap(buffer.insert(
+                    text: mark, pronunciation: mark,
+                    before: anchor, kind: .punctuation
+                ))
+                XCTAssertEqual(unit.kind, .punctuation)
+            }
+
+            XCTAssertEqual(buffer.text, boundary == 0 ? "？！測試" : "測？！試")
+            XCTAssertEqual(
+                buffer.markedSelectionRange(focusedUnitID: anchor),
+                NSRange(location: boundary + 2, length: 0)
+            )
+        }
+    }
+
     func testPhraseLookupCarriesPunctuationContext() throws {
         var buffer = CompositionBuffer()
         buffer.append(text: "久", pronunciation: "ㄐㄧㄡˇ")

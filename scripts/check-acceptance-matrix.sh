@@ -37,9 +37,11 @@ typeset -a required=(
   escape
   punctuation
   punctuation-caret
+  punctuation-insertion
   brackets
   phrase
   phrase-right
+  phrase-continue
 )
 
 typeset -A available
