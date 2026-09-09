@@ -51,9 +51,11 @@ leaving the default gate.
 | Escape cancels without leaking text | `escape` | empty document |
 | Shift punctuation stays Chinese | `punctuation` | `我，我` |
 | Revision caret stops immediately before punctuation | `punctuation-caret` | `測試？| → 測試|？`; Backspace commits `測ㄕ？` |
+| Punctuation and subsequent input stay at the positioned caret | `punctuation-insertion` | `測｜試` + `？！我？` commits `測？！我？試` |
 | Direct bracket and slash punctuation mappings | `brackets` | `「我」、／` |
-| Shift-Left phrase selection | `phrase` | `九空` |
-| Shift-Right phrase selection | `phrase-right` | `九空` |
+| Shift-Left phrase selection | `phrase` | first Return saves and retains composition; second commits `久空` |
+| Shift-Right phrase selection | `phrase-right` | first Return saves and retains composition; second commits `久空` |
+| Saving a prefix preserves the editable suffix | `phrase-continue` | save `測試` in `測試我`, then Forward Delete edits `我`; final Return commits `測試ㄨㄛ` |
 | Removing a phrase candidate, built-in ones included | mouse only — unit tests | the exact text+reading identity stops appearing and stays gone across dictionary updates |
 
 `revision-candidate-rows` uses isolated learning data and separate single-reading
