@@ -4,6 +4,27 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.25] - 2026-09-15
+
+### Added
+
+- Add 353 reviewed words from the maintainer's own typing to the first-party
+  lexicon, bringing it to 5,720 entries. Names, fragments, and punctuation
+  habits stay out; typos are added in their correct form, such as 外瀉 → 外洩,
+  阻檔 → 阻擋, 蛋白值 → 蛋白質, 延用 → 沿用, and 像簿 → 相簿.
+
+### Removed
+
+- Remove 「紀錄 ㄐㄧˋ ㄌㄨˋ」 from the built-in lexicon; 「記錄」, 「紀錄片」, and
+  「會議紀錄」 remain.
+
+### Fixed
+
+- Keep the caret right after a reading typed at a positioned composition caret
+  while its candidate is previewed, instead of moving it to the end.
+- Keep Left and Right inside an open candidate chooser when earlier readings
+  are already composed, instead of closing the chooser to move the caret.
+
 ## [0.1.24] - 2026-09-09
 
 ### Fixed
