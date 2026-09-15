@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.26] - 2026-09-15
+
 ### Fixed
 
 - Insert Option digits and letters at a positioned composition caret, like
