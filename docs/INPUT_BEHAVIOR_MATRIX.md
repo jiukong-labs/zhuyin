@@ -37,6 +37,7 @@ leaving the default gate.
 | A number-row Zhuyin key continues composition before the chooser opens | `continuous` | `我不` |
 | Chinese-mode Option letters and digits are explicit ASCII | `option-ascii` | `azAZ09` |
 | Option ASCII finalizes an active candidate exactly once | `option-after-composition` | `我a1` |
+| Option ASCII stays at a positioned caret like punctuation | `option-ascii-insertion` | `測｜試` + `⌥6⌥A` commits `測6a試` |
 | Standalone Shift switches Chinese → English → Chinese | `shift-round-trip` | English `a`, then Chinese `我` |
 | Exact built-in phrase replacement | `builtin-phrase` | `測試` |
 | A provisional phrase can extend to a longer exact phrase | `provisional-phrase-extension` | `ㄒㄧㄥˊ ㄕˋ ㄌㄧˋ` previews `形式`, then becomes `行事曆`; never `形式立` |

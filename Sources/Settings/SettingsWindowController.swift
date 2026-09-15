@@ -211,7 +211,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "快捷鍵",
                     controls: [shiftToggleRow, optionShortcutLabel],
-                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。正在組字時使用 Option 組合鍵，久空會先完成目前組字。"
+                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。正在組字時使用 Option 組合鍵，久空會先完成目前組字；若已用方向鍵把游標移到組字中間，Option 數字與字母會直接插在游標處。"
                 ),
                 SettingsPaneBuilder.section(
                     title: "學習",

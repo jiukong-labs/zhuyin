@@ -232,6 +232,12 @@ final class InputController: IMKInputController {
             for: resolvedKey,
             modifierFlags: event.modifierFlags
         ) {
+            // Finishing here would commit the text after the positioned caret
+            // first and leave the ASCII at the end, so it is inserted at the
+            // caret exactly like punctuation instead.
+            if hasPositionedInsertionCaret {
+                return handlePunctuation(asciiText, inputClient: inputClient)
+            }
             finishComposition(
                 reason: .implicitPassThrough,
                 using: inputClient
@@ -1136,6 +1142,13 @@ final class InputController: IMKInputController {
         candidateSession = updatedSession
         candidatePresenter.hide(sessionID: session.id)
         updateMarkedComposition(on: inputClient)
+    }
+
+    /// Whether new text belongs before an existing unit rather than at the
+    /// buffer's end. A caret positioned at the end has no following unit.
+    private var hasPositionedInsertionCaret: Bool {
+        pendingInsertionAnchorUnitID != nil
+            || (isRevisionCaretActive && revisingUnitID != nil)
     }
 
     /// Punctuation ends the active reading without ending the composition: the
