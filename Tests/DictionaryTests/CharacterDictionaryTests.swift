@@ -23,7 +23,7 @@ final class CharacterDictionaryTests: XCTestCase {
                     sourceOrder: 827,
                     cnsPlane: 1,
                     usageTier: 0,
-                    firstPartyPhraseCount: 38,
+                    firstPartyPhraseCount: 39,
                     defaultSelectionCount: 164
                 ),
                 DictionaryCharacter(text: "倭", sourceOrder: 2_092, cnsPlane: 1, usageTier: 0),
@@ -132,8 +132,8 @@ final class CharacterDictionaryTests: XCTestCase {
             try dictionary.metadataValue(for: "first_party_character_entries"),
             "4"
         )
-        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "5368")
-        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "5338")
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "5720")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "5686")
         XCTAssertEqual(
             try dictionary.metadataValue(for: "default_character_ranking_entries"),
             "804"
@@ -154,13 +154,13 @@ final class CharacterDictionaryTests: XCTestCase {
             try dictionary.metadataValue(
                 for: "first_party_attested_character_readings"
             ),
-            "1857"
+            "1920"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(
                 for: "first_party_character_reading_attestations"
             ),
-            "11926"
+            "12731"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "phrase_dataset_name"),
