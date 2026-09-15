@@ -199,6 +199,28 @@ final class CompositionPresentationTests: XCTestCase {
         XCTAssertTrue(buffer.isEmpty)
     }
 
+    func testInlineCandidatePreviewAtPositionedCaretKeepsCaretAfterPreview() {
+        var buffer = CompositionBuffer()
+        for (text, reading) in [("一", "ㄧ"), ("二", "ㄦˋ"),
+                                ("四", "ㄙˋ"), ("五", "ㄨˇ")] {
+            buffer.append(text: text, pronunciation: reading)
+        }
+        let anchor = buffer.units[2].id
+
+        XCTAssertEqual(
+            CompositionPresentation.make(
+                buffer: buffer,
+                previewing: Candidate(text: "三", pronunciation: "ㄙㄢ"),
+                insertionAnchorUnitID: anchor
+            ),
+            CompositionPresentation(
+                text: "一二三四五",
+                selectionRange: NSRange(location: 3, length: 0)
+            )
+        )
+        XCTAssertEqual(buffer.text, "一二四五")
+    }
+
     func testInlinePhraseCandidatePreviewReplacesOnlyCopiedSuffix() {
         var buffer = CompositionBuffer()
         XCTAssertNotNil(buffer.append(text: "冊", pronunciation: "ㄘㄜˋ"))
