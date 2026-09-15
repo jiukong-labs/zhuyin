@@ -47,9 +47,21 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             learning: learning
         )
         phraseList = UserDataListController(kind: .phrases, learning: learning)
+        // An unreadable dictionary cannot prove a phrase is gone, so every
+        // removal stays listed rather than silently disappearing.
+        let dictionary = try? CharacterDictionary(bundle: .main)
         suppressedPhraseList = UserDataListController(
             kind: .suppressedPhrases,
-            learning: learning
+            learning: learning,
+            isBuiltInPhrase: { phrase, readings in
+                guard let dictionary else {
+                    return true
+                }
+                return (try? dictionary.containsPhrase(
+                    phrase,
+                    pronunciationSequence: readings
+                )) ?? true
+            }
         )
         cursorIndicatorSettings = CursorIndicatorSettingsController(
             preferences: preferences

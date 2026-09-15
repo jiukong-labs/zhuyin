@@ -8,6 +8,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 - Insert Option digits and letters at a positioned composition caret, like
   punctuation, instead of finishing the composition and adding them at the end.
+- Stop listing a removed built-in phrase under 已刪除內建詞 once the built-in
+  lexicon no longer carries it, such as 「紀錄 ㄐㄧˋ ㄌㄨˋ」.
 
 ## [0.1.25] - 2026-09-15
 

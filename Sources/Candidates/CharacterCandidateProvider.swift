@@ -201,13 +201,10 @@ final class CharacterCandidateProvider {
     private func dictionaryContainsPhrase(
         _ identity: ValidatedUserPhrase
     ) -> Bool {
-        let entries = (try? dictionary.phraseEntries(
-            for: identity.pronunciationSequence
-        )) ?? []
-        return entries.contains {
-            $0.text == identity.phrase
-                && $0.pronunciationSequence == identity.pronunciationSequence
-        }
+        (try? dictionary.containsPhrase(
+            identity.phrase,
+            pronunciationSequence: identity.pronunciationSequence
+        )) ?? false
     }
 
     /// Lets a previously removed built-in phrase appear again.
