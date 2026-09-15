@@ -97,7 +97,13 @@ struct CompositionPresentation: Equatable {
         guard didInsert else {
             return nil
         }
-        return make(buffer: previewBuffer, activeSuffix: nil)
+        // The anchor survives the insertion, so the caret stays right after
+        // the previewed text instead of jumping to the end of the buffer.
+        return make(
+            buffer: previewBuffer,
+            activeSuffix: nil,
+            focusedUnitID: insertionAnchorUnitID
+        )
     }
 }
 

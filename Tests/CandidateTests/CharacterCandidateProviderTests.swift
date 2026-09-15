@@ -362,7 +362,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
                 "意", "譯", "議", "益", "施",
                 // Captured selections keep the first five positions; the
                 // expanded first-party lexicon orders the remaining ties.
-                "義", "藝", "易", "憶", "異", "疫", "翌", "逸", "溢", "億", "毅",
+                "義", "易", "藝", "異", "憶", "疫", "翌", "逸", "溢", "億", "毅",
             ]
         )
     }
