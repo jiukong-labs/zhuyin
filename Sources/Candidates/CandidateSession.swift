@@ -266,10 +266,13 @@ struct CandidateSession: Equatable {
 }
 
 enum CandidateRevisionInteractionPolicy {
+    /// Left/Right move the composition caret only while no chooser is open.
+    /// An open panel, whether reached from an inline preview or from
+    /// revision, keeps every arrow for moving its highlight.
     static func routesCompositionCursor(
         candidateSession: CandidateSession?
     ) -> Bool {
-        candidateSession?.revisionMode != .choosing
+        candidateSession?.presentsCandidatePanel != true
     }
 
     /// Candidate navigation is deliberately dormant in a locating snapshot.

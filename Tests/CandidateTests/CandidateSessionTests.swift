@@ -222,12 +222,31 @@ final class CandidateSessionTests: XCTestCase {
             )
         }
 
+        XCTAssertTrue(
+            CandidateRevisionInteractionPolicy.routesCompositionCursor(
+                candidateSession: session
+            )
+        )
+
         XCTAssertTrue(session.expand())
         XCTAssertTrue(session.presentsCandidatePanel)
         XCTAssertFalse(session.isInlinePreview)
         XCTAssertFalse(
             CandidateRevisionInteractionPolicy.bypassesCandidateCommand(
                 .select(1),
+                session: session
+            )
+        )
+        // The open chooser keeps Left/Right for its highlight instead of
+        // closing to move the composition caret.
+        XCTAssertFalse(
+            CandidateRevisionInteractionPolicy.routesCompositionCursor(
+                candidateSession: session
+            )
+        )
+        XCTAssertFalse(
+            CandidateRevisionInteractionPolicy.bypassesCandidateCommand(
+                .navigate(.next),
                 session: session
             )
         )
