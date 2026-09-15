@@ -286,6 +286,20 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "我a1"
     ),
+    // Option ASCII at a positioned caret must stay there, like punctuation,
+    // instead of finishing the composition and landing after its end.
+    "option-ascii-insertion": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_H), Keystroke(kVK_ANSI_K), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_Space), Keystroke(kVK_LeftArrow),
+            Keystroke(kVK_ANSI_6, .maskAlternate),
+            Keystroke(kVK_ANSI_A, .maskAlternate),
+            Keystroke(kVK_Return),
+        ],
+        expectation: "測6a試"
+    ),
     // A complete Chinese → English → Chinese round trip proves both the
     // standalone modifier gesture and direct English-mode event pass-through.
     // Use a digit because TextEdit can automatically capitalize the first

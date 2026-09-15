@@ -23,6 +23,7 @@ typeset -a required=(
   continuous
   option-ascii
   option-after-composition
+  option-ascii-insertion
   shift-round-trip
   builtin-phrase
   provisional-phrase-extension

@@ -62,6 +62,7 @@ final class UserDataListController: NSObject,
 
     private let kind: Kind
     private let learning: UserLearningService
+    private let isBuiltInPhrase: (String, [String]) -> Bool
 
     private var allRows: [UserDataListRow] = []
     private var visibleRows: [UserDataListRow] = []
@@ -73,9 +74,16 @@ final class UserDataListController: NSObject,
     private let pinButton = NSButton(title: "置頂", target: nil, action: nil)
     private let deleteButton = NSButton(title: "刪除…", target: nil, action: nil)
 
-    init(kind: Kind, learning: UserLearningService = .shared) {
+    /// `isBuiltInPhrase` decides which removed phrases the current built-in
+    /// dictionary still carries; only those are listed as removable-to-restore.
+    init(
+        kind: Kind,
+        learning: UserLearningService = .shared,
+        isBuiltInPhrase: @escaping (String, [String]) -> Bool = { _, _ in true }
+    ) {
         self.kind = kind
         self.learning = learning
+        self.isBuiltInPhrase = isBuiltInPhrase
         super.init()
     }
 
@@ -168,7 +176,13 @@ final class UserDataListController: NSObject,
                 )
             }
         case .suppressedPhrases:
-            allRows = learning.allSuppressedPhrases().map { record in
+            // A removal the dictionary itself has since dropped has nothing
+            // left to restore, so it is not listed. The record is kept: other
+            // devices may still run a dictionary that carries the phrase, and
+            // a later dictionary could bring it back.
+            allRows = learning.allSuppressedPhrases().filter {
+                isBuiltInPhrase($0.phrase, $0.pronunciationSequence)
+            }.map { record in
                 UserDataListRow(
                     identity: .suppressedPhrase(
                         text: record.phrase,

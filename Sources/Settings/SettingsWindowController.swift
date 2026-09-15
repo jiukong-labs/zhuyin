@@ -47,9 +47,21 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             learning: learning
         )
         phraseList = UserDataListController(kind: .phrases, learning: learning)
+        // An unreadable dictionary cannot prove a phrase is gone, so every
+        // removal stays listed rather than silently disappearing.
+        let dictionary = try? CharacterDictionary(bundle: .main)
         suppressedPhraseList = UserDataListController(
             kind: .suppressedPhrases,
-            learning: learning
+            learning: learning,
+            isBuiltInPhrase: { phrase, readings in
+                guard let dictionary else {
+                    return true
+                }
+                return (try? dictionary.containsPhrase(
+                    phrase,
+                    pronunciationSequence: readings
+                )) ?? true
+            }
         )
         cursorIndicatorSettings = CursorIndicatorSettingsController(
             preferences: preferences
@@ -211,7 +223,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 SettingsPaneBuilder.section(
                     title: "快捷鍵",
                     controls: [shiftToggleRow, optionShortcutLabel],
-                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。正在組字時使用 Option 組合鍵，久空會先完成目前組字。"
+                    note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。正在組字時使用 Option 組合鍵，久空會先完成目前組字；若已用方向鍵把游標移到組字中間，Option 數字與字母會直接插在游標處。"
                 ),
                 SettingsPaneBuilder.section(
                     title: "學習",

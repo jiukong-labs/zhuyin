@@ -112,6 +112,25 @@ final class CharacterDictionaryTests: XCTestCase {
         )
     }
 
+    func testContainsPhraseMatchesOnlyTheExactIdentity() throws {
+        let dictionary = try makeDictionary()
+
+        XCTAssertTrue(
+            try dictionary.containsPhrase("測試", pronunciationSequence: ["ㄘㄜˋ", "ㄕˋ"])
+        )
+        XCTAssertFalse(
+            try dictionary.containsPhrase("測試", pronunciationSequence: ["ㄘㄜˋ", "ㄕˇ"])
+        )
+        // Removed from the built-in lexicon, so a stored removal of it has
+        // nothing left to restore.
+        XCTAssertFalse(
+            try dictionary.containsPhrase("紀錄", pronunciationSequence: ["ㄐㄧˋ", "ㄌㄨˋ"])
+        )
+        XCTAssertTrue(
+            try dictionary.containsPhrase("記錄", pronunciationSequence: ["ㄐㄧˋ", "ㄌㄨˋ"])
+        )
+    }
+
     func testFirstPartyPhraseLookupFindsTheRequestedSentence() throws {
         let dictionary = try makeDictionary()
         let readings = ["ㄘㄜˋ", "ㄕˋ", "ㄓㄨㄥ", "ㄑㄧㄥˇ", "ㄕㄠ", "ㄏㄡˋ"]

@@ -298,6 +298,21 @@ final class CharacterDictionary {
         return values
     }
 
+    /// Whether this dictionary carries the exact phrase identity: the same
+    /// text under the same ordered readings.
+    func containsPhrase(
+        _ phrase: String,
+        pronunciationSequence: [String]
+    ) throws -> Bool {
+        let normalizedReadings = pronunciationSequence.map {
+            $0.precomposedStringWithCanonicalMapping
+        }
+        return try phraseEntries(for: pronunciationSequence).contains {
+            $0.text == phrase
+                && $0.pronunciationSequence == normalizedReadings
+        }
+    }
+
     func phraseEntries(
         for pronunciationSequence: [String]
     ) throws -> [DictionaryPhrase] {
