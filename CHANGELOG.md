@@ -4,6 +4,19 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-09-16
+
+### Added
+
+- Sync personal custom character readings through iCloud alongside learning
+  data, using the existing deployed CloudKit schema and conflict resolution.
+
+### Fixed
+
+- Normalize invisible field-editor characters when validating custom readings.
+- Make notification callback captures explicit so custom-reading sync builds
+  with the release toolchain.
+
 ## [0.1.27] - 2026-09-16
 
 ### Added

@@ -216,14 +216,14 @@ final class CustomReadingCloudSyncCoordinator {
                 guard let self else {
                     return
                 }
-                if ignoredServiceNotifications > 0 {
-                    ignoredServiceNotifications -= 1
+                if self.ignoredServiceNotifications > 0 {
+                    self.ignoredServiceNotifications -= 1
                     return
                 }
-                reconcileLocalSnapshot(at: now())
-                persistState()
-                if generalSyncReady {
-                    scheduleSynchronization()
+                self.reconcileLocalSnapshot(at: self.now())
+                self.persistState()
+                if self.generalSyncReady {
+                    self.scheduleSynchronization()
                 }
             }
         }
