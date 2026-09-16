@@ -667,8 +667,14 @@ final class CustomReadingSettingsController: NSObject,
         let readingField = NSTextField(string: existing?.pronunciation ?? "")
         characterField.placeholderString = "例如：播"
         readingField.placeholderString = "例如：ㄅㄛ"
-        characterField.widthAnchor.constraint(equalToConstant: 220).isActive = true
-        readingField.widthAnchor.constraint(equalToConstant: 220).isActive = true
+        characterField.translatesAutoresizingMaskIntoConstraints = false
+        readingField.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            characterField.widthAnchor.constraint(equalToConstant: 220),
+            readingField.widthAnchor.constraint(equalToConstant: 220),
+            characterField.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
+            readingField.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
+        ])
 
         let grid = NSGridView(views: [
             [NSTextField(labelWithString: "字："), characterField],
@@ -678,12 +684,25 @@ final class CustomReadingSettingsController: NSObject,
         grid.columnSpacing = 8
         grid.column(at: 0).xPlacement = .trailing
         grid.column(at: 1).xPlacement = .fill
+        grid.translatesAutoresizingMaskIntoConstraints = false
+
+        // NSAlert does not reliably derive an accessory view's height from an
+        // NSGridView on newer macOS releases. Give the alert a concrete host
+        // view so the two text fields cannot collapse to horizontal lines.
+        let form = NSView(frame: NSRect(x: 0, y: 0, width: 330, height: 64))
+        form.addSubview(grid)
+        NSLayoutConstraint.activate([
+            grid.leadingAnchor.constraint(equalTo: form.leadingAnchor),
+            grid.trailingAnchor.constraint(equalTo: form.trailingAnchor),
+            grid.topAnchor.constraint(equalTo: form.topAnchor),
+            grid.bottomAnchor.constraint(equalTo: form.bottomAnchor),
+        ])
 
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = existing == nil ? "新增自訂讀音" : "編輯自訂讀音"
         alert.informativeText = "一聲不加聲調符號，例如 ㄅㄛ；二、三、四聲使用 ˊ、ˇ、ˋ。"
-        alert.accessoryView = grid
+        alert.accessoryView = form
         alert.addButton(withTitle: existing == nil ? "新增" : "儲存")
         alert.addButton(withTitle: "取消")
         alert.window.initialFirstResponder = characterField
@@ -691,6 +710,13 @@ final class CustomReadingSettingsController: NSObject,
         guard alert.runModal() == .alertFirstButtonReturn else {
             return
         }
+
+        // Force AppKit's field editor to commit any marked/composing text before
+        // reading stringValue. Without this, a click on the alert button can
+        // leave the visible last composition only in the shared field editor.
+        alert.window.makeFirstResponder(nil)
+        characterField.validateEditing()
+        readingField.validateEditing()
 
         let validated: ValidatedCustomReading
         do {
