@@ -4,6 +4,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.29] - 2026-09-16
+
+### Fixed
+
+- Keep the custom-reading editor fields at their full height instead of
+  collapsing them to horizontal lines in the add and edit sheets.
+- Commit in-progress composition in the custom-reading editor before
+  validating, so the last typed character is no longer dropped.
+
 ## [0.1.28] - 2026-09-16
 
 ### Added
