@@ -4,6 +4,14 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-09-16
+
+### Fixed
+
+- Recover the Shift language toggle when macOS keeps a stale Shift modifier
+  state, so a missed Shift release no longer leaves later Shift taps unable to
+  switch between Chinese and English.
+
 ## [0.1.29] - 2026-09-16
 
 ### Fixed
