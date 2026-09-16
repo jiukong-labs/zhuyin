@@ -1,8 +1,11 @@
 import Foundation
 
 final class CharacterCandidateProvider {
+    private static let customReadingBaseFrequency = 32.0
+
     private let dictionary: CharacterDictionary
     private let learning: (any UserLearningProviding)?
+    private let customReadings: (any CustomReadingProviding)?
     private let ranker: CandidateRanker
     private let isAutomaticLearningEnabled: () -> Bool
     private let showsRareCandidates: () -> Bool
@@ -12,6 +15,7 @@ final class CharacterCandidateProvider {
     init(
         dictionary: CharacterDictionary,
         learning: (any UserLearningProviding)? = nil,
+        customReadings: (any CustomReadingProviding)? = CustomReadingService.shared,
         ranker: CandidateRanker = CandidateRanker(),
         isAutomaticLearningEnabled: @escaping () -> Bool = { true },
         showsRareCandidates: @escaping () -> Bool = { false },
@@ -20,6 +24,7 @@ final class CharacterCandidateProvider {
     ) {
         self.dictionary = dictionary
         self.learning = learning
+        self.customReadings = customReadings
         self.ranker = ranker
         self.isAutomaticLearningEnabled = isAutomaticLearningEnabled
         self.showsRareCandidates = showsRareCandidates
@@ -32,18 +37,26 @@ final class CharacterCandidateProvider {
         phraseQueries: [CompositionPhraseQuery] = []
     ) throws -> [Candidate] {
         let includesRareCandidates = showsRareCandidates()
-        var characterCandidates = try dictionaryCandidates(
+        let exactDictionaryCandidates = try dictionaryCandidates(
             for: pronunciation,
             includesRareCandidates: includesRareCandidates,
             rankOffset: 0
         )
+        let dictionaryTexts = Set(exactDictionaryCandidates.map(\.text))
+        let customCandidates = customReadingCandidates(
+            for: pronunciation,
+            excluding: dictionaryTexts
+        )
+        var characterCandidates = customCandidates + exactDictionaryCandidates
 
         // Neutral tone remains a convenient "don't care which tone"
         // shortcut in fast/casual speech. First tone is different: Space is
         // an explicit tone key in every supported layout, so widening it
         // would let a learned candidate from another tone replace the typed
         // reading and break exact phrase lookup (for example, ㄐㄧㄣ ㄊㄧㄢ
-        // must still be able to resolve to 「今天」).
+        // must still be able to resolve to 「今天」). Custom aliases are also
+        // exact: a reading the user added never implicitly creates aliases for
+        // the other four tones.
         if let body = CanonicalBopomofoReading.neutralToneBody(
             of: pronunciation
         ) {
@@ -71,6 +84,29 @@ final class CharacterCandidateProvider {
             displayableCandidates,
             at: now()
         )
+    }
+
+    private func customReadingCandidates(
+        for pronunciation: String,
+        excluding dictionaryTexts: Set<String>
+    ) -> [Candidate] {
+        let learningRecords = learning?.records(for: pronunciation) ?? [:]
+        return (customReadings?.customReadings(for: pronunciation) ?? [])
+            .filter { !dictionaryTexts.contains($0.character) }
+            .enumerated()
+            .map { index, record in
+                let learningRecord = learningRecords[record.character]
+                return Candidate(
+                    text: record.character,
+                    pronunciation: pronunciation,
+                    baseRank: index,
+                    sourceOrder: Int64(index),
+                    baseFrequency: Self.customReadingBaseFrequency,
+                    userFrequency: learningRecord?.selectionCount ?? 0,
+                    lastUsed: learningRecord?.lastSelectedAt,
+                    pinned: learningRecord?.pinned ?? false
+                )
+            }
     }
 
     private func dictionaryCandidates(
