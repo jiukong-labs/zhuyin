@@ -12,7 +12,7 @@ import os
 final class CustomReadingCloudSyncCoordinator {
     static let shared = CustomReadingCloudSyncCoordinator()
 
-    private struct Identity: Codable, Equatable, Hashable {
+    fileprivate struct Identity: Codable, Equatable, Hashable {
         let character: String
         let pronunciation: String
 
@@ -80,12 +80,12 @@ final class CustomReadingCloudSyncCoordinator {
         }
     }
 
-    private enum Payload: Equatable {
+    fileprivate enum Payload: Equatable {
         case record(CustomReadingRecord)
         case deleted(Date)
     }
 
-    private struct CloudValue: Equatable {
+    fileprivate struct CloudValue: Equatable {
         let identity: Identity
         let payload: Payload
 
@@ -178,8 +178,8 @@ final class CustomReadingCloudSyncCoordinator {
             return
         }
 
-        queue.async { [weak self, weak service] in
-            guard let self, let service else {
+        queue.async { [weak self] in
+            guard let self else {
                 return
             }
             self.service = service
@@ -398,7 +398,7 @@ final class CustomReadingCloudSyncCoordinator {
             current[identity.recordName] = (identity, record)
         }
 
-        for (key, known) in state.knownRecords
+        for (key, known) in Array(state.knownRecords)
             where current[key] == nil {
             let existing = state.tombstones[key]
             if existing == nil || existing!.deletedAt < known.updatedAt {
@@ -537,26 +537,31 @@ final class CustomReadingCloudSyncCoordinator {
     }
 }
 
+/// Uses the already-deployed JKUserLearning CloudKit schema. A new `kind`
+/// value needs no new fields or record type: character/readings/createdAt/
+/// lastUsedAt/suppressedAt are fields the production schema already carries.
 private final class CustomReadingCloudTransport {
-    private static let recordType = "JKCustomReading"
+    private static let recordType = CloudKitUserDataTransport.recordType
+    private static let customKind = "customReading"
     private static let schemaVersion: Int64 = 1
     private static let maximumBatchSize = 100
 
     private enum Field {
         static let schemaVersion = "schemaVersion"
+        static let kind = "kind"
         static let deleted = "deleted"
-        static let character = "character"
-        static let pronunciation = "pronunciation"
+        static let text = "text"
+        static let readings = "readings"
         static let createdAt = "createdAt"
-        static let updatedAt = "updatedAt"
-        static let deletedAt = "deletedAt"
+        static let lastUsedAt = "lastUsedAt"
+        static let suppressedAt = "suppressedAt"
 
         static let encrypted = [
-            character,
-            pronunciation,
+            text,
+            readings,
             createdAt,
-            updatedAt,
-            deletedAt,
+            lastUsedAt,
+            suppressedAt,
         ]
     }
 
@@ -599,7 +604,8 @@ private final class CustomReadingCloudTransport {
             defer { resultLock.unlock() }
             switch result {
             case let .success(record):
-                guard record.recordType == Self.recordType else {
+                guard record.recordType == Self.recordType,
+                      (record[Field.kind] as? String) == Self.customKind else {
                     return
                 }
                 fetched[recordID.recordName] = record
@@ -722,22 +728,23 @@ private final class CustomReadingCloudTransport {
             recordID: CKRecord.ID(recordName: recordName, zoneID: zoneID)
         )
         record[Field.schemaVersion] = NSNumber(value: Self.schemaVersion)
+        record[Field.kind] = Self.customKind
         record[Field.deleted] = NSNumber(value: value.isDeletion)
         for field in Field.encrypted {
             record.encryptedValues[field] = nil
         }
-        record.encryptedValues[Field.character] = value.identity.character
-        record.encryptedValues[Field.pronunciation] = value.identity.pronunciation
+        record.encryptedValues[Field.text] = value.identity.character
+        record.encryptedValues[Field.readings] = [value.identity.pronunciation]
         switch value.payload {
         case let .record(customReading):
             record.encryptedValues[Field.createdAt] = NSNumber(
                 value: milliseconds(customReading.createdAt)
             )
-            record.encryptedValues[Field.updatedAt] = NSNumber(
+            record.encryptedValues[Field.lastUsedAt] = NSNumber(
                 value: milliseconds(customReading.updatedAt)
             )
         case let .deleted(deletedAt):
-            record.encryptedValues[Field.deletedAt] = NSNumber(
+            record.encryptedValues[Field.suppressedAt] = NSNumber(
                 value: milliseconds(deletedAt)
             )
         }
@@ -749,14 +756,15 @@ private final class CustomReadingCloudTransport {
     ) throws -> CustomReadingCloudSyncCoordinator.CloudValue {
         guard record.recordType == recordType,
               integer(record[Field.schemaVersion]) == schemaVersion,
-              let character: String = record.encryptedValues[Field.character],
-              let pronunciation: String = record.encryptedValues[Field.pronunciation]
-        else {
+              (record[Field.kind] as? String) == customKind,
+              let character: String = record.encryptedValues[Field.text],
+              let readings: [String] = record.encryptedValues[Field.readings],
+              readings.count == 1 else {
             throw CustomReadingCloudError.invalidRecord
         }
         let identity = try CustomReadingCloudSyncCoordinator.Identity(
             character: character,
-            pronunciation: pronunciation
+            pronunciation: readings[0]
         )
         guard identity.recordName == record.recordID.recordName else {
             throw CustomReadingCloudError.invalidRecord
@@ -764,7 +772,7 @@ private final class CustomReadingCloudTransport {
         let deleted = integer(record[Field.deleted]) == 1
         if deleted {
             guard let rawDeletedAt = integer(
-                record.encryptedValues[Field.deletedAt]
+                record.encryptedValues[Field.suppressedAt]
             ) else {
                 throw CustomReadingCloudError.invalidRecord
             }
@@ -777,7 +785,7 @@ private final class CustomReadingCloudTransport {
                   record.encryptedValues[Field.createdAt]
               ),
               let rawUpdatedAt = integer(
-                  record.encryptedValues[Field.updatedAt]
+                  record.encryptedValues[Field.lastUsedAt]
               ) else {
             throw CustomReadingCloudError.invalidRecord
         }
@@ -819,10 +827,7 @@ private final class CustomReadingCloudTransport {
     }
 
     private static func integer(_ value: CKRecordValue?) -> Int64? {
-        if let number = value as? NSNumber {
-            return number.int64Value
-        }
-        return nil
+        (value as? NSNumber)?.int64Value
     }
 }
 
