@@ -4,6 +4,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.31] - 2026-09-16
+
+### Fixed
+
+- Decide a Shift language toggle from the release event itself instead of the
+  system's live modifier state, so a quick second tap can no longer make the
+  first tap look like a key that never came up and swallow every other switch
+  between Chinese and English.
+
 ## [0.1.30] - 2026-09-16
 
 ### Fixed
