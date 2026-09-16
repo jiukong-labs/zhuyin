@@ -208,6 +208,16 @@ struct ShiftToggleController {
             return deviceShiftFlags.contains(side.deviceModifierFlag)
         }
 
+        // An ordinary release clears every Shift bit the event carries, and
+        // that is the reliable answer: the event describes the instant the key
+        // moved, while the system's modifier state describes now. A second tap
+        // can already have pushed Shift back down by the time this release is
+        // handled, so consulting the system here would read that later press
+        // as this key never having come up and swallow the toggle.
+        guard modifierFlags.contains(.shift) else {
+            return false
+        }
+
         // With both sides tracked, a generic Shift state cannot tell which
         // side changed. Preserve the old behavior and treat this event as that
         // side's release while the other side keeps Shift active.
@@ -215,6 +225,9 @@ struct ShiftToggleController {
             return false
         }
 
+        // Only an event that still claims Shift reaches here. That claim is
+        // what newer macOS releases can leave stale on a release, so the
+        // system's own modifier state is the better answer for it.
         return currentSystemShiftIsPressed(
             reportedState: systemShiftIsPressed
         )

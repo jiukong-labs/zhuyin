@@ -84,6 +84,69 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(controller.isTrackingShift)
     }
 
+    // macOS reports a physical tap as a press carrying the generic and the
+    // device-specific Shift bit, then a release that clears both and leaves
+    // only the non-coalesced marker. That release is the shape the input
+    // method actually sees, so it must decide the tap without deferring to a
+    // live modifier reading that belongs to a later moment.
+    private static let nonCoalescedFlag = NSEvent.ModifierFlags(
+        rawValue: 0x100
+    )
+
+    func testReleaseWithoutDeviceBitsTogglesWhileSystemStillReportsShift() {
+        var controller = ShiftToggleController()
+        let pressFlags: NSEvent.ModifierFlags = [
+            .shift,
+            ShiftKeySide.left.deviceModifierFlag,
+            Self.nonCoalescedFlag
+        ]
+
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: pressFlags,
+                systemShiftIsPressed: true
+            )
+        )
+        // A quick second tap can push Shift down again before this release is
+        // handled, so the live state still reports Shift as held.
+        XCTAssertTrue(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: Self.nonCoalescedFlag,
+                systemShiftIsPressed: true
+            )
+        )
+        XCTAssertFalse(controller.isTrackingShift)
+    }
+
+    func testEveryTapInAFastRunToggles() {
+        var controller = ShiftToggleController()
+        let pressFlags: NSEvent.ModifierFlags = [
+            .shift,
+            ShiftKeySide.left.deviceModifierFlag,
+            Self.nonCoalescedFlag
+        ]
+
+        for tap in 1 ... 5 {
+            XCTAssertFalse(
+                controller.handleFlagsChanged(
+                    keyCode: UInt16(kVK_Shift),
+                    modifierFlags: pressFlags,
+                    systemShiftIsPressed: true
+                )
+            )
+            XCTAssertTrue(
+                controller.handleFlagsChanged(
+                    keyCode: UInt16(kVK_Shift),
+                    modifierFlags: Self.nonCoalescedFlag,
+                    systemShiftIsPressed: true
+                ),
+                "tap \(tap) did not toggle"
+            )
+        }
+    }
+
     func testMissingShiftReleaseRecoversOnNextKeyDown() {
         var controller = ShiftToggleController()
 
