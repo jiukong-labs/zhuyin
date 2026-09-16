@@ -161,7 +161,7 @@ struct ShiftToggleController {
         // WindowServer says Shift is already up is sufficient proof that the
         // tracked press is stale.
         guard currentSystemShiftIsPressed(
-            override: systemShiftIsPressed
+            reportedState: systemShiftIsPressed
         ) else {
             reset()
             return
@@ -177,7 +177,7 @@ struct ShiftToggleController {
             return
         }
 
-        if !currentSystemShiftIsPressed(override: systemShiftIsPressed) {
+        if !currentSystemShiftIsPressed(reportedState: systemShiftIsPressed) {
             reset()
             return
         }
@@ -215,12 +215,16 @@ struct ShiftToggleController {
             return false
         }
 
-        return currentSystemShiftIsPressed(override: systemShiftIsPressed)
+        return currentSystemShiftIsPressed(
+            reportedState: systemShiftIsPressed
+        )
     }
 
-    private func currentSystemShiftIsPressed(override: Bool?) -> Bool {
-        if let override {
-            return override
+    private func currentSystemShiftIsPressed(
+        reportedState: Bool?
+    ) -> Bool {
+        if let reportedState {
+            return reportedState
         }
         return CGEventSource.flagsState(.combinedSessionState)
             .contains(.maskShift)
