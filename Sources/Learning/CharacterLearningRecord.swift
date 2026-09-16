@@ -480,7 +480,7 @@ final class CustomReadingService: CustomReadingManaging {
         guard CanonicalBopomofoReading.isValid(reading) else {
             return []
         }
-        return lock.withLock {
+        return withRecordsLock {
             recordsByIdentity.values
                 .filter { $0.pronunciation == reading }
                 .sorted(by: Self.recordSort)
@@ -488,7 +488,7 @@ final class CustomReadingService: CustomReadingManaging {
     }
 
     func allCustomReadings() -> [CustomReadingRecord] {
-        lock.withLock {
+        withRecordsLock {
             recordsByIdentity.values.sorted(by: Self.recordSort)
         }
     }
@@ -505,7 +505,7 @@ final class CustomReadingService: CustomReadingManaging {
             return false
         }
 
-        let changed = lock.withLock { () -> Bool in
+        let changed = withRecordsLock { () -> Bool in
             let identity = Self.identity(
                 character: validated.character,
                 pronunciation: validated.pronunciation
@@ -544,7 +544,7 @@ final class CustomReadingService: CustomReadingManaging {
             return false
         }
 
-        let changed = lock.withLock { () -> Bool in
+        let changed = withRecordsLock { () -> Bool in
             let oldIdentity = Self.identity(
                 character: oldRecord.character,
                 pronunciation: oldRecord.pronunciation
@@ -593,7 +593,7 @@ final class CustomReadingService: CustomReadingManaging {
             return false
         }
 
-        let changed = lock.withLock { () -> Bool in
+        let changed = withRecordsLock { () -> Bool in
             let identity = Self.identity(
                 character: validated.character,
                 pronunciation: validated.pronunciation
@@ -700,6 +700,12 @@ final class CustomReadingService: CustomReadingManaging {
         }
     }
 
+    private func withRecordsLock<T>(_ body: () throws -> T) rethrows -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return try body()
+    }
+
     private static func identity(
         character: String,
         pronunciation: String
@@ -731,13 +737,5 @@ final class CustomReadingService: CustomReadingManaging {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
         return decoder
-    }
-}
-
-private extension NSRecursiveLock {
-    func withLock<T>(_ body: () throws -> T) rethrows -> T {
-        lock()
-        defer { unlock() }
-        return try body()
     }
 }
