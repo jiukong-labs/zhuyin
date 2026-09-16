@@ -77,10 +77,13 @@ struct ShiftToggleController {
         keyCode: UInt16,
         modifierFlags: NSEvent.ModifierFlags,
         preference: ShiftKeyPreference = .both,
-        systemKeyDownEventCount: UInt32? = nil
+        systemKeyDownEventCount: UInt32? = nil,
+        systemShiftIsPressed: Bool? = nil
     ) -> Bool {
         guard let side = ShiftKeySide(keyCode: keyCode) else {
-            noteNonShiftModifierChange()
+            noteNonShiftModifierChange(
+                systemShiftIsPressed: systemShiftIsPressed
+            )
             return false
         }
 
@@ -92,11 +95,14 @@ struct ShiftToggleController {
             // Some web-backed clients can deliver the same Shift-down change
             // more than once while the key is still physically held. Do not
             // mistake that duplicate for Shift-up and toggle before a letter
-            // arrives. Device-specific flags distinguish the two Shift keys;
-            // the generic fallback covers clients that strip those bits.
+            // arrives. Device-specific flags distinguish the two Shift keys.
+            // When a client strips those bits, trust WindowServer's current
+            // modifier state instead of the event's generic `.shift` bit: on
+            // newer macOS releases that bit can remain set on a release event.
             if isStillPressed(
                 side,
-                modifierFlags: modifierFlags
+                modifierFlags: modifierFlags,
+                systemShiftIsPressed: systemShiftIsPressed
             ) {
                 if hasDisallowedModifier {
                     wasInterrupted = true
@@ -145,17 +151,37 @@ struct ShiftToggleController {
         return false
     }
 
-    mutating func noteKeyDown() {
+    mutating func noteKeyDown(systemShiftIsPressed: Bool? = nil) {
         guard isTrackingShift else {
             return
         }
+
+        // If macOS omitted the Shift release entirely, do not let the stale
+        // gesture poison every later Shift tap. A non-Shift key-down while
+        // WindowServer says Shift is already up is sufficient proof that the
+        // tracked press is stale.
+        guard currentSystemShiftIsPressed(
+            override: systemShiftIsPressed
+        ) else {
+            reset()
+            return
+        }
+
         wasInterrupted = true
     }
 
-    mutating func noteNonShiftModifierChange() {
+    mutating func noteNonShiftModifierChange(
+        systemShiftIsPressed: Bool? = nil
+    ) {
         guard isTrackingShift else {
             return
         }
+
+        if !currentSystemShiftIsPressed(override: systemShiftIsPressed) {
+            reset()
+            return
+        }
+
         wasInterrupted = true
     }
 
@@ -172,7 +198,8 @@ struct ShiftToggleController {
 
     private func isStillPressed(
         _ side: ShiftKeySide,
-        modifierFlags: NSEvent.ModifierFlags
+        modifierFlags: NSEvent.ModifierFlags,
+        systemShiftIsPressed: Bool?
     ) -> Bool {
         let deviceShiftFlags = modifierFlags.intersection(
             Self.deviceShiftModifiers
@@ -181,9 +208,21 @@ struct ShiftToggleController {
             return deviceShiftFlags.contains(side.deviceModifierFlag)
         }
 
-        // With only the device-independent Shift flag, a single tracked key
-        // is still down. If both sides are tracked, an event for one side can
-        // be its release while the other side keeps `.shift` set.
-        return modifierFlags.contains(.shift) && pressedShiftKeys.count == 1
+        // With both sides tracked, a generic Shift state cannot tell which
+        // side changed. Preserve the old behavior and treat this event as that
+        // side's release while the other side keeps Shift active.
+        if pressedShiftKeys.count > 1 {
+            return false
+        }
+
+        return currentSystemShiftIsPressed(override: systemShiftIsPressed)
+    }
+
+    private func currentSystemShiftIsPressed(override: Bool?) -> Bool {
+        if let override {
+            return override
+        }
+        return CGEventSource.flagsState(.combinedSessionState)
+            .contains(.maskShift)
     }
 }

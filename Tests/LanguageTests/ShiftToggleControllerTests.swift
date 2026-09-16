@@ -21,7 +21,7 @@ final class ShiftToggleControllerTests: XCTestCase {
         var controller = ShiftToggleController()
 
         _ = press(.left, on: &controller)
-        controller.noteKeyDown()
+        controller.noteKeyDown(systemShiftIsPressed: true)
         XCTAssertFalse(release(.left, on: &controller))
     }
 
@@ -42,21 +42,59 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
-                modifierFlags: .shift
+                modifierFlags: .shift,
+                systemShiftIsPressed: true
             )
         )
         XCTAssertFalse(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
-                modifierFlags: .shift
+                modifierFlags: .shift,
+                systemShiftIsPressed: true
             )
         )
         XCTAssertTrue(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
-                modifierFlags: []
+                modifierFlags: [],
+                systemShiftIsPressed: false
             )
         )
+    }
+
+    func testStaleGenericShiftFlagOnReleaseUsesSystemState() {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: .shift,
+                systemShiftIsPressed: true
+            )
+        )
+        // macOS can leave the generic `.shift` bit on a flagsChanged release
+        // even though WindowServer already reports that Shift is physically up.
+        XCTAssertTrue(
+            controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_Shift),
+                modifierFlags: .shift,
+                systemShiftIsPressed: false
+            )
+        )
+        XCTAssertFalse(controller.isTrackingShift)
+    }
+
+    func testMissingShiftReleaseRecoversOnNextKeyDown() {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(press(.left, on: &controller))
+        XCTAssertTrue(controller.isTrackingShift)
+
+        controller.noteKeyDown(systemShiftIsPressed: false)
+        XCTAssertFalse(controller.isTrackingShift)
+
+        XCTAssertFalse(press(.left, on: &controller))
+        XCTAssertTrue(release(.left, on: &controller))
     }
 
     func testDuplicateShiftDownFollowedByLetterRemainsAChord() {
@@ -64,7 +102,7 @@ final class ShiftToggleControllerTests: XCTestCase {
 
         XCTAssertFalse(press(.left, on: &controller))
         XCTAssertFalse(press(.left, on: &controller))
-        controller.noteKeyDown()
+        controller.noteKeyDown(systemShiftIsPressed: true)
 
         XCTAssertFalse(release(.left, on: &controller))
     }
@@ -73,7 +111,7 @@ final class ShiftToggleControllerTests: XCTestCase {
         var controller = ShiftToggleController()
 
         _ = press(.right, on: &controller)
-        controller.noteKeyDown()
+        controller.noteKeyDown(systemShiftIsPressed: true)
         XCTAssertFalse(release(.right, on: &controller))
     }
 
@@ -81,7 +119,7 @@ final class ShiftToggleControllerTests: XCTestCase {
         var controller = ShiftToggleController()
 
         _ = press(.left, on: &controller)
-        controller.noteKeyDown()
+        controller.noteKeyDown(systemShiftIsPressed: true)
         XCTAssertFalse(release(.left, on: &controller))
     }
 
@@ -92,7 +130,8 @@ final class ShiftToggleControllerTests: XCTestCase {
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
                 modifierFlags: .shift,
-                systemKeyDownEventCount: 40
+                systemKeyDownEventCount: 40,
+                systemShiftIsPressed: true
             )
         )
         // Microsoft Word can expose this ordering to the input method: the
@@ -102,7 +141,8 @@ final class ShiftToggleControllerTests: XCTestCase {
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
                 modifierFlags: [],
-                systemKeyDownEventCount: 41
+                systemKeyDownEventCount: 41,
+                systemShiftIsPressed: false
             )
         )
     }
@@ -114,14 +154,16 @@ final class ShiftToggleControllerTests: XCTestCase {
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
                 modifierFlags: .shift,
-                systemKeyDownEventCount: 80
+                systemKeyDownEventCount: 80,
+                systemShiftIsPressed: true
             )
         )
         XCTAssertTrue(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
                 modifierFlags: [],
-                systemKeyDownEventCount: 80
+                systemKeyDownEventCount: 80,
+                systemShiftIsPressed: false
             )
         )
     }
@@ -133,7 +175,8 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Command),
-                modifierFlags: [.shift, .command]
+                modifierFlags: [.shift, .command],
+                systemShiftIsPressed: true
             )
         )
         XCTAssertFalse(release(.left, on: &controller))
@@ -152,13 +195,15 @@ final class ShiftToggleControllerTests: XCTestCase {
             XCTAssertFalse(
                 controller.handleFlagsChanged(
                     keyCode: UInt16(kVK_Shift),
-                    modifierFlags: [.shift, modifier]
+                    modifierFlags: [.shift, modifier],
+                    systemShiftIsPressed: true
                 )
             )
             XCTAssertFalse(
                 controller.handleFlagsChanged(
                     keyCode: UInt16(kVK_Shift),
-                    modifierFlags: modifier
+                    modifierFlags: modifier,
+                    systemShiftIsPressed: false
                 )
             )
         }
@@ -170,13 +215,15 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
-                modifierFlags: [.shift, .capsLock]
+                modifierFlags: [.shift, .capsLock],
+                systemShiftIsPressed: true
             )
         )
         XCTAssertTrue(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
-                modifierFlags: .capsLock
+                modifierFlags: .capsLock,
+                systemShiftIsPressed: false
             )
         )
     }
@@ -188,13 +235,15 @@ final class ShiftToggleControllerTests: XCTestCase {
         XCTAssertFalse(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_CapsLock),
-                modifierFlags: [.shift, .capsLock]
+                modifierFlags: [.shift, .capsLock],
+                systemShiftIsPressed: true
             )
         )
         XCTAssertFalse(
             controller.handleFlagsChanged(
                 keyCode: UInt16(kVK_Shift),
-                modifierFlags: .capsLock
+                modifierFlags: .capsLock,
+                systemShiftIsPressed: false
             )
         )
     }
@@ -338,7 +387,8 @@ final class ShiftToggleControllerTests: XCTestCase {
     ) -> Bool {
         controller.handleFlagsChanged(
             keyCode: keyCode(for: side),
-            modifierFlags: [.shift, side.deviceModifierFlag]
+            modifierFlags: [.shift, side.deviceModifierFlag],
+            systemShiftIsPressed: true
         )
     }
 
@@ -358,7 +408,8 @@ final class ShiftToggleControllerTests: XCTestCase {
         return controller.handleFlagsChanged(
             keyCode: keyCode(for: side),
             modifierFlags: heldFlags,
-            preference: preference
+            preference: preference,
+            systemShiftIsPressed: stillHoldingShift
         )
     }
 
