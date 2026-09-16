@@ -225,6 +225,46 @@ final class CustomReadingServiceTests: XCTestCase {
         )
     }
 
+    func testCustomFirstToneAliasAugmentsBuiltInFourthTone() throws {
+        let service = CustomReadingService(fileURL: try makeFileURL())
+        XCTAssertTrue(
+            service.upsertCustomReading(
+                character: "播",
+                pronunciation: "ㄅㄛ"
+            )
+        )
+        let dictionary = try CharacterDictionary(databaseURL: databaseURL)
+        let provider = CharacterCandidateProvider(
+            dictionary: dictionary,
+            customReadings: service
+        )
+
+        XCTAssertTrue(
+            try provider.candidates(for: "ㄅㄛ").contains {
+                $0.text == "播" && $0.pronunciation == "ㄅㄛ"
+            }
+        )
+        XCTAssertTrue(
+            try provider.candidates(for: "ㄅㄛˋ").contains {
+                $0.text == "播" && $0.pronunciation == "ㄅㄛˋ"
+            }
+        )
+    }
+
+    private var repositoryRoot: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+
+    private var databaseURL: URL {
+        repositoryRoot
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("Dictionary", isDirectory: true)
+            .appendingPathComponent("JiukongZhuyin.sqlite3")
+    }
+
     private func makeFileURL() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
