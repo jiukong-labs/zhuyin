@@ -16,6 +16,17 @@ private enum InputMethodApplicationError: LocalizedError {
     }
 }
 
+private func startCloudServices() {
+    // Install the custom-reading observer first. The ordinary learning sync is
+    // the authority for iCloud account changes; once that sync succeeds, the
+    // custom-reading coordinator merges aliases in the same private zone.
+    CustomReadingCloudSyncCoordinator.shared.start(
+        service: CustomReadingService.shared
+    )
+    UserLearningService.shared.startCloudSync()
+    CloudPreferencesSyncService.shared.start()
+}
+
 private func runApplication() throws {
     guard let infoDictionary = Bundle.main.infoDictionary else {
         throw InputMethodApplicationError.missingInfoDictionary
@@ -54,8 +65,7 @@ private func runApplication() throws {
     if arguments == ["--settings"] {
         let application = NSApplication.shared
         application.setActivationPolicy(.accessory)
-        UserLearningService.shared.startCloudSync()
-        CloudPreferencesSyncService.shared.start()
+        startCloudServices()
         UpdateController.shared.startAutomaticChecks()
         DispatchQueue.main.async {
             SettingsWindowController.shared.show()
@@ -75,8 +85,7 @@ private func runApplication() throws {
     // Owns the cursor indicator's visibility for as long as this process
     // runs, independent of any particular client's text-field focus.
     SystemInputSourceObserver.shared.start()
-    UserLearningService.shared.startCloudSync()
-    CloudPreferencesSyncService.shared.start()
+    startCloudServices()
     UpdateController.shared.startAutomaticChecks()
     jiukongDebugLog("main.swift finished starting SystemInputSourceObserver")
 
