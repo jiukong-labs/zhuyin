@@ -437,6 +437,16 @@ final class CustomReadingService: CustomReadingManaging {
     private var recordsByIdentity: [String: CustomReadingRecord] = [:]
 
     private convenience init() {
+        // The provider's default dependency must not make unit tests depend on
+        // whichever custom readings happen to exist in the developer account.
+        // Tests that exercise this feature use the explicit fileURL initializer.
+        let environment = ProcessInfo.processInfo.environment
+        if environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCTestBundlePath"] != nil {
+            self.init(fileURL: nil)
+            return
+        }
+
         let fileURL: URL?
         do {
             let location = try UserDataLocation.userDomain()
@@ -655,19 +665,19 @@ final class CustomReadingService: CustomReadingManaging {
         do {
             let parent = fileURL.deletingLastPathComponent()
             var isDirectory: ObjCBool = false
-            if !fileManager.fileExists(
+            if fileManager.fileExists(
                 atPath: parent.path,
                 isDirectory: &isDirectory
             ) {
+                guard isDirectory.boolValue else {
+                    return false
+                }
+            } else {
                 try fileManager.createDirectory(
                     at: parent,
                     withIntermediateDirectories: true,
                     attributes: [.posixPermissions: 0o700]
                 )
-            }
-            guard isDirectory.boolValue
-                    || fileManager.fileExists(atPath: parent.path) else {
-                return false
             }
             let data = try Self.encoder().encode(document)
             try data.write(to: fileURL, options: .atomic)
