@@ -4,6 +4,21 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-09-16
+
+### Added
+
+- Add persistent personal character readings, with a management window for
+  adding, editing, and deleting reading aliases without changing built-in
+  pronunciations.
+- Include custom readings in character candidates and preserve them across
+  application restarts.
+
+### Fixed
+
+- Isolate custom-reading persistence across user data locations and avoid
+  lock helper conflicts with newer SDKs.
+
 ## [0.1.26] - 2026-09-15
 
 ### Fixed
