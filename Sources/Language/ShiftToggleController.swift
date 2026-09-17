@@ -243,3 +243,22 @@ struct ShiftToggleController {
             .contains(.maskShift)
     }
 }
+
+extension ShiftToggleController {
+    /// Read-only snapshot of the gesture bookkeeping, for diagnostic logging.
+    /// Same-file access keeps the stored properties private to the type.
+    var diagnosticState: String {
+        let sides = pressedShiftKeys
+            .map { $0 == .left ? "L" : "R" }
+            .sorted()
+            .joined()
+        let candidate = toggleCandidate
+            .map { $0 == .left ? "L" : "R" } ?? "-"
+        let counter = keyDownEventCountAtPress
+            .map(String.init) ?? "-"
+        return "held=\(sides.isEmpty ? "-" : sides)"
+            + " candidate=\(candidate)"
+            + " interrupted=\(wasInterrupted)"
+            + " kdAtPress=\(counter)"
+    }
+}

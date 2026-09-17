@@ -32,6 +32,13 @@ final class InputController: IMKInputController {
     )
     private var compositionBuffer = CompositionBuffer()
     private var shiftToggleController = ShiftToggleController()
+    /// Short identity for this controller instance. IMK creates one controller
+    /// per client connection, so a trace that only names the client cannot
+    /// show which instance actually received an event.
+    private lazy var traceTag: String = String(
+        UInt(bitPattern: ObjectIdentifier(self).hashValue) & 0xffff,
+        radix: 16
+    )
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
     /// Whether Left/Right has entered explicit text-caret positioning. The
@@ -128,8 +135,24 @@ final class InputController: IMKInputController {
 
         switch event.type {
         case .flagsChanged:
+            jiukongShiftTrace(
+                "[\(traceTag)] flagsChanged"
+                    + " keyCode=\(event.keyCode)"
+                    + " raw=0x\(String(event.modifierFlags.rawValue, radix: 16))"
+                    + " shift=\(event.modifierFlags.contains(.shift))"
+                    + " client=\(inputClient.bundleIdentifier() ?? "?")"
+                    + " mode=\(languageModeController.mode.rawValue)"
+                    + " source=\(Self.currentInputSourceID() ?? "?")"
+                    + " sysShift=\(Self.systemShiftIsPressed())"
+                    + " [\(shiftToggleController.diagnosticState)]"
+            )
             return handleModifierChange(event, inputClient: inputClient)
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            if shiftToggleController.isTrackingShift {
+                jiukongShiftTrace(
+                    "[\(traceTag)] mouseDown reset [\(shiftToggleController.diagnosticState)]"
+                )
+            }
             shiftToggleController.reset()
             hideSavedPhraseConfirmation()
             finishComposition(reason: .lifecycle, using: inputClient)
@@ -144,6 +167,15 @@ final class InputController: IMKInputController {
             logCandidateAnchor(clickAnchor, source: "recordClientClick")
             return false
         case .keyDown:
+            jiukongShiftTrace(
+                "[\(traceTag)] keyDown"
+                    + " keyCode=\(event.keyCode)"
+                    + " client=\(inputClient.bundleIdentifier() ?? "?")"
+                    + " mode=\(languageModeController.mode.rawValue)"
+                    + " tracking=\(shiftToggleController.isTrackingShift)"
+                    + " sysShift=\(Self.systemShiftIsPressed())"
+                    + " [\(shiftToggleController.diagnosticState)]"
+            )
             shiftToggleController.noteKeyDown()
             hideSavedPhraseConfirmation()
         default:
@@ -364,6 +396,13 @@ final class InputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
+        jiukongShiftTrace(
+            "[\(traceTag)] activateServer"
+                + " client=\((sender as? any IMKTextInput)?.bundleIdentifier() ?? "?")"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+                + " mode=\(languageModeController.mode.rawValue)"
+                + " [\(shiftToggleController.diagnosticState)]"
+        )
         shiftToggleController.reset()
         ShiftStateFallback.shared.controllerDidActivate(self)
         synchronizeLanguageModeWithCurrentInputSource()
@@ -373,6 +412,12 @@ final class InputController: IMKInputController {
     }
 
     override func deactivateServer(_ sender: Any!) {
+        jiukongShiftTrace(
+            "[\(traceTag)] deactivateServer"
+                + " client=\((sender as? any IMKTextInput)?.bundleIdentifier() ?? "?")"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+                + " [\(shiftToggleController.diagnosticState)]"
+        )
         ShiftStateFallback.shared.controllerDidDeactivate(self)
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: sender)
@@ -474,6 +519,10 @@ final class InputController: IMKInputController {
                 eventType: .keyDown
             )
         )
+        jiukongShiftTrace(
+            "[\(traceTag)]   decision shouldToggle=\(shouldToggle)"
+                + " [\(shiftToggleController.diagnosticState)]"
+        )
 
         // Report every gesture this path sees through to its release, chords
         // included, so the keyboard-state fallback defers to the decision. If
@@ -481,11 +530,18 @@ final class InputController: IMKInputController {
         // would undo it.
         if wasTrackingShift,
            !shiftToggleController.isTrackingShift,
-           ShiftKeySide(keyCode: event.keyCode) != nil,
-           !ShiftStateFallback.shared.clientPathConcludedGesture(
-               releasedAt: event.timestamp
-           ) {
-            return false
+           ShiftKeySide(keyCode: event.keyCode) != nil {
+            let proceed = ShiftStateFallback.shared.clientPathConcludedGesture(
+                releasedAt: event.timestamp
+            )
+            jiukongShiftTrace(
+                "[\(traceTag)]   client concluded release=\(String(format: "%.4f", event.timestamp))"
+                    + " uptime=\(String(format: "%.4f", ProcessInfo.processInfo.systemUptime))"
+                    + " fallbackAlreadySwitched=\(!proceed)"
+            )
+            if !proceed {
+                return false
+            }
         }
 
         guard shouldToggle else {
@@ -505,6 +561,11 @@ final class InputController: IMKInputController {
     private func toggleLanguageMode(using inputClient: Any?) {
         finishComposition(reason: .lifecycle, using: inputClient)
         let mode = languageModeController.mode.toggled
+        jiukongShiftTrace(
+            "[\(traceTag)]   toggling from=\(languageModeController.mode.rawValue)"
+                + " to=\(mode.rawValue)"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+        )
         guard let parentID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
         ) as? String else {
@@ -525,6 +586,9 @@ final class InputController: IMKInputController {
             return
         }
 
+        jiukongShiftTrace(
+            "[\(traceTag)]   selected ok, source now=\(Self.currentInputSourceID() ?? "?")"
+        )
         languageModeController.synchronize(withSystemMode: mode)
         cursorIndicator.update(mode: mode)
         synchronizeCompositionActivity()
@@ -621,6 +685,10 @@ final class InputController: IMKInputController {
     private static let selectedInputSourceChangedNotification = Notification.Name(
         kTISNotifySelectedKeyboardInputSourceChanged as String
     )
+
+    private static func systemShiftIsPressed() -> Bool {
+        CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
+    }
 
     private static func currentInputSourceID() -> String? {
         let inputSource = TISCopyCurrentKeyboardInputSource()

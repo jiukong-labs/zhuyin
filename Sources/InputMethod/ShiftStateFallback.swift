@@ -22,6 +22,10 @@ final class ShiftStateFallback {
     private weak var activeController: InputController?
     private var timer: Timer?
     private var activity: NSObjectProtocol?
+    private var lastPollTime: TimeInterval?
+    private var statsStart: TimeInterval = 0
+    private var statsTicks = 0
+    private var statsMaxGap: TimeInterval = 0
 
     private init() {}
 
@@ -73,6 +77,7 @@ final class ShiftStateFallback {
         timer.tolerance = Self.pollingInterval * 0.2
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        jiukongShiftTrace("fallback polling started")
     }
 
     private func stopPolling() {
@@ -83,17 +88,58 @@ final class ShiftStateFallback {
         }
         activity = nil
         detector.reset()
+        lastPollTime = nil
+        jiukongShiftTrace("fallback polling stopped")
     }
 
     private func poll() {
         let now = ProcessInfo.processInfo.systemUptime
+        recordCadence(now: now)
         if let tap = detector.ingest(Self.sampleKeyboard(now: now)) {
+            jiukongShiftTrace(
+                "fallback tap side=\(tap.side == .left ? "L" : "R")"
+                    + " release=\(String(format: "%.4f", tap.releaseTime))"
+                    + " seenAfterMs=\(Int((now - tap.releaseTime) * 1000))"
+            )
             arbiter.fallbackObserved(tap)
         }
 
-        for tap in arbiter.dueFallbackTaps(now: now)
-        where preferences.current.shiftKeyPreference.allows(tap.side) {
+        for tap in arbiter.dueFallbackTaps(now: now) {
+            let allowed = preferences.current.shiftKeyPreference.allows(tap.side)
+            jiukongShiftTrace(
+                "fallback SWITCHING release=\(String(format: "%.4f", tap.releaseTime))"
+                    + " allowed=\(allowed) hasController=\(activeController != nil)"
+            )
+            guard allowed else {
+                continue
+            }
             activeController?.toggleLanguageModeForUndeliveredShiftTap()
+        }
+    }
+
+    private func recordCadence(now: TimeInterval) {
+        defer { lastPollTime = now }
+        guard let lastPollTime else {
+            statsStart = now
+            statsTicks = 0
+            statsMaxGap = 0
+            return
+        }
+        let gap = now - lastPollTime
+        statsTicks += 1
+        statsMaxGap = max(statsMaxGap, gap)
+        if gap > 0.05 {
+            jiukongShiftTrace("fallback poll gap \(Int(gap * 1000))ms")
+        }
+        if now - statsStart >= 60 {
+            jiukongShiftTrace(
+                "fallback poll stats ticks=\(statsTicks)"
+                    + " avgMs=\(String(format: "%.1f", (now - statsStart) / Double(max(statsTicks, 1)) * 1000))"
+                    + " maxGapMs=\(Int(statsMaxGap * 1000))"
+            )
+            statsStart = now
+            statsTicks = 0
+            statsMaxGap = 0
         }
     }
 
