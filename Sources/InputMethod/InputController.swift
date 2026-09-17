@@ -365,6 +365,7 @@ final class InputController: IMKInputController {
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
         shiftToggleController.reset()
+        ShiftStateFallback.shared.controllerDidActivate(self)
         synchronizeLanguageModeWithCurrentInputSource()
         UserLearningService.shared.refreshCloudIfNeeded()
         startCursorIndicator()
@@ -372,6 +373,7 @@ final class InputController: IMKInputController {
     }
 
     override func deactivateServer(_ sender: Any!) {
+        ShiftStateFallback.shared.controllerDidDeactivate(self)
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: sender)
         cursorIndicator.updateCompositionActive(false)
@@ -379,6 +381,7 @@ final class InputController: IMKInputController {
     }
 
     override func inputControllerWillClose() {
+        ShiftStateFallback.shared.controllerDidDeactivate(self)
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: client())
         super.inputControllerWillClose()
@@ -461,6 +464,7 @@ final class InputController: IMKInputController {
         _ event: NSEvent,
         inputClient: any IMKTextInput
     ) -> Bool {
+        let wasTrackingShift = shiftToggleController.isTrackingShift
         let shouldToggle = shiftToggleController.handleFlagsChanged(
             keyCode: event.keyCode,
             modifierFlags: event.modifierFlags,
@@ -470,16 +474,41 @@ final class InputController: IMKInputController {
                 eventType: .keyDown
             )
         )
+
+        // Report every gesture this path sees through to its release, chords
+        // included, so the keyboard-state fallback defers to the decision. If
+        // the fallback already switched for this tap, switching again here
+        // would undo it.
+        if wasTrackingShift,
+           !shiftToggleController.isTrackingShift,
+           ShiftKeySide(keyCode: event.keyCode) != nil,
+           !ShiftStateFallback.shared.clientPathConcludedGesture(
+               releasedAt: event.timestamp
+           ) {
+            return false
+        }
+
         guard shouldToggle else {
             return false
         }
 
+        toggleLanguageMode(using: inputClient)
+        return false
+    }
+
+    /// Switches language for a standalone Shift tap that the client never
+    /// delivered, recovered by `ShiftStateFallback`.
+    func toggleLanguageModeForUndeliveredShiftTap() {
+        toggleLanguageMode(using: client())
+    }
+
+    private func toggleLanguageMode(using inputClient: Any?) {
         finishComposition(reason: .lifecycle, using: inputClient)
         let mode = languageModeController.mode.toggled
         guard let parentID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
         ) as? String else {
-            return false
+            return
         }
 
         do {
@@ -493,13 +522,12 @@ final class InputController: IMKInputController {
                 mode.rawValue,
                 error.localizedDescription
             )
-            return false
+            return
         }
 
         languageModeController.synchronize(withSystemMode: mode)
         cursorIndicator.update(mode: mode)
         synchronizeCompositionActivity()
-        return false
     }
 
     /// Changing the arrangement mid-composition would reinterpret keys the user
