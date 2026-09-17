@@ -499,7 +499,23 @@ final class InputController: IMKInputController {
     /// Switches language for a standalone Shift tap that the client never
     /// delivered, recovered by `ShiftStateFallback`.
     func toggleLanguageModeForUndeliveredShiftTap() {
+        // macOS can move the whole input source elsewhere while this
+        // controller still gets activated, such as Caps Lock switching to ABC.
+        // Recovering a tap then would drag the input source back to Jiukong
+        // behind the user's back.
+        guard currentInputSourceMode() != nil else {
+            return
+        }
         toggleLanguageMode(using: client())
+    }
+
+    private func currentInputSourceMode() -> LanguageMode? {
+        LanguageMode.mode(
+            forInputSourceID: Self.currentInputSourceID(),
+            parentID: Bundle.main.object(
+                forInfoDictionaryKey: "TISInputSourceID"
+            ) as? String
+        )
     }
 
     private func toggleLanguageMode(using inputClient: Any?) {
@@ -553,8 +569,17 @@ final class InputController: IMKInputController {
     /// immediately on activation instead of waiting for that notification to
     /// round-trip back.
     private func startCursorIndicator() {
+        // A client keeps activating this controller even when macOS has moved
+        // the input source away from Jiukong entirely, which Caps Lock does
+        // when it switches to ABC. Showing the remembered 中 then tells the
+        // user they are typing Chinese while the keyboard is somewhere else.
+        guard let mode = currentInputSourceMode() else {
+            cursorIndicator.setActive(false)
+            return
+        }
+
         cursorIndicator.apply(preferences.current.cursorIndicator)
-        cursorIndicator.update(mode: languageModeController.mode)
+        cursorIndicator.update(mode: mode)
         cursorIndicator.setActive(true)
     }
 
