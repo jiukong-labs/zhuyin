@@ -1,24 +1,32 @@
 import AppKit
 import Carbon
 
-/// Recovers standalone Shift taps that a client never delivered.
+/// Recovers from key events a client never handed to the input method.
 ///
-/// Chromium-based clients intermittently stop forwarding Shift
-/// `flagsChanged` events to the input method while still forwarding
-/// key-downs, so the Shift toggle silently stops working in those windows.
+/// Chromium-based clients such as Chrome, VS Code and Teams fail in two ways.
+/// They intermittently drop a single Shift `flagsChanged` event while still
+/// forwarding key-downs, so a Shift tap silently does not switch. And right
+/// after a switch from English to Chinese they sometimes stop forwarding key
+/// events altogether, so typing lands in the page as Latin letters under a
+/// Chinese source until the source changes again.
+///
 /// While a client has Jiukong active, this polls the session keyboard state,
-/// which needs no extra permission, and switches the language for taps the
-/// event path never concluded.
-final class ShiftStateFallback {
-    static let shared = ShiftStateFallback()
+/// which needs no extra permission. It switches the language for Shift taps
+/// the event path never concluded, and re-attaches a client that went silent
+/// after a switch to Chinese.
+final class ClientDeliveryFallback {
+    static let shared = ClientDeliveryFallback()
 
     /// Short enough to see the briefest deliberate tap, which measured around
     /// 45 ms, as held for at least one sample.
     static let pollingInterval: TimeInterval = 0.015
 
     private let preferences = PreferencesController.shared
-    private var detector = SystemShiftTapDetector()
+    private var shiftTapDetector = SystemShiftTapDetector()
     private var arbiter = ShiftToggleArbiter()
+    private var silentClientDetector = SilentClientDetector()
+    private var lastKeyDownCount: UInt32?
+    private var lastPlainKeyDown: TimeInterval?
     private weak var activeController: InputController?
     private var timer: Timer?
     private var activity: NSObjectProtocol?
@@ -42,6 +50,27 @@ final class ShiftStateFallback {
         stopPolling()
     }
 
+    /// Reports a key-down the client handed to the input method, stamped with
+    /// the event's hardware time.
+    func clientDeliveredKeyDown(at time: TimeInterval) {
+        precondition(Thread.isMainThread)
+        silentClientDetector.clientDeliveredKeyDown(at: time)
+    }
+
+    /// Reports a language switch the user asked for. A switch to Chinese is
+    /// watched for a client that stops handing keys to the input method.
+    func languageModeSwitched(to mode: LanguageMode) {
+        precondition(Thread.isMainThread)
+        switch mode {
+        case .chinese:
+            silentClientDetector.switchedToChinese(
+                at: ProcessInfo.processInfo.systemUptime
+            )
+        case .english:
+            silentClientDetector.stopWatching()
+        }
+    }
+
     /// Reports that the event path finished judging a Shift gesture. Returns
     /// false when this fallback already switched the language for that tap.
     func clientPathConcludedGesture(
@@ -56,7 +85,7 @@ final class ShiftStateFallback {
             return
         }
 
-        detector.reset()
+        shiftTapDetector.reset()
         // An agent app without a key window is a candidate for App Nap, which
         // would stretch the polling interval far past a tap's duration.
         activity = ProcessInfo.processInfo.beginActivity(
@@ -82,26 +111,61 @@ final class ShiftStateFallback {
             ProcessInfo.processInfo.endActivity(activity)
         }
         activity = nil
-        detector.reset()
+        shiftTapDetector.reset()
+        silentClientDetector.stopWatching()
+        lastKeyDownCount = nil
+        lastPlainKeyDown = nil
     }
 
     private func poll() {
         let now = ProcessInfo.processInfo.systemUptime
-        if let tap = detector.ingest(Self.sampleKeyboard(now: now)) {
+        let flags = CGEventSource.flagsState(Self.eventState)
+        let sample = Self.sampleKeyboard(now: now, flags: flags)
+
+        if let tap = shiftTapDetector.ingest(sample) {
             arbiter.fallbackObserved(tap)
         }
-
         for tap in arbiter.dueFallbackTaps(now: now)
         where preferences.current.shiftKeyPreference.allows(tap.side) {
             activeController?.toggleLanguageModeForUndeliveredShiftTap()
         }
+
+        notePlainKeyDowns(in: sample, flags: flags, now: now)
+        if silentClientDetector.shouldReattach(
+            now: now,
+            lastPlainKeyDown: lastPlainKeyDown
+        ) {
+            activeController?.reattachSilentClient()
+        }
     }
 
-    private static func sampleKeyboard(
+    /// Command and Control chords are menu shortcuts a client may handle
+    /// without the input method, so only keys typed without them count as
+    /// keys the client should have handed over.
+    private func notePlainKeyDowns(
+        in sample: SystemKeyboardSample,
+        flags: CGEventFlags,
         now: TimeInterval
+    ) {
+        defer { lastKeyDownCount = sample.keyDownCount }
+        guard let lastKeyDownCount,
+              sample.keyDownCount != lastKeyDownCount,
+              flags.intersection([.maskCommand, .maskControl]).isEmpty else {
+            return
+        }
+        lastPlainKeyDown = now - CGEventSource.secondsSinceLastEventType(
+            Self.eventState,
+            eventType: .keyDown
+        )
+    }
+
+    private static let eventState = CGEventSourceStateID.combinedSessionState
+
+    private static func sampleKeyboard(
+        now: TimeInterval,
+        flags: CGEventFlags
     ) -> SystemKeyboardSample {
-        let state = CGEventSourceStateID.combinedSessionState
-        let flags = CGEventSource.flagsState(state)
+        let state = eventState
         let otherModifiers: CGEventFlags = [
             .maskCommand,
             .maskControl,
