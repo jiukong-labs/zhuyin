@@ -3,12 +3,10 @@ import Carbon
 
 /// Recovers from key events a client never handed to the input method.
 ///
-/// Chromium-based clients such as Chrome, VS Code and Teams fail in two ways.
-/// They intermittently drop a single Shift `flagsChanged` event while still
-/// forwarding key-downs, so a Shift tap silently does not switch. And right
-/// after a switch from English to Chinese they sometimes stop forwarding key
-/// events altogether, so typing lands in the page as Latin letters under a
-/// Chinese source until the source changes again.
+/// Traces from Chrome and VS Code show missing Shift `flagsChanged` events
+/// and, occasionally, missing key-downs after switching to Chinese. These
+/// observations do not distinguish client routing from the macOS input
+/// services, so recovery relies on observed delivery rather than app identity.
 ///
 /// While a client has Jiukong active, this polls the session keyboard state,
 /// which needs no extra permission. It switches the language for Shift taps
@@ -40,6 +38,10 @@ final class ClientDeliveryFallback {
 
     func controllerDidActivate(_ controller: InputController) {
         precondition(Thread.isMainThread)
+        if let previous = activeController, previous !== controller {
+            previous.cancelPendingReattachment()
+            stopPolling()
+        }
         activeController = controller
         startPolling()
     }
@@ -51,16 +53,38 @@ final class ClientDeliveryFallback {
         guard activeController === controller else {
             return
         }
+        controller.cancelPendingReattachment()
         activeController = nil
         stopPolling()
     }
 
-    /// Reports a key-down the client handed to the input method, stamped with
-    /// the event's hardware time.
-    func clientDeliveredKeyDown(at time: TimeInterval) {
+    func isActive(_ controller: InputController) -> Bool {
+        activeController === controller
+    }
+
+    /// A confirmed tap predating this key must take effect before the key is
+    /// interpreted. Waiting for the timer here would leak it in the old mode.
+    func clientWillHandleKeyDown(
+        at time: TimeInterval,
+        from controller: InputController
+    ) {
         precondition(Thread.isMainThread)
+        guard isActive(controller) else { return }
+        applyFallbackTaps(arbiter.dueFallbackTaps(
+            beforeKeyDownAt: time,
+            now: ProcessInfo.processInfo.systemUptime
+        ), to: controller)
+    }
+
+    func clientDeliveredKeyDown(
+        at time: TimeInterval,
+        mode: LanguageMode?,
+        from controller: InputController
+    ) {
+        precondition(Thread.isMainThread)
+        guard isActive(controller) else { return }
         let wasWatching = silentClientDetector.isWatching
-        silentClientDetector.clientDeliveredKeyDown(at: time)
+        silentClientDetector.clientDeliveredKeyDown(at: time, mode: mode)
         if wasWatching, !silentClientDetector.isWatching, let start = watchStartedAt {
             jiukongShiftTrace(
                 "silent watch: client delivered a key \(Int((time - start) * 1000))ms after the switch — healthy"
@@ -81,16 +105,48 @@ final class ClientDeliveryFallback {
             jiukongShiftTrace("silent watch: armed after switch to chinese")
         case .english:
             silentClientDetector.stopWatching()
+            watchStartedAt = nil
+        }
+    }
+
+    func inputSourceDidChange(to mode: LanguageMode?, from controller: InputController) {
+        guard isActive(controller) else { return }
+        if mode == nil {
+            arbiter.cancelPendingTaps()
+        }
+        if mode == nil || (mode == .english && !silentClientDetector.isReattaching) {
+            silentClientDetector.stopWatching()
+            watchStartedAt = nil
+        }
+    }
+
+    func reattachmentFinished(from controller: InputController, succeeded: Bool) {
+        guard isActive(controller) else { return }
+        if succeeded {
+            let now = ProcessInfo.processInfo.systemUptime
+            silentClientDetector.reattachedToChinese(at: now)
+            watchStartedAt = now
+            lastPlainKeyDown = nil
+        } else {
+            silentClientDetector.stopWatching()
+            watchStartedAt = nil
         }
     }
 
     /// Reports that the event path finished judging a Shift gesture. Returns
     /// false when this fallback already switched the language for that tap.
     func clientPathConcludedGesture(
-        releasedAt releaseTime: TimeInterval
+        _ gesture: ShiftToggleController.GestureConclusion,
+        from controller: InputController
     ) -> Bool {
         precondition(Thread.isMainThread)
-        return arbiter.clientPathConcludedGesture(releasedAt: releaseTime)
+        guard isActive(controller) else { return false }
+        return arbiter.clientPathConcludedGesture(
+            pressedAt: gesture.pressTime,
+            releasedAt: gesture.releaseTime,
+            side: gesture.side,
+            allowFallbackRecovery: gesture.allowsFallbackRecovery
+        )
     }
 
     private func startPolling() {
@@ -99,6 +155,7 @@ final class ClientDeliveryFallback {
         }
 
         shiftTapDetector.reset()
+        arbiter.cancelPendingTaps()
         // An agent app without a key window is a candidate for App Nap, which
         // would stretch the polling interval far past a tap's duration.
         activity = ProcessInfo.processInfo.beginActivity(
@@ -126,6 +183,7 @@ final class ClientDeliveryFallback {
         }
         activity = nil
         shiftTapDetector.reset()
+        arbiter.cancelPendingTaps()
         silentClientDetector.stopWatching()
         lastKeyDownCount = nil
         lastPlainKeyDown = nil
@@ -151,16 +209,8 @@ final class ClientDeliveryFallback {
             )
             arbiter.fallbackObserved(tap)
         }
-        for tap in arbiter.dueFallbackTaps(now: now) {
-            let allowed = preferences.current.shiftKeyPreference.allows(tap.side)
-            jiukongShiftTrace(
-                "fallback SWITCHING release=\(String(format: "%.4f", tap.releaseTime))"
-                    + " allowed=\(allowed) hasController=\(activeController != nil)"
-            )
-            guard allowed else {
-                continue
-            }
-            activeController?.toggleLanguageModeForUndeliveredShiftTap()
+        if let controller = activeController {
+            applyFallbackTaps(arbiter.dueFallbackTaps(now: now), to: controller)
         }
 
         let wasWatching = silentClientDetector.isWatching
@@ -178,6 +228,21 @@ final class ClientDeliveryFallback {
         } else if wasWatching, !silentClientDetector.isWatching, watchStartedAt != nil {
             jiukongShiftTrace("silent watch: gave up or expired")
             watchStartedAt = nil
+        }
+    }
+
+    private func applyFallbackTaps(_ taps: [SystemShiftTap], to controller: InputController) {
+        for tap in taps {
+            guard isActive(controller) else { return }
+            let allowed = preferences.current.shiftKeyPreference.allows(tap.side)
+            jiukongShiftTrace(
+                "fallback SWITCHING release=\(String(format: "%.4f", tap.releaseTime))"
+                    + " allowed=\(allowed) hasController=\(activeController != nil)"
+            )
+            guard allowed else {
+                continue
+            }
+            controller.toggleLanguageModeForUndeliveredShiftTap(tap)
         }
     }
 

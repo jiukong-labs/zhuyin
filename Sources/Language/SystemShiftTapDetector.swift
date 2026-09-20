@@ -3,10 +3,9 @@ import Foundation
 /// One reading of the session's keyboard state, taken by polling instead of
 /// from events a client decided to forward.
 ///
-/// Chromium-based clients intermittently stop forwarding Shift
-/// `flagsChanged` events to the input method while still forwarding ordinary
-/// key-downs, so a tap that never arrives as an event can only be recovered
-/// from the state WindowServer keeps for the whole session.
+/// Some observed client sessions deliver ordinary key-downs while omitting
+/// Shift `flagsChanged` events. WindowServer's session state provides an
+/// independent observation of the gesture without assuming which layer lost it.
 struct SystemKeyboardSample: Equatable {
     /// When the most recent modifier change happened, in seconds since system
     /// startup, the clock `NSEvent.timestamp` uses. Unlike the moment a sample
@@ -29,6 +28,8 @@ struct SystemKeyboardSample: Equatable {
 /// A standalone Shift tap recovered from keyboard state.
 struct SystemShiftTap: Equatable {
     var side: ShiftKeySide
+    /// When this Shift key was pressed, on the `NSEvent.timestamp` clock.
+    var pressTime: TimeInterval
     /// When the Shift key was released, on the `NSEvent.timestamp` clock.
     var releaseTime: TimeInterval
 }
@@ -40,6 +41,7 @@ struct SystemShiftTap: Equatable {
 /// modifier, and no modifier change beyond that Shift press and release.
 struct SystemShiftTapDetector {
     private struct Baseline {
+        var pressTime: TimeInterval
         var keyDownCount: UInt32
         var mouseDownCount: UInt32
         var flagsChangedCount: UInt32
@@ -95,6 +97,7 @@ struct SystemShiftTapDetector {
         // same polling interval as the Shift press then counts against the
         // tap, which errs toward not switching over switching mid-word.
         baseline = Baseline(
+            pressTime: sample.lastModifierChangeTime,
             keyDownCount: previous.keyDownCount,
             mouseDownCount: previous.mouseDownCount,
             flagsChangedCount: previous.flagsChangedCount
@@ -143,6 +146,7 @@ struct SystemShiftTapDetector {
         // this Shift release.
         return SystemShiftTap(
             side: candidate,
+            pressTime: baseline.pressTime,
             releaseTime: sample.lastModifierChangeTime
         )
     }

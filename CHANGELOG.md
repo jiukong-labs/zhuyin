@@ -4,6 +4,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Apply a recovered standalone Shift tap before interpreting the next key,
+  so typing immediately after a dropped modifier event uses the requested mode.
+- Match Shift gestures by side and both press/release times; keep rapid taps
+  independent and let confirmed keyboard-state evidence recover a release
+  rejected only because a late callback saw a newer key-down counter.
+- Verify silent-client recovery only after Chinese input resumes. Cancel a
+  pending return to Chinese when focus or the user's input-source choice changes,
+  and preserve recovery attempt limits across the temporary English mode.
+
 ## [0.1.31] - 2026-09-16
 
 ### Fixed

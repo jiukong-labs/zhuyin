@@ -2,81 +2,181 @@ import Foundation
 
 /// Lets one physical Shift tap switch the language at most once when both the
 /// client-delivered event path and the keyboard-state fallback observe it.
-///
-/// The event path stays authoritative whenever it sees a gesture through to
-/// its release, including when it decides the gesture was a chord. The
-/// fallback only acts on taps the event path never concluded, after giving a
-/// late client event time to arrive.
 struct ShiftToggleArbiter {
-    /// How far apart the two paths' release times may be for the same tap.
-    /// Both report when the release happened rather than when it was handled,
-    /// so this only has to absorb timestamp imprecision, and stays well below
-    /// the gap between two deliberate taps.
-    static let matchWindow: TimeInterval = 0.15
-    /// How long a fallback tap waits for the client event before acting.
+    /// The state sample and client event can differ slightly in hardware time.
+    /// Both edges and an overlapping interval must match; proximity of two
+    /// releases alone cannot identify a physical gesture.
+    static let matchWindow: TimeInterval = 0.02
     static let fallbackDelay: TimeInterval = 0.12
-    /// A tap older than this is dropped instead of switched. Polling pauses
-    /// while no client is active, and a tap queued just before focus left must
-    /// not switch the language whenever focus eventually returns.
     static let expiry: TimeInterval = 0.5
-    /// How long concluded releases are remembered for matching.
     private static let memory: TimeInterval = 2
 
-    private var clientConclusions: [TimeInterval] = []
-    private var fallbackToggles: [TimeInterval] = []
-    private var pendingTaps: [SystemShiftTap] = []
-
-    /// Records that the event path finished judging a Shift gesture released
-    /// at `releaseTime`. Returns false when the fallback already switched the
-    /// language for this same tap, so the event path must not switch again.
-    mutating func clientPathConcludedGesture(
-        releasedAt releaseTime: TimeInterval
-    ) -> Bool {
-        forget(before: releaseTime - Self.memory)
-        pendingTaps.removeAll { Self.matches($0.releaseTime, releaseTime) }
-        clientConclusions.append(releaseTime)
-        return !fallbackToggles.contains { Self.matches($0, releaseTime) }
+    private struct ClientConclusion {
+        var gesture: SystemShiftTap
+        var allowsFallbackRecovery: Bool
+        var matchingFallback: SystemShiftTap?
     }
 
-    /// Queues a tap recovered from keyboard state.
+    private struct FallbackToggle {
+        var gesture: SystemShiftTap
+        var matchingClient: SystemShiftTap?
+    }
+
+    private var clientConclusions: [ClientConclusion] = []
+    private var fallbackToggles: [FallbackToggle] = []
+    private var pendingTaps: [SystemShiftTap] = []
+
+    /// Returns false if this physical gesture has already been handled. A
+    /// client rejection based only on a late system counter is uncertain: in
+    /// that case a confirmed state sample may still recover the tap.
+    mutating func clientPathConcludedGesture(
+        pressedAt pressTime: TimeInterval,
+        releasedAt releaseTime: TimeInterval,
+        side: ShiftKeySide,
+        allowFallbackRecovery: Bool = false
+    ) -> Bool {
+        let gesture = SystemShiftTap(
+            side: side,
+            pressTime: pressTime,
+            releaseTime: releaseTime
+        )
+        forget(before: releaseTime - Self.memory)
+        guard !clientConclusions.contains(where: { $0.gesture == gesture }) else {
+            return false
+        }
+
+        var conclusion = ClientConclusion(
+            gesture: gesture,
+            allowsFallbackRecovery: allowFallbackRecovery
+        )
+        if let index = closestMatch(
+            for: gesture,
+            among: fallbackToggles.indices.filter {
+                fallbackToggles[$0].matchingClient == nil
+            },
+            gestureAt: { fallbackToggles[$0].gesture }
+        ) {
+            fallbackToggles[index].matchingClient = gesture
+            conclusion.matchingFallback = fallbackToggles[index].gesture
+            clientConclusions.append(conclusion)
+            return false
+        }
+
+        if let index = closestMatch(
+            for: gesture,
+            among: pendingTaps.indices,
+            gestureAt: { pendingTaps[$0] }
+        ) {
+            conclusion.matchingFallback = pendingTaps[index]
+            if !allowFallbackRecovery {
+                pendingTaps.remove(at: index)
+            }
+        }
+        clientConclusions.append(conclusion)
+        return true
+    }
+
     mutating func fallbackObserved(_ tap: SystemShiftTap) {
-        guard !clientConclusions.contains(where: {
-            Self.matches($0, tap.releaseTime)
-        }) else {
+        guard !pendingTaps.contains(tap),
+              !fallbackToggles.contains(where: { $0.gesture == tap }),
+              !clientConclusions.contains(where: {
+                  $0.matchingFallback == tap && !$0.allowsFallbackRecovery
+              }) else {
             return
+        }
+
+        if let index = closestMatch(
+            for: tap,
+            among: clientConclusions.indices.filter {
+                clientConclusions[$0].matchingFallback == nil
+            },
+            gestureAt: { clientConclusions[$0].gesture }
+        ) {
+            clientConclusions[index].matchingFallback = tap
+            if !clientConclusions[index].allowsFallbackRecovery {
+                return
+            }
         }
         pendingTaps.append(tap)
     }
 
-    /// Returns the queued taps the event path never concluded and that have
-    /// waited long enough, marking each as switched by the fallback.
+    /// Gives the event path time to arrive when the user has not typed again.
     mutating func dueFallbackTaps(now: TimeInterval) -> [SystemShiftTap] {
-        let isDue: (SystemShiftTap) -> Bool = {
+        takePendingTaps(now: now) {
             now - $0.releaseTime >= Self.fallbackDelay
         }
-        let due = pendingTaps.filter(isDue)
-        pendingTaps.removeAll(where: isDue)
+    }
 
-        let unclaimed = due.filter { tap in
-            now - tap.releaseTime <= Self.expiry
-                && !clientConclusions.contains {
-                    Self.matches($0, tap.releaseTime)
-                }
+    /// A confirmed tap preceding a key must take effect before that key is
+    /// interpreted. Its event timestamp supplies ordering, while the current
+    /// clock decides whether a queued tap has expired.
+    mutating func dueFallbackTaps(
+        beforeKeyDownAt eventTime: TimeInterval,
+        now: TimeInterval
+    ) -> [SystemShiftTap] {
+        takePendingTaps(now: now) { $0.releaseTime < eventTime }
+    }
+
+    /// Focus changes invalidate queued work but must not erase knowledge of a
+    /// tap already switched, whose client event may still arrive late.
+    mutating func cancelPendingTaps() {
+        pendingTaps.removeAll()
+    }
+
+    private mutating func takePendingTaps(
+        now: TimeInterval,
+        isDue: (SystemShiftTap) -> Bool
+    ) -> [SystemShiftTap] {
+        var due: [SystemShiftTap] = []
+        pendingTaps.removeAll { tap in
+            guard now - tap.releaseTime <= Self.expiry else {
+                return true
+            }
+            guard isDue(tap) else {
+                return false
+            }
+            due.append(tap)
+            return true
         }
-        fallbackToggles.append(contentsOf: unclaimed.map(\.releaseTime))
+        for tap in due {
+            let client = clientConclusions.first { $0.matchingFallback == tap }
+            fallbackToggles.append(FallbackToggle(
+                gesture: tap,
+                matchingClient: client?.gesture
+            ))
+        }
         forget(before: now - Self.memory)
-        return unclaimed
+        return due
+    }
+
+    private func closestMatch<Indices: Sequence>(
+        for gesture: SystemShiftTap,
+        among indices: Indices,
+        gestureAt: (Int) -> SystemShiftTap
+    ) -> Int? where Indices.Element == Int {
+        indices.filter { Self.matches(gestureAt($0), gesture) }.min {
+            let first = gestureAt($0)
+            let second = gestureAt($1)
+            return abs(first.pressTime - gesture.pressTime)
+                + abs(first.releaseTime - gesture.releaseTime)
+                < abs(second.pressTime - gesture.pressTime)
+                + abs(second.releaseTime - gesture.releaseTime)
+        }
     }
 
     private mutating func forget(before horizon: TimeInterval) {
-        clientConclusions.removeAll { $0 < horizon }
-        fallbackToggles.removeAll { $0 < horizon }
+        clientConclusions.removeAll { $0.gesture.releaseTime < horizon }
+        fallbackToggles.removeAll { $0.gesture.releaseTime < horizon }
     }
 
     private static func matches(
-        _ first: TimeInterval,
-        _ second: TimeInterval
+        _ first: SystemShiftTap,
+        _ second: SystemShiftTap
     ) -> Bool {
-        abs(first - second) <= matchWindow
+        first.side == second.side
+            && abs(first.pressTime - second.pressTime) <= matchWindow
+            && abs(first.releaseTime - second.releaseTime) <= matchWindow
+            && max(first.pressTime, second.pressTime)
+                < min(first.releaseTime, second.releaseTime)
     }
 }

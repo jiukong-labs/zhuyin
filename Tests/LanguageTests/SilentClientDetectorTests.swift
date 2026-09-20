@@ -14,7 +14,7 @@ final class SilentClientDetectorTests: XCTestCase {
         var detector = SilentClientDetector()
         detector.switchedToChinese(at: 100)
 
-        detector.clientDeliveredKeyDown(at: 100.5)
+        detector.clientDeliveredKeyDown(at: 100.5, mode: .chinese)
         XCTAssertFalse(detector.isWatching)
         XCTAssertFalse(detector.shouldReattach(now: 101, lastPlainKeyDown: 100.5))
     }
@@ -25,7 +25,7 @@ final class SilentClientDetectorTests: XCTestCase {
 
         // The event's hardware time is when it was typed, even if the busy
         // main thread handled it later.
-        detector.clientDeliveredKeyDown(at: 100.5)
+        detector.clientDeliveredKeyDown(at: 100.5, mode: .chinese)
         XCTAssertFalse(detector.shouldReattach(now: 101.2, lastPlainKeyDown: 100.5))
     }
 
@@ -63,6 +63,7 @@ final class SilentClientDetectorTests: XCTestCase {
         detector.switchedToChinese(at: 100)
 
         XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+        detector.reattachedToChinese(at: 100.9)
         // The same stray key must not trigger another attempt.
         XCTAssertFalse(detector.shouldReattach(now: 101.5, lastPlainKeyDown: 100.5))
         XCTAssertTrue(detector.shouldReattach(now: 102.3, lastPlainKeyDown: 102))
@@ -73,7 +74,9 @@ final class SilentClientDetectorTests: XCTestCase {
         detector.switchedToChinese(at: 100)
 
         XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+        detector.reattachedToChinese(at: 100.9)
         XCTAssertTrue(detector.shouldReattach(now: 101.8, lastPlainKeyDown: 101.5))
+        detector.reattachedToChinese(at: 101.9)
         // A client that is not editing text keeps ignoring the input method;
         // stop flipping the source at it.
         XCTAssertFalse(detector.shouldReattach(now: 102.8, lastPlainKeyDown: 102.5))
@@ -85,7 +88,8 @@ final class SilentClientDetectorTests: XCTestCase {
         detector.switchedToChinese(at: 100)
 
         XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
-        detector.clientDeliveredKeyDown(at: 101.2)
+        detector.reattachedToChinese(at: 100.9)
+        detector.clientDeliveredKeyDown(at: 101.2, mode: .chinese)
         XCTAssertFalse(detector.isWatching)
     }
 
@@ -93,7 +97,9 @@ final class SilentClientDetectorTests: XCTestCase {
         var detector = SilentClientDetector()
         detector.switchedToChinese(at: 100)
         XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+        detector.reattachedToChinese(at: 100.9)
         XCTAssertTrue(detector.shouldReattach(now: 101.8, lastPlainKeyDown: 101.5))
+        detector.reattachedToChinese(at: 101.9)
 
         detector.switchedToChinese(at: 110)
         XCTAssertTrue(detector.shouldReattach(now: 110.8, lastPlainKeyDown: 110.5))
@@ -105,5 +111,127 @@ final class SilentClientDetectorTests: XCTestCase {
 
         detector.stopWatching()
         XCTAssertFalse(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+    }
+
+    func testEnglishDeliveryDoesNotProveChineseIsHealthy() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+
+        detector.clientDeliveredKeyDown(at: 100.5, mode: .english)
+        XCTAssertTrue(detector.isWatching)
+        XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+    }
+
+    func testReattachWaitsForConfirmedReturnToChinese() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+        XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+
+        detector.clientDeliveredKeyDown(at: 100.85, mode: .english)
+        detector.clientDeliveredKeyDown(at: 100.86, mode: .chinese)
+        XCTAssertTrue(detector.isWatching)
+        XCTAssertTrue(detector.isReattaching)
+        XCTAssertFalse(detector.shouldReattach(now: 101.2, lastPlainKeyDown: 100.9))
+
+        detector.reattachedToChinese(at: 101.3)
+        XCTAssertFalse(detector.isReattaching)
+        XCTAssertFalse(detector.shouldReattach(now: 101.6, lastPlainKeyDown: 101.2))
+        XCTAssertTrue(detector.shouldReattach(now: 102, lastPlainKeyDown: 101.7))
+    }
+
+    func testDelayedEnglishKeyAfterReturnDoesNotEndWatch() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+        XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+        detector.reattachedToChinese(at: 100.9)
+
+        // Delivery sees Chinese selected, but the key was typed in English
+        // just before the source returned. Even a 10 ms gap must be rejected.
+        detector.clientDeliveredKeyDown(at: 100.89, mode: .chinese)
+        XCTAssertTrue(detector.isWatching)
+        XCTAssertTrue(detector.shouldReattach(now: 101.8, lastPlainKeyDown: 101.5))
+    }
+
+    func testDelayedKeyBeforeNewSwitchDoesNotEndWatch() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+
+        detector.clientDeliveredKeyDown(at: 99.99, mode: .chinese)
+        detector.clientDeliveredKeyDown(at: 100.1, mode: nil)
+        XCTAssertTrue(detector.isWatching)
+        XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+    }
+
+    func testReturnToChineseDoesNotExtendOriginalDeadline() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+        XCTAssertTrue(detector.shouldReattach(now: 129, lastPlainKeyDown: 128.5))
+        detector.reattachedToChinese(at: 129.1)
+
+        XCTAssertFalse(detector.shouldReattach(now: 130.3, lastPlainKeyDown: 129.9))
+        XCTAssertFalse(detector.isWatching)
+    }
+
+    func testLateReturnAfterCancellationDoesNotRestartWatch() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+        XCTAssertTrue(detector.shouldReattach(now: 100.8, lastPlainKeyDown: 100.5))
+
+        detector.stopWatching()
+        detector.reattachedToChinese(at: 100.9)
+        XCTAssertFalse(detector.isWatching)
+        XCTAssertFalse(detector.isReattaching)
+    }
+
+    func testWatchCanExpireDuringReattach() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+        XCTAssertTrue(detector.shouldReattach(now: 129.9, lastPlainKeyDown: 129.5))
+
+        detector.reattachedToChinese(at: 130.1)
+        XCTAssertFalse(detector.isWatching)
+        XCTAssertFalse(detector.isReattaching)
+    }
+
+    func testReattachmentCallbackCanBeClaimedOnlyOnce() {
+        var guardState = ClientReattachmentGuard()
+        let token = guardState.begin()
+
+        XCTAssertTrue(guardState.claim(token: token, currentMode: .english, isCurrentClient: true))
+        XCTAssertFalse(guardState.claim(token: token, currentMode: .english, isCurrentClient: true))
+    }
+
+    func testCancelledReattachmentCannotChangeSource() {
+        var guardState = ClientReattachmentGuard()
+        let token = guardState.begin()
+        guardState.cancel()
+
+        XCTAssertFalse(guardState.claim(token: token, currentMode: .english, isCurrentClient: true))
+    }
+
+    func testReattachmentRejectsChangedInputSource() {
+        for mode: LanguageMode? in [.chinese, nil] {
+            var guardState = ClientReattachmentGuard()
+            let token = guardState.begin()
+
+            XCTAssertFalse(guardState.claim(token: token, currentMode: mode, isCurrentClient: true))
+            XCTAssertFalse(guardState.claim(token: token, currentMode: .english, isCurrentClient: true))
+        }
+    }
+
+    func testReattachmentRejectsChangedClient() {
+        var guardState = ClientReattachmentGuard()
+        let token = guardState.begin()
+
+        XCTAssertFalse(guardState.claim(token: token, currentMode: .english, isCurrentClient: false))
+    }
+
+    func testOldCallbackCannotConsumeNewRecoveryToken() {
+        var guardState = ClientReattachmentGuard()
+        let oldToken = guardState.begin()
+        let newToken = guardState.begin()
+
+        XCTAssertFalse(guardState.claim(token: oldToken, currentMode: .english, isCurrentClient: true))
+        XCTAssertTrue(guardState.claim(token: newToken, currentMode: .english, isCurrentClient: true))
     }
 }

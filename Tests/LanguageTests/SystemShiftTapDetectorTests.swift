@@ -7,10 +7,15 @@ final class SystemShiftTapDetectorTests: XCTestCase {
 
         XCTAssertNil(detector.ingest(keyboard.idle()))
         XCTAssertNil(detector.ingest(keyboard.press(.left)))
+        let pressTime = keyboard.lastChange
         XCTAssertNil(detector.ingest(keyboard.hold()))
         XCTAssertEqual(
             detector.ingest(keyboard.release()),
-            SystemShiftTap(side: .left, releaseTime: keyboard.lastChange)
+            SystemShiftTap(
+                side: .left,
+                pressTime: pressTime,
+                releaseTime: keyboard.lastChange
+            )
         )
     }
 
