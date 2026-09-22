@@ -174,7 +174,6 @@ final class InputController: IMKInputController {
             )
             jiukongShiftTrace(
                 "[\(traceTag)] keyDown"
-                    + " keyCode=\(event.keyCode)"
                     + " client=\(inputClient.bundleIdentifier() ?? "?")"
                     + " mode=\(languageModeController.mode.rawValue)"
                     + " tracking=\(shiftToggleController.isTrackingShift)"

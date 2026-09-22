@@ -22,6 +22,7 @@ private let jiukongShiftTraceLogger = Logger(
 /// messages reach the unified log's on-disk store, so a failure that happens
 /// minutes or hours from now can still be read back with `log show` instead of
 /// requiring a live stream to have been running when it happened.
+/// Keep ordinary key codes, characters, and composition text out of these logs.
 func jiukongShiftTrace(_ message: String) {
     jiukongShiftTraceLogger.log("\(message, privacy: .public)")
 }
