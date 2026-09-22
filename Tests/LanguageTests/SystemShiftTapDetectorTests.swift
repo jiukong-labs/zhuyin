@@ -14,7 +14,8 @@ final class SystemShiftTapDetectorTests: XCTestCase {
             SystemShiftTap(
                 side: .left,
                 pressTime: pressTime,
-                releaseTime: keyboard.lastChange
+                releaseTime: keyboard.lastChange,
+                releaseCounter: keyboard.flagsChanged
             )
         )
     }
@@ -168,7 +169,9 @@ final class SystemShiftTapDetectorTests: XCTestCase {
 
         _ = detector.ingest(keyboard.idle())
         _ = detector.ingest(keyboard.press(.left))
-        XCTAssertNotNil(detector.ingest(keyboard.release()))
+        let tap = detector.ingest(keyboard.release())
+        XCTAssertNotNil(tap)
+        XCTAssertEqual(tap?.releaseCounter, 1)
     }
 }
 

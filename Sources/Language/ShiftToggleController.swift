@@ -56,6 +56,10 @@ struct ShiftToggleController {
         /// after release. A completed polling tap can resolve that ambiguity;
         /// an explicitly observed chord must still reject the gesture.
         var allowsFallbackRecovery: Bool
+        /// Both delivered edges observed the physical key already released,
+        /// with no intervening modifier event. This is a limited correlation
+        /// hint, not a claim that every client event carries a physical ID.
+        var observedReleaseCounter: UInt32? = nil
     }
 
     private static let disallowedChordModifiers: NSEvent.ModifierFlags = [
@@ -78,6 +82,7 @@ struct ShiftToggleController {
     /// release callback can also see keys typed after release. Keep that
     /// ambiguous rejection separate from a chord observed by this tracker.
     private var keyDownEventCountAtPress: UInt32?
+    private var releasedModifierCountAtPress: UInt32?
     private var pressTime: TimeInterval?
     private(set) var concludedGesture: GestureConclusion?
 
@@ -91,6 +96,7 @@ struct ShiftToggleController {
         modifierFlags: NSEvent.ModifierFlags,
         preference: ShiftKeyPreference = .both,
         systemKeyDownEventCount: UInt32? = nil,
+        systemFlagsChangedEventCount: UInt32? = nil,
         systemShiftIsPressed: Bool? = nil,
         eventTimestamp: TimeInterval? = nil
     ) -> Bool {
@@ -146,7 +152,11 @@ struct ShiftToggleController {
                         side: side,
                         pressTime: pressTime,
                         releaseTime: eventTimestamp,
-                        allowsFallbackRecovery: eligible && counterChanged
+                        allowsFallbackRecovery: eligible && counterChanged,
+                        observedReleaseCounter:
+                            systemShiftIsPressed == false
+                                && releasedModifierCountAtPress == systemFlagsChangedEventCount
+                            ? releasedModifierCountAtPress : nil
                     )
                 }
                 clearGesture()
@@ -169,6 +179,8 @@ struct ShiftToggleController {
             toggleCandidate = side
             wasInterrupted = hasDisallowedModifier
             keyDownEventCountAtPress = systemKeyDownEventCount
+            releasedModifierCountAtPress = systemShiftIsPressed == false
+                ? systemFlagsChangedEventCount : nil
             pressTime = eventTimestamp
         } else {
             wasInterrupted = true
@@ -230,6 +242,7 @@ struct ShiftToggleController {
         toggleCandidate = nil
         wasInterrupted = false
         keyDownEventCountAtPress = nil
+        releasedModifierCountAtPress = nil
         pressTime = nil
     }
 

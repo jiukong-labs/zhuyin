@@ -516,6 +516,16 @@ final class InputController: IMKInputController {
         _ event: NSEvent,
         inputClient: any IMKTextInput
     ) -> Bool {
+        // A forwarded event may describe a press that has already ended.
+        // Read the physical state between counter reads so a modifier change
+        // during the snapshot cannot manufacture a release identity.
+        let modifierCountBefore = CGEventSource.counterForEventType(
+            .combinedSessionState, eventType: .flagsChanged
+        )
+        let physicalShiftIsPressed = Self.systemShiftIsPressed()
+        let modifierCountAfter = CGEventSource.counterForEventType(
+            .combinedSessionState, eventType: .flagsChanged
+        )
         let shouldToggle = shiftToggleController.handleFlagsChanged(
             keyCode: event.keyCode,
             modifierFlags: event.modifierFlags,
@@ -524,6 +534,9 @@ final class InputController: IMKInputController {
                 .combinedSessionState,
                 eventType: .keyDown
             ),
+            systemFlagsChangedEventCount: modifierCountBefore == modifierCountAfter
+                ? modifierCountAfter : nil,
+            systemShiftIsPressed: physicalShiftIsPressed,
             eventTimestamp: event.timestamp
         )
         jiukongShiftTrace(
@@ -541,8 +554,10 @@ final class InputController: IMKInputController {
                 from: self
             )
             jiukongShiftTrace(
-                "[\(traceTag)]   client concluded release=\(String(format: "%.4f", event.timestamp))"
+                "[\(traceTag)]   client concluded press=\(String(format: "%.4f", gesture.pressTime))"
+                    + " release=\(String(format: "%.4f", event.timestamp))"
                     + " uptime=\(String(format: "%.4f", ProcessInfo.processInfo.systemUptime))"
+                    + " observedReleaseCounter=\(gesture.observedReleaseCounter.map(String.init) ?? "-")"
                     + " fallbackAlreadySwitched=\(!proceed)"
                     + " counterOnlyRejection=\(gesture.allowsFallbackRecovery)"
             )

@@ -32,6 +32,10 @@ struct SystemShiftTap: Equatable {
     var pressTime: TimeInterval
     /// When the Shift key was released, on the `NSEvent.timestamp` clock.
     var releaseTime: TimeInterval
+    /// WindowServer's modifier-event counter at this physical release.
+    /// Unlike a forwarded event's timestamp, this identifies the sampled
+    /// release even when a client delivers both edges after the key is up.
+    var releaseCounter: UInt32? = nil
 }
 
 /// Recognizes standalone Shift taps from successive keyboard-state samples.
@@ -147,7 +151,8 @@ struct SystemShiftTapDetector {
         return SystemShiftTap(
             side: candidate,
             pressTime: baseline.pressTime,
-            releaseTime: sample.lastModifierChangeTime
+            releaseTime: sample.lastModifierChangeTime,
+            releaseCounter: sample.flagsChangedCount
         )
     }
 

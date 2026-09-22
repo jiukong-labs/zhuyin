@@ -4,8 +4,8 @@ import Foundation
 /// client-delivered event path and the keyboard-state fallback observe it.
 struct ShiftToggleArbiter {
     /// The state sample and client event can differ slightly in hardware time.
-    /// Both edges and an overlapping interval must match; proximity of two
-    /// releases alone cannot identify a physical gesture.
+    /// Timestamp matching requires both edges and an overlapping interval;
+    /// proximity of two releases alone cannot identify a physical gesture.
     static let matchWindow: TimeInterval = 0.02
     static let fallbackDelay: TimeInterval = 0.12
     static let expiry: TimeInterval = 0.5
@@ -14,6 +14,7 @@ struct ShiftToggleArbiter {
     private struct ClientConclusion {
         var gesture: SystemShiftTap
         var allowsFallbackRecovery: Bool
+        var observedReleaseCounter: UInt32?
         var matchingFallback: SystemShiftTap?
     }
 
@@ -33,7 +34,8 @@ struct ShiftToggleArbiter {
         pressedAt pressTime: TimeInterval,
         releasedAt releaseTime: TimeInterval,
         side: ShiftKeySide,
-        allowFallbackRecovery: Bool = false
+        allowFallbackRecovery: Bool = false,
+        observedReleaseCounter: UInt32? = nil
     ) -> Bool {
         let gesture = SystemShiftTap(
             side: side,
@@ -47,7 +49,12 @@ struct ShiftToggleArbiter {
 
         var conclusion = ClientConclusion(
             gesture: gesture,
-            allowsFallbackRecovery: allowFallbackRecovery
+            allowsFallbackRecovery: allowFallbackRecovery,
+            observedReleaseCounter: observedReleaseCounter
+        )
+        let counterMatch = uniquelyObservedRelease(
+            for: gesture,
+            counter: observedReleaseCounter
         )
         if let index = closestMatch(
             for: gesture,
@@ -55,7 +62,9 @@ struct ShiftToggleArbiter {
                 fallbackToggles[$0].matchingClient == nil
             },
             gestureAt: { fallbackToggles[$0].gesture }
-        ) {
+        ) ?? fallbackToggles.firstIndex(where: {
+            $0.matchingClient == nil && $0.gesture == counterMatch
+        }) {
             fallbackToggles[index].matchingClient = gesture
             conclusion.matchingFallback = fallbackToggles[index].gesture
             clientConclusions.append(conclusion)
@@ -66,7 +75,7 @@ struct ShiftToggleArbiter {
             for: gesture,
             among: pendingTaps.indices,
             gestureAt: { pendingTaps[$0] }
-        ) {
+        ) ?? pendingTaps.firstIndex(where: { $0 == counterMatch }) {
             conclusion.matchingFallback = pendingTaps[index]
             if !allowFallbackRecovery {
                 pendingTaps.remove(at: index)
@@ -91,7 +100,7 @@ struct ShiftToggleArbiter {
                 clientConclusions[$0].matchingFallback == nil
             },
             gestureAt: { clientConclusions[$0].gesture }
-        ) {
+        ) ?? uniquelyObservedClient(for: tap) {
             clientConclusions[index].matchingFallback = tap
             if !clientConclusions[index].allowsFallbackRecovery {
                 return
@@ -167,6 +176,56 @@ struct ShiftToggleArbiter {
     private mutating func forget(before horizon: TimeInterval) {
         clientConclusions.removeAll { $0.gesture.releaseTime < horizon }
         fallbackToggles.removeAll { $0.gesture.releaseTime < horizon }
+    }
+
+    /// LINE can deliver a complete down/up pair after polling already saw the
+    /// release, with timestamps shifted enough that the intervals no longer
+    /// overlap. Only use a counter the caller observed unchanged at BOTH
+    /// callbacks while physical Shift was up. Requiring one unclaimed tap
+    /// avoids guessing which gesture a delayed pair belongs to after rapid
+    /// consecutive taps. Only tolerate timestamps shifted forward: reading a
+    /// later counter cannot make an earlier client release belong to a newer
+    /// physical tap. Normal timestamp matching remains unchanged.
+    private func uniquelyObservedRelease(
+        for gesture: SystemShiftTap,
+        counter: UInt32?
+    ) -> SystemShiftTap? {
+        guard let counter else { return nil }
+        let candidates = unclaimedFallbacks(near: gesture)
+        guard candidates.count == 1,
+              candidates[0].releaseCounter == counter,
+              candidates[0].releaseTime <= gesture.releaseTime else { return nil }
+        return candidates[0]
+    }
+
+    /// The timer may observe the release after both delayed client callbacks.
+    /// Apply the same evidence requirements regardless of delivery order.
+    private func uniquelyObservedClient(for tap: SystemShiftTap) -> Int? {
+        guard let counter = tap.releaseCounter,
+              unclaimedFallbacks(near: tap).isEmpty else { return nil }
+        let candidates = clientConclusions.indices.filter {
+            let client = clientConclusions[$0]
+            return client.matchingFallback == nil
+                && client.gesture.side == tap.side
+                && abs(client.gesture.releaseTime - tap.releaseTime) <= Self.expiry
+        }
+        guard candidates.count == 1,
+              clientConclusions[candidates[0]].observedReleaseCounter == counter,
+              tap.releaseTime <= clientConclusions[candidates[0]].gesture.releaseTime else {
+            return nil
+        }
+        return candidates[0]
+    }
+
+    private func unclaimedFallbacks(near gesture: SystemShiftTap) -> [SystemShiftTap] {
+        let unclaimed = pendingTaps + fallbackToggles.compactMap {
+            $0.matchingClient == nil ? $0.gesture : nil
+        }
+        return unclaimed.filter { tap in
+            tap.side == gesture.side
+                && abs(tap.releaseTime - gesture.releaseTime) <= Self.expiry
+                && !clientConclusions.contains { $0.matchingFallback == tap }
+        }
     }
 
     private static func matches(

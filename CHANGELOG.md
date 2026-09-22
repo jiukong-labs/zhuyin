@@ -6,6 +6,10 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Fixed
 
+- Prevent a delayed Shift event pair from undoing a language switch already
+  seen by keyboard-state polling. Correlate one unclaimed physical release
+  using an unchanged modifier-event counter when both callbacks arrive after
+  Shift is up; preserve separate rapid taps and the existing time checks.
 - Apply a recovered standalone Shift tap before interpreting the next key,
   so typing immediately after a dropped modifier event uses the requested mode.
 - Match Shift gestures by side and both press/release times; keep rapid taps

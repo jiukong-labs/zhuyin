@@ -3,6 +3,138 @@ import Carbon
 import XCTest
 
 final class ShiftToggleControllerTests: XCTestCase {
+    func testFullyDelayedShiftCallbacksExposeTheirUnchangedReleaseCounter() throws {
+        var controller = ShiftToggleController()
+
+        XCTAssertFalse(controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift),
+            modifierFlags: .shift,
+            systemKeyDownEventCount: 1074,
+            systemFlagsChangedEventCount: 178,
+            systemShiftIsPressed: false,
+            eventTimestamp: 28849.101
+        ))
+        XCTAssertTrue(controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift),
+            modifierFlags: [],
+            systemKeyDownEventCount: 1074,
+            systemFlagsChangedEventCount: 178,
+            systemShiftIsPressed: false,
+            eventTimestamp: 28849.1163
+        ))
+
+        let gesture = try XCTUnwrap(controller.concludedGesture)
+        XCTAssertEqual(gesture.side, .right)
+        XCTAssertEqual(gesture.observedReleaseCounter, 178)
+    }
+
+    func testReleaseCounterIsUnavailableIfEitherCallbackSeesPhysicalShiftDown() throws {
+        for (downAtPress, downAtRelease) in [(true, false), (false, true), (true, true)] {
+            var controller = ShiftToggleController()
+            _ = controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_RightShift),
+                modifierFlags: .shift,
+                systemFlagsChangedEventCount: 178,
+                systemShiftIsPressed: downAtPress,
+                eventTimestamp: 50.03
+            )
+            XCTAssertTrue(controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_RightShift),
+                modifierFlags: [],
+                systemFlagsChangedEventCount: 178,
+                systemShiftIsPressed: downAtRelease,
+                eventTimestamp: 50.0455
+            ))
+            XCTAssertNil(try XCTUnwrap(controller.concludedGesture).observedReleaseCounter)
+        }
+    }
+
+    func testMissingOrChangedModifierCountersDoNotIdentifyADelayedRelease() throws {
+        let counters: [(UInt32?, UInt32?)] = [
+            (nil, nil), (nil, 178), (178, nil), (178, 180)
+        ]
+        for (pressCounter, releaseCounter) in counters {
+            var controller = ShiftToggleController()
+            _ = controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_RightShift),
+                modifierFlags: .shift,
+                systemFlagsChangedEventCount: pressCounter,
+                systemShiftIsPressed: false,
+                eventTimestamp: 50.03
+            )
+            XCTAssertTrue(controller.handleFlagsChanged(
+                keyCode: UInt16(kVK_RightShift),
+                modifierFlags: [],
+                systemFlagsChangedEventCount: releaseCounter,
+                systemShiftIsPressed: false,
+                eventTimestamp: 50.0455
+            ))
+            XCTAssertNil(try XCTUnwrap(controller.concludedGesture).observedReleaseCounter)
+        }
+    }
+
+    func testObservedReleaseCounterDoesNotLeakIntoTheNextGesture() throws {
+        var controller = ShiftToggleController()
+        _ = controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift), modifierFlags: .shift,
+            systemFlagsChangedEventCount: 178, systemShiftIsPressed: false,
+            eventTimestamp: 50.03
+        )
+        _ = controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift), modifierFlags: [],
+            systemFlagsChangedEventCount: 178, systemShiftIsPressed: false,
+            eventTimestamp: 50.0455
+        )
+        XCTAssertEqual(try XCTUnwrap(controller.concludedGesture).observedReleaseCounter, 178)
+
+        _ = controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift), modifierFlags: .shift,
+            systemFlagsChangedEventCount: 179, systemShiftIsPressed: true,
+            eventTimestamp: 50.10
+        )
+        _ = controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift), modifierFlags: [],
+            systemFlagsChangedEventCount: 180, systemShiftIsPressed: false,
+            eventTimestamp: 50.16
+        )
+        XCTAssertNil(try XCTUnwrap(controller.concludedGesture).observedReleaseCounter)
+    }
+
+    func testLINEDelayedGestureSwitchesOnlyOnceAcrossClientAndFallback() throws {
+        var controller = ShiftToggleController()
+        var arbiter = ShiftToggleArbiter()
+        var mode = LanguageMode.english
+        arbiter.fallbackObserved(SystemShiftTap(
+            side: .right, pressTime: 28848.99, releaseTime: 28849.0708,
+            releaseCounter: 178
+        ))
+
+        _ = controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift), modifierFlags: .shift,
+            systemKeyDownEventCount: 1074, systemFlagsChangedEventCount: 178,
+            systemShiftIsPressed: false, eventTimestamp: 28849.101
+        )
+        let shouldToggle = controller.handleFlagsChanged(
+            keyCode: UInt16(kVK_RightShift), modifierFlags: [],
+            systemKeyDownEventCount: 1074, systemFlagsChangedEventCount: 178,
+            systemShiftIsPressed: false, eventTimestamp: 28849.1163
+        )
+        let gesture = try XCTUnwrap(controller.concludedGesture)
+        let proceed = arbiter.clientPathConcludedGesture(
+            pressedAt: gesture.pressTime,
+            releasedAt: gesture.releaseTime,
+            side: gesture.side,
+            allowFallbackRecovery: gesture.allowsFallbackRecovery,
+            observedReleaseCounter: gesture.observedReleaseCounter
+        )
+        if shouldToggle && proceed { mode = mode.toggled }
+        XCTAssertEqual(mode, .chinese)
+        let fallbackTaps = arbiter.dueFallbackTaps(now: 28849.21)
+        for _ in fallbackTaps { mode = mode.toggled }
+        XCTAssertEqual(fallbackTaps, [])
+        XCTAssertEqual(mode, .chinese)
+    }
+
     func testRecoveredMissingReleaseDoesNotPoisonTheNextTapIdentity() throws {
         var controller = ShiftToggleController()
         var arbiter = ShiftToggleArbiter()

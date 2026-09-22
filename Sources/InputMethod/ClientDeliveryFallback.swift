@@ -145,7 +145,8 @@ final class ClientDeliveryFallback {
             pressedAt: gesture.pressTime,
             releasedAt: gesture.releaseTime,
             side: gesture.side,
-            allowFallbackRecovery: gesture.allowsFallbackRecovery
+            allowFallbackRecovery: gesture.allowsFallbackRecovery,
+            observedReleaseCounter: gesture.observedReleaseCounter
         )
     }
 
@@ -204,7 +205,9 @@ final class ClientDeliveryFallback {
         if let tap = shiftTapDetector.ingest(sample) {
             jiukongShiftTrace(
                 "fallback tap side=\(tap.side == .left ? "L" : "R")"
+                    + " press=\(String(format: "%.4f", tap.pressTime))"
                     + " release=\(String(format: "%.4f", tap.releaseTime))"
+                    + " releaseCounter=\(tap.releaseCounter.map(String.init) ?? "-")"
                     + " seenAfterMs=\(Int((now - tap.releaseTime) * 1000))"
             )
             arbiter.fallbackObserved(tap)
