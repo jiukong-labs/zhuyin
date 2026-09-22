@@ -32,6 +32,14 @@ final class InputController: IMKInputController {
     )
     private var compositionBuffer = CompositionBuffer()
     private var shiftToggleController = ShiftToggleController()
+    private var reattachmentGuard = ClientReattachmentGuard()
+    /// Short identity for this controller instance. IMK creates one controller
+    /// per client connection, so a trace that only names the client cannot
+    /// show which instance actually received an event.
+    private lazy var traceTag: String = String(
+        UInt(bitPattern: ObjectIdentifier(self).hashValue) & 0xffff,
+        radix: 16
+    )
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
     /// Whether Left/Right has entered explicit text-caret positioning. The
@@ -128,8 +136,24 @@ final class InputController: IMKInputController {
 
         switch event.type {
         case .flagsChanged:
+            jiukongShiftTrace(
+                "[\(traceTag)] flagsChanged"
+                    + " keyCode=\(event.keyCode)"
+                    + " raw=0x\(String(event.modifierFlags.rawValue, radix: 16))"
+                    + " shift=\(event.modifierFlags.contains(.shift))"
+                    + " client=\(inputClient.bundleIdentifier() ?? "?")"
+                    + " mode=\(languageModeController.mode.rawValue)"
+                    + " source=\(Self.currentInputSourceID() ?? "?")"
+                    + " sysShift=\(Self.systemShiftIsPressed())"
+                    + " [\(shiftToggleController.diagnosticState)]"
+            )
             return handleModifierChange(event, inputClient: inputClient)
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            if shiftToggleController.isTrackingShift {
+                jiukongShiftTrace(
+                    "[\(traceTag)] mouseDown reset [\(shiftToggleController.diagnosticState)]"
+                )
+            }
             shiftToggleController.reset()
             hideSavedPhraseConfirmation()
             finishComposition(reason: .lifecycle, using: inputClient)
@@ -144,6 +168,23 @@ final class InputController: IMKInputController {
             logCandidateAnchor(clickAnchor, source: "recordClientClick")
             return false
         case .keyDown:
+            ClientDeliveryFallback.shared.clientWillHandleKeyDown(
+                at: event.timestamp,
+                from: self
+            )
+            jiukongShiftTrace(
+                "[\(traceTag)] keyDown"
+                    + " client=\(inputClient.bundleIdentifier() ?? "?")"
+                    + " mode=\(languageModeController.mode.rawValue)"
+                    + " tracking=\(shiftToggleController.isTrackingShift)"
+                    + " sysShift=\(Self.systemShiftIsPressed())"
+                    + " [\(shiftToggleController.diagnosticState)]"
+            )
+            ClientDeliveryFallback.shared.clientDeliveredKeyDown(
+                at: event.timestamp,
+                mode: currentInputSourceMode(),
+                from: self
+            )
             shiftToggleController.noteKeyDown()
             hideSavedPhraseConfirmation()
         default:
@@ -364,7 +405,15 @@ final class InputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
+        jiukongShiftTrace(
+            "[\(traceTag)] activateServer"
+                + " client=\((sender as? any IMKTextInput)?.bundleIdentifier() ?? "?")"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+                + " mode=\(languageModeController.mode.rawValue)"
+                + " [\(shiftToggleController.diagnosticState)]"
+        )
         shiftToggleController.reset()
+        ClientDeliveryFallback.shared.controllerDidActivate(self)
         synchronizeLanguageModeWithCurrentInputSource()
         UserLearningService.shared.refreshCloudIfNeeded()
         startCursorIndicator()
@@ -372,6 +421,13 @@ final class InputController: IMKInputController {
     }
 
     override func deactivateServer(_ sender: Any!) {
+        jiukongShiftTrace(
+            "[\(traceTag)] deactivateServer"
+                + " client=\((sender as? any IMKTextInput)?.bundleIdentifier() ?? "?")"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+                + " [\(shiftToggleController.diagnosticState)]"
+        )
+        ClientDeliveryFallback.shared.controllerDidDeactivate(self)
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: sender)
         cursorIndicator.updateCompositionActive(false)
@@ -379,6 +435,7 @@ final class InputController: IMKInputController {
     }
 
     override func inputControllerWillClose() {
+        ClientDeliveryFallback.shared.controllerDidDeactivate(self)
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: client())
         super.inputControllerWillClose()
@@ -391,6 +448,21 @@ final class InputController: IMKInputController {
     }
 
     @objc private func selectedInputSourceDidChange(_ notification: Notification) {
+        let mode = currentInputSourceMode()
+        if reattachmentGuard.isPending, mode != .english {
+            cancelPendingReattachment()
+        }
+        ClientDeliveryFallback.shared.inputSourceDidChange(to: mode, from: self)
+
+        // Source changes can queue several notifications in one run-loop
+        // turn. Re-read when applying, so an earlier English notification
+        // cannot overwrite a Chinese selection that has already completed.
+        DispatchQueue.main.async { [weak self] in
+            self?.applyCurrentInputSource()
+        }
+    }
+
+    private func applyCurrentInputSource() {
         let currentInputSourceID = Self.currentInputSourceID()
         let ownInputSourceID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
@@ -400,21 +472,12 @@ final class InputController: IMKInputController {
             forInputSourceID: currentInputSourceID,
             parentID: ownInputSourceID
         ) {
-            DispatchQueue.main.async { [weak self] in
-                guard let self else {
-                    return
-                }
-
-                if self.languageModeController.mode != mode {
-                    self.finishComposition(
-                        reason: .lifecycle,
-                        using: self.client()
-                    )
-                }
-                self.languageModeController.synchronize(withSystemMode: mode)
-                self.cursorIndicator.update(mode: mode)
-                self.synchronizeCompositionActivity()
+            if languageModeController.mode != mode {
+                finishComposition(reason: .lifecycle, using: client())
             }
+            languageModeController.synchronize(withSystemMode: mode)
+            cursorIndicator.update(mode: mode)
+            synchronizeCompositionActivity()
             return
         }
 
@@ -425,17 +488,8 @@ final class InputController: IMKInputController {
             return
         }
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self else {
-                return
-            }
-
-            self.resetTransientInputState()
-            self.finishComposition(
-                reason: .lifecycle,
-                using: self.client()
-            )
-        }
+        resetTransientInputState()
+        finishComposition(reason: .lifecycle, using: client())
     }
 
     private func finishComposition(
@@ -461,6 +515,16 @@ final class InputController: IMKInputController {
         _ event: NSEvent,
         inputClient: any IMKTextInput
     ) -> Bool {
+        // A forwarded event may describe a press that has already ended.
+        // Read the physical state between counter reads so a modifier change
+        // during the snapshot cannot manufacture a release identity.
+        let modifierCountBefore = CGEventSource.counterForEventType(
+            .combinedSessionState, eventType: .flagsChanged
+        )
+        let physicalShiftIsPressed = Self.systemShiftIsPressed()
+        let modifierCountAfter = CGEventSource.counterForEventType(
+            .combinedSessionState, eventType: .flagsChanged
+        )
         let shouldToggle = shiftToggleController.handleFlagsChanged(
             keyCode: event.keyCode,
             modifierFlags: event.modifierFlags,
@@ -468,18 +532,84 @@ final class InputController: IMKInputController {
             systemKeyDownEventCount: CGEventSource.counterForEventType(
                 .combinedSessionState,
                 eventType: .keyDown
-            )
+            ),
+            systemFlagsChangedEventCount: modifierCountBefore == modifierCountAfter
+                ? modifierCountAfter : nil,
+            systemShiftIsPressed: physicalShiftIsPressed,
+            eventTimestamp: event.timestamp
         )
+        jiukongShiftTrace(
+            "[\(traceTag)]   decision shouldToggle=\(shouldToggle)"
+                + " [\(shiftToggleController.diagnosticState)]"
+        )
+
+        // Known chords suppress recovery. A counter-only rejection remains
+        // recoverable from a polling tap: the callback's counter may already
+        // include a key typed after this release. Both paths share identity
+        // so a late callback cannot undo a switch already applied to a key.
+        if let gesture = shiftToggleController.concludedGesture {
+            let proceed = ClientDeliveryFallback.shared.clientPathConcludedGesture(
+                gesture,
+                from: self
+            )
+            jiukongShiftTrace(
+                "[\(traceTag)]   client concluded press=\(String(format: "%.4f", gesture.pressTime))"
+                    + " release=\(String(format: "%.4f", event.timestamp))"
+                    + " uptime=\(String(format: "%.4f", ProcessInfo.processInfo.systemUptime))"
+                    + " observedReleaseCounter=\(gesture.observedReleaseCounter.map(String.init) ?? "-")"
+                    + " fallbackAlreadySwitched=\(!proceed)"
+                    + " counterOnlyRejection=\(gesture.allowsFallbackRecovery)"
+            )
+            if !proceed {
+                return false
+            }
+        }
+
         guard shouldToggle else {
             return false
         }
 
+        toggleLanguageMode(using: inputClient)
+        return false
+    }
+
+    /// Switches language for a standalone Shift tap that the client never
+    /// delivered, recovered by `ClientDeliveryFallback`.
+    func toggleLanguageModeForUndeliveredShiftTap(_ tap: SystemShiftTap) {
+        // macOS can move the whole input source elsewhere while this
+        // controller still gets activated, such as Caps Lock switching to ABC.
+        // Recovering a tap then would drag the input source back to Jiukong
+        // behind the user's back.
+        guard currentInputSourceMode() != nil else {
+            return
+        }
+        shiftToggleController.recoveredTap(releasedAt: tap.releaseTime)
+        toggleLanguageMode(using: client())
+    }
+
+    private func currentInputSourceMode() -> LanguageMode? {
+        LanguageMode.mode(
+            forInputSourceID: Self.currentInputSourceID(),
+            parentID: Bundle.main.object(
+                forInfoDictionaryKey: "TISInputSourceID"
+            ) as? String
+        )
+    }
+
+    private func toggleLanguageMode(using inputClient: Any?) {
+        cancelPendingReattachment()
+        guard let currentMode = currentInputSourceMode() else { return }
         finishComposition(reason: .lifecycle, using: inputClient)
-        let mode = languageModeController.mode.toggled
+        let mode = currentMode.toggled
+        jiukongShiftTrace(
+            "[\(traceTag)]   toggling from=\(languageModeController.mode.rawValue)"
+                + " to=\(mode.rawValue)"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+        )
         guard let parentID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
         ) as? String else {
-            return false
+            return
         }
 
         do {
@@ -493,14 +623,108 @@ final class InputController: IMKInputController {
                 mode.rawValue,
                 error.localizedDescription
             )
-            return false
+            return
         }
 
+        jiukongShiftTrace(
+            "[\(traceTag)]   selected ok, source now=\(Self.currentInputSourceID() ?? "?")"
+        )
+        guard currentInputSourceMode() == mode else { return }
         languageModeController.synchronize(withSystemMode: mode)
         cursorIndicator.update(mode: mode)
         synchronizeCompositionActivity()
-        return false
+        ClientDeliveryFallback.shared.languageModeSwitched(to: mode)
     }
+
+    /// Moves the input source to English and back to Chinese. A client that
+    /// stopped handing key events to the input method after a switch to
+    /// Chinese picks the input method up again on the next source change.
+    func reattachSilentClient() {
+        jiukongShiftTrace(
+            "[\(traceTag)] reattach: source=\(Self.currentInputSourceID() ?? "?") client=\(client()?.bundleIdentifier() ?? "?")"
+        )
+        guard ClientDeliveryFallback.shared.isActive(self),
+              currentInputSourceMode() == .chinese,
+              let foregroundPID = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+              let parentID = Bundle.main.object(
+                  forInfoDictionaryKey: "TISInputSourceID"
+              ) as? String else {
+            ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
+            return
+        }
+
+        let token = reattachmentGuard.begin()
+        do {
+            try InputSourceRegistrar.select(
+                mode: .english,
+                bundleIdentifier: parentID
+            )
+        } catch {
+            cancelPendingReattachment()
+            NSLog(
+                "Jiukong Zhuyin could not reattach a silent client: %@",
+                error.localizedDescription
+            )
+            return
+        }
+        guard currentInputSourceMode() == .english else {
+            cancelPendingReattachment()
+            return
+        }
+        languageModeController.synchronize(withSystemMode: .english)
+        cursorIndicator.update(mode: .english)
+
+        // The client has to observe the English source before the switch
+        // back; two selections in one turn of the run loop can reach it as
+        // no change at all. The callback belongs only to this recovery and
+        // this focus; subsequent user actions must not be overwritten.
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.reattachSettleDelay
+        ) { [weak self] in
+            guard let self, self.reattachmentGuard.contains(token) else { return }
+            let isCurrentClient = ClientDeliveryFallback.shared.isActive(self)
+                && NSWorkspace.shared.frontmostApplication?.processIdentifier == foregroundPID
+            guard self.reattachmentGuard.claim(
+                token: token,
+                currentMode: self.currentInputSourceMode(),
+                isCurrentClient: isCurrentClient
+            ) else {
+                ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
+                return
+            }
+            do {
+                try InputSourceRegistrar.select(
+                    mode: .chinese,
+                    bundleIdentifier: parentID
+                )
+                let succeeded = self.currentInputSourceMode() == .chinese
+                if succeeded {
+                    self.languageModeController.synchronize(withSystemMode: .chinese)
+                    self.cursorIndicator.update(mode: .chinese)
+                }
+                ClientDeliveryFallback.shared.reattachmentFinished(
+                    from: self,
+                    succeeded: succeeded
+                )
+                jiukongShiftTrace("reattach: back to chinese")
+            } catch {
+                ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
+                NSLog(
+                    "Jiukong Zhuyin could not return to Chinese after reattaching: %@",
+                    error.localizedDescription
+                )
+            }
+        }
+    }
+
+    func cancelPendingReattachment() {
+        guard reattachmentGuard.isPending else { return }
+        reattachmentGuard.cancel()
+        ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
+        jiukongShiftTrace("[\(traceTag)] reattach: cancelled")
+    }
+
+    private static let reattachSettleDelay: TimeInterval = 0.1
 
     /// Changing the arrangement mid-composition would reinterpret keys the user
     /// already pressed, so the current composition is finalized first.
@@ -525,8 +749,17 @@ final class InputController: IMKInputController {
     /// immediately on activation instead of waiting for that notification to
     /// round-trip back.
     private func startCursorIndicator() {
+        // A client keeps activating this controller even when macOS has moved
+        // the input source away from Jiukong entirely, which Caps Lock does
+        // when it switches to ABC. Showing the remembered 中 then tells the
+        // user they are typing Chinese while the keyboard is somewhere else.
+        guard let mode = currentInputSourceMode() else {
+            cursorIndicator.setActive(false)
+            return
+        }
+
         cursorIndicator.apply(preferences.current.cursorIndicator)
-        cursorIndicator.update(mode: languageModeController.mode)
+        cursorIndicator.update(mode: mode)
         cursorIndicator.setActive(true)
     }
 
@@ -593,6 +826,10 @@ final class InputController: IMKInputController {
     private static let selectedInputSourceChangedNotification = Notification.Name(
         kTISNotifySelectedKeyboardInputSourceChanged as String
     )
+
+    private static func systemShiftIsPressed() -> Bool {
+        CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
+    }
 
     private static func currentInputSourceID() -> String? {
         let inputSource = TISCopyCurrentKeyboardInputSource()

@@ -48,6 +48,20 @@ enum ShiftKeyPreference: String, CaseIterable, Codable, Equatable {
 
 /// Distinguishes a standalone Shift tap from a Shift-modified key chord.
 struct ShiftToggleController {
+    struct GestureConclusion {
+        var side: ShiftKeySide
+        var pressTime: TimeInterval
+        var releaseTime: TimeInterval
+        /// A counter sampled in a delayed callback may include keys pressed
+        /// after release. A completed polling tap can resolve that ambiguity;
+        /// an explicitly observed chord must still reject the gesture.
+        var allowsFallbackRecovery: Bool
+        /// Both delivered edges observed the physical key already released,
+        /// with no intervening modifier event. This is a limited correlation
+        /// hint, not a claim that every client event carries a physical ID.
+        var observedReleaseCounter: UInt32? = nil
+    }
+
     private static let disallowedChordModifiers: NSEvent.ModifierFlags = [
         .command,
         .control,
@@ -64,9 +78,13 @@ struct ShiftToggleController {
     private var wasInterrupted = false
     /// Some clients deliver a Shift release to the input method before the
     /// key-down event for the Shift chord. Sampling WindowServer's monotonic
-    /// event counter at both edges keeps standalone-tap detection independent
-    /// of that client delivery order.
+    /// event counter at both edges can reject that chord, but a delayed
+    /// release callback can also see keys typed after release. Keep that
+    /// ambiguous rejection separate from a chord observed by this tracker.
     private var keyDownEventCountAtPress: UInt32?
+    private var releasedModifierCountAtPress: UInt32?
+    private var pressTime: TimeInterval?
+    private(set) var concludedGesture: GestureConclusion?
 
     var isTrackingShift: Bool {
         !pressedShiftKeys.isEmpty
@@ -78,8 +96,11 @@ struct ShiftToggleController {
         modifierFlags: NSEvent.ModifierFlags,
         preference: ShiftKeyPreference = .both,
         systemKeyDownEventCount: UInt32? = nil,
-        systemShiftIsPressed: Bool? = nil
+        systemFlagsChangedEventCount: UInt32? = nil,
+        systemShiftIsPressed: Bool? = nil,
+        eventTimestamp: TimeInterval? = nil
     ) -> Bool {
+        concludedGesture = nil
         guard let side = ShiftKeySide(keyCode: keyCode) else {
             noteNonShiftModifierChange(
                 systemShiftIsPressed: systemShiftIsPressed
@@ -113,17 +134,31 @@ struct ShiftToggleController {
             if hasDisallowedModifier {
                 wasInterrupted = true
             }
-            if let keyDownEventCountAtPress,
-               let systemKeyDownEventCount,
-               systemKeyDownEventCount != keyDownEventCountAtPress {
-                wasInterrupted = true
+            let counterChanged: Bool
+            if let keyDownEventCountAtPress, let systemKeyDownEventCount {
+                counterChanged = systemKeyDownEventCount != keyDownEventCountAtPress
+            } else {
+                counterChanged = false
             }
             pressedShiftKeys.remove(side)
-            let shouldToggle = toggleCandidate == side
+            let eligible = toggleCandidate == side
                 && !wasInterrupted
                 && pressedShiftKeys.isEmpty
                 && preference.allows(side)
+            let shouldToggle = eligible && !counterChanged
             if pressedShiftKeys.isEmpty {
+                if let pressTime, let eventTimestamp {
+                    concludedGesture = GestureConclusion(
+                        side: side,
+                        pressTime: pressTime,
+                        releaseTime: eventTimestamp,
+                        allowsFallbackRecovery: eligible && counterChanged,
+                        observedReleaseCounter:
+                            systemShiftIsPressed == false
+                                && releasedModifierCountAtPress == systemFlagsChangedEventCount
+                            ? releasedModifierCountAtPress : nil
+                    )
+                }
                 clearGesture()
             } else {
                 wasInterrupted = true
@@ -144,6 +179,9 @@ struct ShiftToggleController {
             toggleCandidate = side
             wasInterrupted = hasDisallowedModifier
             keyDownEventCountAtPress = systemKeyDownEventCount
+            releasedModifierCountAtPress = systemShiftIsPressed == false
+                ? systemFlagsChangedEventCount : nil
+            pressTime = eventTimestamp
         } else {
             wasInterrupted = true
         }
@@ -187,13 +225,25 @@ struct ShiftToggleController {
 
     mutating func reset() {
         pressedShiftKeys.removeAll()
+        concludedGesture = nil
         clearGesture()
+    }
+
+    /// The polling path completed a tap whose release the client may never
+    /// deliver. Forget that stale press, but preserve a newer physical press
+    /// already delivered while the earlier tap waited for arbitration.
+    mutating func recoveredTap(releasedAt time: TimeInterval) {
+        if let pressTime, pressTime <= time {
+            reset()
+        }
     }
 
     private mutating func clearGesture() {
         toggleCandidate = nil
         wasInterrupted = false
         keyDownEventCountAtPress = nil
+        releasedModifierCountAtPress = nil
+        pressTime = nil
     }
 
     private func isStillPressed(
@@ -241,5 +291,24 @@ struct ShiftToggleController {
         }
         return CGEventSource.flagsState(.combinedSessionState)
             .contains(.maskShift)
+    }
+}
+
+extension ShiftToggleController {
+    /// Read-only snapshot of the gesture bookkeeping, for diagnostic logging.
+    /// Same-file access keeps the stored properties private to the type.
+    var diagnosticState: String {
+        let sides = pressedShiftKeys
+            .map { $0 == .left ? "L" : "R" }
+            .sorted()
+            .joined()
+        let candidate = toggleCandidate
+            .map { $0 == .left ? "L" : "R" } ?? "-"
+        let counter = keyDownEventCountAtPress
+            .map(String.init) ?? "-"
+        return "held=\(sides.isEmpty ? "-" : sides)"
+            + " candidate=\(candidate)"
+            + " interrupted=\(wasInterrupted)"
+            + " kdAtPress=\(counter)"
     }
 }

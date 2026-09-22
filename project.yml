@@ -182,6 +182,9 @@ targets:
       - path: Sources/Keyboard
       - path: Sources/Language/LanguageMode.swift
       - path: Sources/Language/ShiftToggleController.swift
+      - path: Sources/Language/SilentClientDetector.swift
+      - path: Sources/Language/ShiftToggleArbiter.swift
+      - path: Sources/Language/SystemShiftTapDetector.swift
       - path: Sources/Learning
       - path: Sources/Overlay/CursorIndicatorSettings.swift
       - path: Sources/Overlay/CursorIndicatorAppearance.swift
