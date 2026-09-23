@@ -495,7 +495,7 @@ final class CantoneseDictionary {
                 continue
             }
 
-            let fields = rawLine.split(
+            let fields = line.split(
                 separator: "\t",
                 omittingEmptySubsequences: false
             )
