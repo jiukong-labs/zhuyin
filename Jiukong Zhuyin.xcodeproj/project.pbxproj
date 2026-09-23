@@ -162,6 +162,7 @@
 		ABF2597AA16FD797D1ADF954 /* SystemShiftTapDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08B982B296EADC7CD4CCDC71 /* SystemShiftTapDetector.swift */; };
 		AECF58023168697EB29690B7 /* ShiftToggleControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15074F31AE6BAC12F61FA8C2 /* ShiftToggleControllerTests.swift */; };
 		AEE5E0C548CFEB9403D40C1F /* StandardZhuyinLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */; };
+		B08749B183B8E636663C368F /* jyut6ping3.words.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 7E81631D1F28AFBCBDE06D45 /* jyut6ping3.words.dict.yaml */; };
 		B11BA7A4A4CE188EFFBE8D6F /* UpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8DF5A2899531361D999647 /* UpdateController.swift */; };
 		B128BD1DE0C2B4DA36A4C7AE /* ShiftToggleArbiter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C909FD747732243C6107DF /* ShiftToggleArbiter.swift */; };
 		B1409166A1985A84FE6FE8A1 /* MacVirtualKeyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */; };
@@ -215,7 +216,6 @@
 		E81211C53220DB0622314336 /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
 		EDAA791EF7F09A8474A9A8D2 /* jyut6ping3.chars.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */; };
-		B08749B183B8E636663C368F /* jyut6ping3.words.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 7E81631D1F28AFBCBDE06D45 /* jyut6ping3.words.dict.yaml */; };
 		EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
 		F154953E8795E872037E4B08 /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E38BA26E2A742FE938ED829 /* CryptoKit.framework */; };
@@ -261,7 +261,6 @@
 		3956B2AE2EBC770F628C9DB3 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducer.swift; sourceTree = "<group>"; };
 		3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = jyut6ping3.chars.dict.yaml; sourceTree = "<group>"; };
-		7E81631D1F28AFBCBDE06D45 /* jyut6ping3.words.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = jyut6ping3.words.dict.yaml; sourceTree = "<group>"; };
 		3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllableTests.swift; sourceTree = "<group>"; };
 		3E134113536FB1FB0AC3B7E0 /* UpdateRelease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRelease.swift; sourceTree = "<group>"; };
 		3FDCB9CE64ABC1794476C217 /* ClientDeliveryFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDeliveryFallback.swift; sourceTree = "<group>"; };
@@ -308,6 +307,7 @@
 		7AAB18A026A29F9DFBEDB120 /* UserDataListSortingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataListSortingTests.swift; sourceTree = "<group>"; };
 		7B186CA5B924FBF653433399 /* UserDataClearingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataClearingTests.swift; sourceTree = "<group>"; };
 		7D12FCF239B86FEA58145D48 /* CursorIndicatorSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorSettings.swift; sourceTree = "<group>"; };
+		7E81631D1F28AFBCBDE06D45 /* jyut6ping3.words.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = jyut6ping3.words.dict.yaml; sourceTree = "<group>"; };
 		7EF0A148BBADCC93D8DADC8A /* UpdateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateTests.swift; sourceTree = "<group>"; };
 		8310435AE00955EBEFC673B6 /* CandidateSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSession.swift; sourceTree = "<group>"; };
 		864E157C1B491375C06D884F /* ZhuyinKeyboardArrangement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhuyinKeyboardArrangement.swift; sourceTree = "<group>"; };
