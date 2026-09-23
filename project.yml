@@ -76,6 +76,8 @@ targets:
         buildPhase: resources
       - path: Data/RimeCantonese/jyut6ping3.chars.dict.yaml
         buildPhase: resources
+      - path: Data/RimeCantonese/jyut6ping3.words.dict.yaml
+        buildPhase: resources
       - path: LICENSE
         buildPhase: resources
       - path: THIRD_PARTY_NOTICES.md
