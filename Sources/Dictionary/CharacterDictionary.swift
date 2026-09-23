@@ -600,7 +600,7 @@ final class CantoneseDictionary {
                     return
                 }
 
-                let key = readings.compactMap(Self.tonelessReading).joined()
+                let key = readings.compactMap { Self.tonelessReading(from: $0) }.joined()
                 let entry = CantoneseDictionaryEntry(
                     text: text,
                     pronunciationSequence: readings,
@@ -623,7 +623,7 @@ final class CantoneseDictionary {
                 continue
             }
             let key = supplement.pronunciationSequence
-                .compactMap(Self.tonelessReading)
+                .compactMap { Self.tonelessReading(from: $0) }
                 .joined()
             words[key, default: []].append(
                 CantoneseDictionaryEntry(
