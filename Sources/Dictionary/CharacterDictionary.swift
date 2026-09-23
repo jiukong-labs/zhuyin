@@ -687,6 +687,21 @@ final class CantoneseDictionary {
         normalizedSingleReadingQuery(rawQuery)
     }
 
+    static func learningKey(
+        for pronunciationSequence: [String]
+    ) -> String? {
+        guard !pronunciationSequence.isEmpty else {
+            return nil
+        }
+        let bodies = pronunciationSequence.compactMap {
+            tonelessReading(from: $0)
+        }
+        guard bodies.count == pronunciationSequence.count else {
+            return nil
+        }
+        return bodies.joined()
+    }
+
     private static func normalizedSingleReadingQuery(
         _ rawQuery: String
     ) -> String? {
