@@ -22,6 +22,8 @@ final class InputController: IMKInputController {
 
     private let candidateProvider: CharacterCandidateProvider?
     private let cantoneseDictionary: CantoneseDictionary?
+    private let cantoneseLearning = CantoneseLearningService.shared
+    private let cantoneseRanker = CandidateRanker(phraseBonus: 0)
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
     private lazy var cursorIndicator = CursorIndicatorController.shared
     private let languageModeController = LanguageModeController.shared
@@ -1079,24 +1081,45 @@ final class InputController: IMKInputController {
             return
         }
 
+        var learningCache: [String: [String: CantoneseLearningRecord]] = [:]
         let candidates = cantoneseDictionary.entries(for: cantoneseInput)
             .filter { CandidateTextDisplayability.canRender($0.text) }
             .enumerated()
             .map { index, entry in
-                Candidate(
+                let learningKey = CantoneseDictionary.learningKey(
+                    for: entry.pronunciationSequence
+                )
+                let learningRecord: CantoneseLearningRecord?
+                if let learningKey {
+                    if learningCache[learningKey] == nil {
+                        learningCache[learningKey] = cantoneseLearning.records(
+                            for: learningKey
+                        )
+                    }
+                    learningRecord = learningCache[learningKey]?[entry.text]
+                } else {
+                    learningRecord = nil
+                }
+
+                return Candidate(
                     text: entry.text,
                     pronunciationSequence: entry.pronunciationSequence,
-                    // Keep Cantonese built-in words non-deletable until the
-                    // Cantonese learning/suppression store is implemented.
+                    // Cantonese words remain non-deletable built-ins. Using
+                    // the character tier here lets one shared ranking policy
+                    // order learned single- and multi-character candidates
+                    // without turning them into user-authored Zhuyin phrases.
                     type: .character,
                     baseRank: index,
                     sourceOrder: Int64(entry.sourceOrder),
-                    baseFrequency: entry.weight
+                    baseFrequency: entry.weight,
+                    userFrequency: learningRecord?.selectionCount ?? 0,
+                    lastUsed: learningRecord?.lastSelectedAt
                 )
             }
+        let rankedCandidates = cantoneseRanker.ranked(candidates)
         guard var session = CandidateSession(
             pronunciation: cantoneseInput,
-            candidates: candidates
+            candidates: rankedCandidates
         ) else {
             return
         }
@@ -1140,6 +1163,16 @@ final class InputController: IMKInputController {
         _ candidate: Candidate,
         to inputClient: any IMKTextInput
     ) {
+        if preferences.current.automaticLearningEnabled,
+           let learningKey = CantoneseDictionary.learningKey(
+               for: candidate.pronunciationSequence
+           ) {
+            cantoneseLearning.recordSelection(
+                text: candidate.text,
+                key: learningKey
+            )
+        }
+
         resetCantoneseComposition()
         clearMarkedText(on: inputClient)
         commitText(candidate.text, to: inputClient)
