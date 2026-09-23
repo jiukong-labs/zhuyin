@@ -521,7 +521,7 @@ final class CantoneseDictionary {
                 text: text,
                 reading: reading,
                 sourceOrder: sourceOrder,
-                weight: Self.weight(from: fields.count >= 3 ? fields[2] : nil)
+                weight: Self.weight(fields.count >= 3 ? fields[2] : nil)
             )
             sourceOrder += 1
             full[reading, default: []].append(entry)
