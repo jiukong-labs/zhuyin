@@ -1,14 +1,29 @@
 import Foundation
 
+enum ChineseInputScheme: String, CaseIterable, Codable, Equatable {
+    case zhuyin
+    case cantonese
+
+    var displayName: String {
+        switch self {
+        case .zhuyin:
+            return "注音"
+        case .cantonese:
+            return "粵語（粵拼）"
+        }
+    }
+}
+
 /// Every persisted user setting owned by Milestone 8.
 ///
 /// The type is a plain value so that decoding, normalization, and defaults can
 /// be tested without touching `UserDefaults` or the settings window.
 struct Preferences: Equatable {
-    static let currentVersion = 2
+    static let currentVersion = 3
     static let `default` = Preferences()
 
     var shiftKeyPreference: ShiftKeyPreference
+    var chineseInputScheme: ChineseInputScheme
     var automaticLearningEnabled: Bool
     var iCloudSyncEnabled: Bool
     var showsRareCandidates: Bool
@@ -17,6 +32,7 @@ struct Preferences: Equatable {
 
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
+        chineseInputScheme: ChineseInputScheme = .zhuyin,
         automaticLearningEnabled: Bool = true,
         iCloudSyncEnabled: Bool = true,
         showsRareCandidates: Bool = false,
@@ -24,6 +40,7 @@ struct Preferences: Equatable {
         cursorIndicator: CursorIndicatorPreferences = CursorIndicatorPreferences()
     ) {
         self.shiftKeyPreference = shiftKeyPreference
+        self.chineseInputScheme = chineseInputScheme
         self.automaticLearningEnabled = automaticLearningEnabled
         self.iCloudSyncEnabled = iCloudSyncEnabled
         self.showsRareCandidates = showsRareCandidates
@@ -75,6 +92,7 @@ struct CursorIndicatorPreferences: Equatable {
 enum PreferenceKey: String, CaseIterable {
     case version = "JiukongPreferencesVersion"
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
+    case chineseInputScheme = "JiukongChineseInputScheme"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
     case iCloudSyncEnabled = "JiukongICloudSyncEnabled"
     case showsRareCandidates = "JiukongShowsRareCandidates"
@@ -120,6 +138,8 @@ extension Preferences {
             PreferenceKey.version.rawValue: Self.currentVersion,
             PreferenceKey.shiftLanguageToggle.rawValue:
                 shiftKeyPreference.rawValue,
+            PreferenceKey.chineseInputScheme.rawValue:
+                chineseInputScheme.rawValue,
             PreferenceKey.automaticLearningEnabled.rawValue:
                 automaticLearningEnabled,
             PreferenceKey.iCloudSyncEnabled.rawValue: iCloudSyncEnabled,
@@ -163,6 +183,12 @@ extension Preferences {
             as? String,
            let preference = ShiftKeyPreference(rawValue: rawValue) {
             preferences.shiftKeyPreference = preference
+        }
+
+        if let rawValue = values[PreferenceKey.chineseInputScheme.rawValue]
+            as? String,
+           let scheme = ChineseInputScheme(rawValue: rawValue) {
+            preferences.chineseInputScheme = scheme
         }
 
         if let enabled = boolean(
