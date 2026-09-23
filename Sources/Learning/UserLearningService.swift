@@ -999,23 +999,23 @@ final class CantoneseLearningCloudSyncCoordinator:
             guard let self else {
                 return
             }
-            queue.async {
+            self.queue.async {
                 switch result {
                 case let .failure(error):
                     Self.log(error)
-                    finish()
+                    self.finish()
                 case let .success(remote):
-                    let merged = mergeRemoteRecords(remote)
-                    let local = merged.isEmpty ? localRecords() : merged
-                    transport.save(local) { [weak self] saveResult in
+                    let merged = self.mergeRemoteRecords(remote)
+                    let local = merged.isEmpty ? self.localRecords() : merged
+                    self.transport.save(local) { [weak self] saveResult in
                         guard let self else {
                             return
                         }
-                        queue.async {
+                        self.queue.async {
                             if case let .failure(error) = saveResult {
                                 Self.log(error)
                             }
-                            finish()
+                            self.finish()
                         }
                     }
                 }
