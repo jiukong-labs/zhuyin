@@ -298,6 +298,30 @@ final class CharacterDictionary {
         return values
     }
 
+    /// The CNS plane 1/2 character repertoire used as the default Traditional
+    /// Chinese gate for other input engines. This keeps a phonetic data source
+    /// from silently introducing Simplified or specialist variants into the
+    /// normal candidate list.
+    func generalCandidateCharacterTexts() throws -> Set<String> {
+        let statement = try database.prepare(
+            """
+            SELECT character, cns_code
+            FROM dictionary_entries
+            ORDER BY source_order, character
+            """
+        )
+
+        var values: Set<String> = []
+        while try statement.step() == .row {
+            let character = try statement.text(at: 0)
+            let cnsCode = try statement.text(at: 1)
+            if (1 ... 2).contains(try cnsPlane(from: cnsCode)) {
+                values.insert(character)
+            }
+        }
+        return values
+    }
+
     /// Whether this dictionary carries the exact phrase identity: the same
     /// text under the same ordered readings.
     func containsPhrase(
@@ -389,5 +413,212 @@ final class CharacterDictionary {
             )
         }
         return plane
+    }
+}
+
+
+enum CantoneseDictionaryError: LocalizedError {
+    case missingBundledData
+    case unreadableBundledData
+    case malformedHeader
+
+    var errorDescription: String? {
+        switch self {
+        case .missingBundledData:
+            return "The bundled Cantonese Jyutping character data is missing."
+        case .unreadableBundledData:
+            return "The bundled Cantonese Jyutping character data is unreadable."
+        case .malformedHeader:
+            return "The bundled Cantonese Jyutping character data has an invalid header."
+        }
+    }
+}
+
+struct CantoneseDictionaryEntry: Equatable {
+    let text: String
+    let reading: String
+    let sourceOrder: Int
+    let weight: Double
+}
+
+/// Read-only Jyutping character lookup owned by Jiukong.
+///
+/// The runtime parser is intentionally small and independent. It reads only
+/// the explicitly approved Rime Cantonese character-to-Jyutping data file; it
+/// does not embed Rime, load a Rime schema, or reuse another input method's
+/// composition/ranking implementation.
+final class CantoneseDictionary {
+    static let resourceName = "jyut6ping3.chars.dict"
+    static let resourceExtension = "yaml"
+
+    private let fullReadingIndex: [String: [CantoneseDictionaryEntry]]
+    private let tonelessReadingIndex: [String: [CantoneseDictionaryEntry]]
+
+    convenience init(
+        bundle: Bundle,
+        allowedCharacters: Set<String>
+    ) throws {
+        guard let url = bundle.url(
+            forResource: Self.resourceName,
+            withExtension: Self.resourceExtension
+        ) else {
+            throw CantoneseDictionaryError.missingBundledData
+        }
+        guard let contents = try? String(contentsOf: url, encoding: .utf8) else {
+            throw CantoneseDictionaryError.unreadableBundledData
+        }
+        try self.init(contents: contents, allowedCharacters: allowedCharacters)
+    }
+
+    init(
+        contents: String,
+        allowedCharacters: Set<String>
+    ) throws {
+        var didReachEntries = false
+        var sourceOrder = 0
+        var seen: Set<String> = []
+        var full: [String: [CantoneseDictionaryEntry]] = [:]
+        var toneless: [String: [CantoneseDictionaryEntry]] = [:]
+
+        for rawLine in contents.split(
+            separator: "\n",
+            omittingEmptySubsequences: false
+        ) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !didReachEntries {
+                if line == "..." {
+                    didReachEntries = true
+                }
+                continue
+            }
+            guard !line.isEmpty, !line.hasPrefix("#") else {
+                continue
+            }
+
+            let fields = line.split(
+                separator: "\t",
+                omittingEmptySubsequences: false
+            )
+            guard fields.count >= 2 else {
+                continue
+            }
+
+            let text = String(fields[0])
+                .precomposedStringWithCanonicalMapping
+            let reading = String(fields[1])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            guard text.count == 1,
+                  allowedCharacters.contains(text),
+                  let tonelessReading = Self.tonelessReading(from: reading) else {
+                continue
+            }
+
+            let identity = text + "\u{0}" + reading
+            guard seen.insert(identity).inserted else {
+                continue
+            }
+
+            let entry = CantoneseDictionaryEntry(
+                text: text,
+                reading: reading,
+                sourceOrder: sourceOrder,
+                weight: Self.weight(fields.count >= 3 ? fields[2] : nil)
+            )
+            sourceOrder += 1
+            full[reading, default: []].append(entry)
+            toneless[tonelessReading, default: []].append(entry)
+        }
+
+        guard didReachEntries else {
+            throw CantoneseDictionaryError.malformedHeader
+        }
+
+        fullReadingIndex = full.mapValues(Self.sorted)
+        tonelessReadingIndex = toneless.mapValues(Self.sorted)
+    }
+
+    func entries(
+        for rawQuery: String,
+        limit: Int = 81
+    ) -> [CantoneseDictionaryEntry] {
+        guard limit > 0,
+              let query = Self.normalizedQuery(rawQuery) else {
+            return []
+        }
+        let values: [CantoneseDictionaryEntry]
+        if query.last?.isNumber == true {
+            values = fullReadingIndex[query] ?? []
+        } else {
+            values = tonelessReadingIndex[query] ?? []
+        }
+
+        var seenText: Set<String> = []
+        var result: [CantoneseDictionaryEntry] = []
+        result.reserveCapacity(min(limit, values.count))
+        for entry in values where seenText.insert(entry.text).inserted {
+            result.append(entry)
+            if result.count == limit {
+                break
+            }
+        }
+        return result
+    }
+
+    static func normalizedQuery(_ rawQuery: String) -> String? {
+        let query = rawQuery
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !query.isEmpty else {
+            return nil
+        }
+
+        var bytes = Array(query.utf8)
+        if let last = bytes.last, (48 ... 57).contains(last) {
+            guard (49 ... 54).contains(last) else {
+                return nil
+            }
+            bytes.removeLast()
+        }
+        guard !bytes.isEmpty,
+              bytes.allSatisfy({ (97 ... 122).contains($0) }) else {
+            return nil
+        }
+        return query
+    }
+
+    private static func tonelessReading(from reading: String) -> String? {
+        guard let normalized = normalizedQuery(reading),
+              let last = normalized.utf8.last,
+              (49 ... 54).contains(last) else {
+            return nil
+        }
+        return String(normalized.dropLast())
+    }
+
+    private static func weight(_ field: Substring?) -> Double {
+        guard let field else {
+            return 1
+        }
+        let text = field.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasSuffix("%"),
+           let percent = Double(text.dropLast()) {
+            return percent / 100
+        }
+        return Double(text) ?? 1
+    }
+
+    private static func sorted(
+        _ entries: [CantoneseDictionaryEntry]
+    ) -> [CantoneseDictionaryEntry] {
+        entries.sorted {
+            if $0.weight != $1.weight {
+                return $0.weight > $1.weight
+            }
+            if $0.sourceOrder != $1.sourceOrder {
+                return $0.sourceOrder < $1.sourceOrder
+            }
+            return $0.text < $1.text
+        }
     }
 }

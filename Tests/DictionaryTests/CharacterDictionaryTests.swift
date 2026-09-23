@@ -78,6 +78,68 @@ final class CharacterDictionaryTests: XCTestCase {
         )
     }
 
+    func testCantoneseDictionarySupportsTonedAndTonelessJyutping() throws {
+        let source = """
+        # Rime dictionary
+        ---
+        name: test
+        sort: by_weight
+        ...
+        妮\tnei4\t3%
+        你\tnei5
+        理\tlei5
+        你\tnei6\t5%
+        """
+
+        let dictionary = try CantoneseDictionary(
+            contents: source,
+            allowedCharacters: ["你", "妮", "理"]
+        )
+
+        XCTAssertEqual(
+            dictionary.entries(for: "nei").map(\.text),
+            ["你", "妮"]
+        )
+        XCTAssertEqual(
+            dictionary.entries(for: "nei5").map(\.text),
+            ["你"]
+        )
+        XCTAssertEqual(
+            dictionary.entries(for: "lei").map(\.text),
+            ["理"]
+        )
+        XCTAssertEqual(dictionary.entries(for: "nei7"), [])
+        XCTAssertEqual(dictionary.entries(for: "n3i"), [])
+    }
+
+    func testCantoneseDictionaryFiltersOutputByAllowedTraditionalRepertoire() throws {
+        let source = """
+        ---
+        name: test
+        ...
+        你\tnei5
+        妳\tnei5
+        """
+
+        let dictionary = try CantoneseDictionary(
+            contents: source,
+            allowedCharacters: ["你"]
+        )
+
+        XCTAssertEqual(
+            dictionary.entries(for: "nei5").map(\.text),
+            ["你"]
+        )
+    }
+
+    func testGeneralCandidateCharacterRepertoireCanGateCantoneseOutput() throws {
+        let characters = try makeDictionary().generalCandidateCharacterTexts()
+
+        XCTAssertTrue(characters.contains("你"))
+        XCTAssertTrue(characters.contains("我"))
+        XCTAssertTrue(characters.contains("唔"))
+    }
+
     func testUnknownQueriesReturnNoResults() throws {
         let dictionary = try makeDictionary()
 
