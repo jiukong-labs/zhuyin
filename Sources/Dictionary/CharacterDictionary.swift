@@ -550,7 +550,11 @@ final class CantoneseDictionary {
         } else {
             values = tonelessReadingIndex[query] ?? []
         }
-        return Array(values.prefix(limit))
+
+        var seenText: Set<String> = []
+        return Array(values.lazy.filter {
+            seenText.insert($0.text).inserted
+        }.prefix(limit))
     }
 
     static func normalizedQuery(_ rawQuery: String) -> String? {
