@@ -4,6 +4,18 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add a Shift switching style setting. The default still selects Jiukong's
+  Chinese or English input mode, so the input menu icon follows Shift. The new
+  "switch within Jiukong" style changes language without selecting another
+  input source: web-backed apps such as Chrome and VS Code then have no source
+  change that could make them stop handing the first keys to the input method,
+  and macOS shows no source indicator of its own. The input menu icon stays on
+  the mode last chosen from the menu, so the cursor indicator shows the
+  language, or a brief 中／A appears when it is off. Choosing a Jiukong mode
+  from the input menu still sets the language in either style.
+
 ### Fixed
 
 - Stop one Shift tap from switching the language and then immediately back.
@@ -13,7 +25,10 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 - Keep keys typed during silent-client recovery in Chinese. Keys typed while
   the client briefly sits on the English source are held and replayed once
   Chinese returns, instead of appearing as English letters. Recovery also
-  starts 200 ms after the first undelivered key, even while typing continues.
+  starts 80 ms after the first undelivered key, even while typing continues,
+  so fewer keys reach the app as English before it begins; a sample taken
+  right after the input method's main thread was blocked waits one more
+  sample, because keys the app did deliver may still be queued behind it.
 - Record why keyboard-state polling rejects a Shift release, such as a key or
   click during the hold, to diagnose taps that neither path switches.
 - Prevent a delayed Shift event pair from undoing a language switch already

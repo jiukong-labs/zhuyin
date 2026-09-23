@@ -39,6 +39,7 @@ leaving the default gate.
 | Option ASCII finalizes an active candidate exactly once | `option-after-composition` | `我a1` |
 | Option ASCII stays at a positioned caret like punctuation | `option-ascii-insertion` | `測｜試` + `⌥6⌥A` commits `測6a試` |
 | Standalone Shift switches Chinese → English → Chinese | `shift-round-trip` | English `a`, then Chinese `我` |
+| The within-Jiukong Shift style switches language without selecting another source | `shift-within-input-method` (opt-in) | English `1`, and the Chinese mode stays selected |
 | Exact built-in phrase replacement | `builtin-phrase` | `測試` |
 | A provisional phrase can extend to a longer exact phrase | `provisional-phrase-extension` | `ㄒㄧㄥˊ ㄕˋ ㄌㄧˋ` previews `形式`, then becomes `行事曆`; never `形式立` |
 | Phrase extension preserves a preceding phrase's complete span | `phrase-homophone-boundary` | `室友` + `有沒有` remains `室友有沒有` |
@@ -80,6 +81,12 @@ covered.
 `eten` and `ibm` remain opt-in because they require changing the persisted
 keyboard arrangement before the input-method process starts. They must still
 be run whenever their layout tables or shared event routing changes.
+
+`shift-within-input-method` is opt-in for the same reason: it needs
+`JiukongShiftSwitchStyle = withinInputMethod` persisted before the process
+starts. Run it whenever Shift toggling, input-source synchronization, or the
+switch style changes. Under the default style the same keystrokes select the
+English mode and the run fails on the source check, which is the point.
 
 ## Change rule
 

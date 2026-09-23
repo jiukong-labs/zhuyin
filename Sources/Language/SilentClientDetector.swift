@@ -10,9 +10,10 @@ import Foundation
 /// cannot prove that the focused control is editable, so attempts are bounded.
 struct SilentClientDetector {
     /// How long a plain key may go unseen before the client counts as silent.
-    /// A delivered key normally arrives within a few milliseconds; this also
-    /// absorbs a main thread that was briefly busy switching sources.
-    static let deliveryGrace: TimeInterval = 0.2
+    /// A delivered key normally arrives within a few milliseconds. Every key
+    /// typed during this wait reaches the client's own text as English, so it
+    /// stays short; a main thread that was blocked is handled separately.
+    static let deliveryGrace: TimeInterval = 0.08
     /// A switch is watched until the client proves itself or this passes.
     static let watchDuration: TimeInterval = 30
     /// Re-attaching cannot help a client that is not editing text at all, so
@@ -87,9 +88,14 @@ struct SilentClientDetector {
     /// typed without Command or Control, or nil when there has been none.
     /// Continuous typing leaves no pause after that latest key, so the
     /// detector judges the first key it saw in the window instead.
+    ///
+    /// `mainThreadWasBusy` reports that this sample follows a blocked main
+    /// thread. Keys the client delivered meanwhile may still be queued behind
+    /// it, so the decision waits for the next sample.
     mutating func shouldReattach(
         now: TimeInterval,
-        lastPlainKeyDown: TimeInterval?
+        lastPlainKeyDown: TimeInterval?,
+        mainThreadWasBusy: Bool = false
     ) -> Bool {
         guard let watchStart else {
             return false
@@ -107,7 +113,8 @@ struct SilentClientDetector {
             firstUndeliveredKey = key
         }
         guard let key = firstUndeliveredKey,
-              now - key >= Self.deliveryGrace else {
+              now - key >= Self.deliveryGrace,
+              !mainThreadWasBusy else {
             return false
         }
         guard attempts < Self.maximumAttempts else {

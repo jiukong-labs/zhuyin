@@ -23,6 +23,7 @@ struct Preferences: Equatable {
     static let `default` = Preferences()
 
     var shiftKeyPreference: ShiftKeyPreference
+    var shiftSwitchStyle: ShiftSwitchStyle
     var chineseInputScheme: ChineseInputScheme
     var automaticLearningEnabled: Bool
     var iCloudSyncEnabled: Bool
@@ -32,6 +33,7 @@ struct Preferences: Equatable {
 
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
+        shiftSwitchStyle: ShiftSwitchStyle = .inputSource,
         chineseInputScheme: ChineseInputScheme = .zhuyin,
         automaticLearningEnabled: Bool = true,
         iCloudSyncEnabled: Bool = true,
@@ -40,6 +42,7 @@ struct Preferences: Equatable {
         cursorIndicator: CursorIndicatorPreferences = CursorIndicatorPreferences()
     ) {
         self.shiftKeyPreference = shiftKeyPreference
+        self.shiftSwitchStyle = shiftSwitchStyle
         self.chineseInputScheme = chineseInputScheme
         self.automaticLearningEnabled = automaticLearningEnabled
         self.iCloudSyncEnabled = iCloudSyncEnabled
@@ -92,6 +95,7 @@ struct CursorIndicatorPreferences: Equatable {
 enum PreferenceKey: String, CaseIterable {
     case version = "JiukongPreferencesVersion"
     case shiftLanguageToggle = "JiukongShiftLanguageToggle"
+    case shiftSwitchStyle = "JiukongShiftSwitchStyle"
     case chineseInputScheme = "JiukongChineseInputScheme"
     case automaticLearningEnabled = "JiukongAutomaticLearningEnabled"
     case iCloudSyncEnabled = "JiukongICloudSyncEnabled"
@@ -138,6 +142,8 @@ extension Preferences {
             PreferenceKey.version.rawValue: Self.currentVersion,
             PreferenceKey.shiftLanguageToggle.rawValue:
                 shiftKeyPreference.rawValue,
+            PreferenceKey.shiftSwitchStyle.rawValue:
+                shiftSwitchStyle.rawValue,
             PreferenceKey.chineseInputScheme.rawValue:
                 chineseInputScheme.rawValue,
             PreferenceKey.automaticLearningEnabled.rawValue:
@@ -183,6 +189,12 @@ extension Preferences {
             as? String,
            let preference = ShiftKeyPreference(rawValue: rawValue) {
             preferences.shiftKeyPreference = preference
+        }
+
+        if let rawValue = values[PreferenceKey.shiftSwitchStyle.rawValue]
+            as? String,
+           let style = ShiftSwitchStyle(rawValue: rawValue) {
+            preferences.shiftSwitchStyle = style
         }
 
         if let rawValue = values[PreferenceKey.chineseInputScheme.rawValue]

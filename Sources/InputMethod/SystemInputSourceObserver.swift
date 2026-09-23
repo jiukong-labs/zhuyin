@@ -17,8 +17,10 @@ final class SystemInputSourceObserver {
     static let shared = SystemInputSourceObserver()
 
     private let cursorIndicator = CursorIndicatorController.shared
+    private let languageModeController = LanguageModeController.shared
     private let preferences = PreferencesController.shared
     private var ownInputSourceID: String?
+    private var shiftSwitchStyle: ShiftSwitchStyle?
 
     private init() {}
 
@@ -28,6 +30,7 @@ final class SystemInputSourceObserver {
         ownInputSourceID = Bundle.main.object(
             forInfoDictionaryKey: "TISInputSourceID"
         ) as? String
+        shiftSwitchStyle = preferences.current.shiftSwitchStyle
 
         DistributedNotificationCenter.default().addObserver(
             self,
@@ -50,30 +53,72 @@ final class SystemInputSourceObserver {
             object: nil
         )
 
-        refresh()
+        refresh(showing: .selectedSource)
+    }
+
+    /// Which mode the indicator shows after a refresh.
+    private enum DisplayedMode {
+        /// A newly selected Jiukong mode is the user's latest choice in
+        /// either Shift style, and every controller adopts it too.
+        case selectedSource
+        /// Anything else must not undo a language toggled inside Jiukong,
+        /// which the selected source does not reflect.
+        case currentLanguage
     }
 
     @objc private func selectedInputSourceDidChange() {
         DispatchQueue.main.async { [weak self] in
-            self?.refresh()
+            self?.refresh(showing: .selectedSource)
         }
     }
 
     @objc private func preferencesDidChange() {
         DispatchQueue.main.async { [weak self] in
-            self?.refresh()
+            self?.applyShiftSwitchStyleChange()
+            self?.refresh(showing: .currentLanguage)
         }
     }
 
-    private func refresh() {
+    /// Returning to the input-source style selects the mode Jiukong is
+    /// actually in, so the input menu icon and later toggles start from it.
+    private func applyShiftSwitchStyleChange() {
+        let style = preferences.current.shiftSwitchStyle
+        guard style != shiftSwitchStyle else {
+            return
+        }
+        shiftSwitchStyle = style
+        guard style == .inputSource,
+              let ownInputSourceID,
+              let selectedMode = LanguageMode.mode(
+                  forInputSourceID: Self.currentInputSourceID(),
+                  parentID: ownInputSourceID
+              ),
+              selectedMode != languageModeController.mode else {
+            return
+        }
+        do {
+            try InputSourceRegistrar.select(
+                mode: languageModeController.mode,
+                bundleIdentifier: ownInputSourceID
+            )
+        } catch {
+            NSLog(
+                "Jiukong Zhuyin could not select the %@ mode for the input-source Shift style: %@",
+                languageModeController.mode.rawValue,
+                error.localizedDescription
+            )
+        }
+    }
+
+    private func refresh(showing displayedMode: DisplayedMode) {
         precondition(Thread.isMainThread)
         let currentID = Self.currentInputSourceID()
         jiukongDebugLog(
             "SystemInputSourceObserver.refresh ownInputSourceID=\(ownInputSourceID ?? "nil") currentInputSourceID=\(currentID ?? "nil")"
         )
         guard let ownInputSourceID,
-              let currentInputSourceID = Self.currentInputSourceID(),
-              let mode = LanguageMode.mode(
+              let currentInputSourceID = currentID,
+              let selectedMode = LanguageMode.mode(
                   forInputSourceID: currentInputSourceID,
                   parentID: ownInputSourceID
               )
@@ -83,7 +128,12 @@ final class SystemInputSourceObserver {
         }
 
         cursorIndicator.apply(preferences.current.cursorIndicator)
-        cursorIndicator.update(mode: mode)
+        switch displayedMode {
+        case .selectedSource:
+            cursorIndicator.update(mode: selectedMode)
+        case .currentLanguage:
+            cursorIndicator.update(mode: languageModeController.mode)
+        }
         cursorIndicator.setActive(true)
     }
 

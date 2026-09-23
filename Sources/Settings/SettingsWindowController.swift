@@ -18,7 +18,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let cursorIndicatorSettings: CursorIndicatorSettingsController
 
     private var window: NSWindow?
+    /// The general tab's natural height, which the window must not clip.
+    private var generalViewHeight: CGFloat = 0
     private var shiftPopUpButton: NSPopUpButton?
+    private var shiftSwitchStylePopUpButton: NSPopUpButton?
     private var arrangementPopUpButton: NSPopUpButton?
     private var automaticLearningButton: NSButton?
     private var iCloudSyncButton: NSButton?
@@ -34,6 +37,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         ("只用左 Shift", .left),
         ("只用右 Shift", .right),
         ("關閉 Shift 切換", .disabled),
+    ]
+
+    private static let shiftSwitchStyleOptions: [(title: String, value: ShiftSwitchStyle)] = [
+        ("切換 macOS 輸入來源", .inputSource),
+        ("在久空內部切換", .withinInputMethod),
     ]
 
     init(
@@ -119,6 +127,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.isReleasedWhenClosed = false
         window.contentView = makeContentView()
+        // Tab chrome plus the 12-point margins around the tab view.
+        let requiredHeight = generalViewHeight + 72
+        if requiredHeight > window.contentLayoutRect.height {
+            window.setContentSize(
+                NSSize(width: window.contentLayoutRect.width, height: requiredHeight)
+            )
+        }
         window.center()
         self.window = window
         return window
@@ -128,8 +143,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let tabView = NSTabView()
         tabView.translatesAutoresizingMaskIntoConstraints = false
 
+        let generalView = makeGeneralView()
+        generalViewHeight = generalView.fittingSize.height
         for (label, view) in [
-            ("一般", makeGeneralView()),
+            ("一般", generalView),
             ("游標指示器", cursorIndicatorSettings.makeView()),
             ("使用者詞", phraseList.makeView()),
             ("已刪除內建詞", suppressedPhraseList.makeView()),
@@ -184,6 +201,31 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         shiftToggleRow.alignment = .centerY
         shiftToggleRow.spacing = 8
 
+        let stylePopUpButton = NSPopUpButton(frame: .zero, pullsDown: false)
+        for option in Self.shiftSwitchStyleOptions {
+            stylePopUpButton.addItem(withTitle: option.title)
+        }
+        stylePopUpButton.target = self
+        stylePopUpButton.action = #selector(shiftSwitchStyleDidChange(_:))
+        shiftSwitchStylePopUpButton = stylePopUpButton
+
+        let shiftSwitchStyleRow = NSStackView(views: [
+            NSTextField(labelWithString: "切換方式："),
+            stylePopUpButton,
+        ])
+        shiftSwitchStyleRow.orientation = .horizontal
+        shiftSwitchStyleRow.alignment = .centerY
+        shiftSwitchStyleRow.spacing = 8
+
+        let shiftSwitchStyleLabel = NSTextField(
+            wrappingLabelWithString:
+                "切換 macOS 輸入來源：選單列圖示會跟著變成中或 A。Chrome、VS Code 等 App 偶爾會在切到中文後，把最前面幾個鍵當英文送出。\n在久空內部切換：不更換輸入來源，不會觸發這個問題；但選單列圖示不再跟著變，請看游標指示器（未開啟時會短暫顯示中或 A）。"
+        )
+        shiftSwitchStyleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        shiftSwitchStyleLabel.textColor = .secondaryLabelColor
+        shiftSwitchStyleLabel.preferredMaxLayoutWidth =
+            SettingsPaneBuilder.contentWidth
+
         let optionShortcutLabel = NSTextField(
             wrappingLabelWithString:
                 "⌥ Option：搭配主鍵區 0–9 輸入半形數字，搭配 A–Z 輸入英文字母；其他 Option 組合鍵交由目前 App 處理。"
@@ -222,7 +264,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 ),
                 SettingsPaneBuilder.section(
                     title: "快捷鍵",
-                    controls: [shiftToggleRow, optionShortcutLabel],
+                    controls: [
+                        shiftToggleRow,
+                        shiftSwitchStyleRow,
+                        shiftSwitchStyleLabel,
+                        optionShortcutLabel,
+                    ],
                     note: "單獨按一下所選的 Shift 鍵切換中英文；按住 Shift 搭配其他鍵不會切換。正在組字時使用 Option 組合鍵，久空會先完成目前組字；若已用方向鍵把游標移到組字中間，Option 數字與字母會直接插在游標處。"
                 ),
                 SettingsPaneBuilder.section(
@@ -341,6 +388,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         ) {
             shiftPopUpButton?.selectItem(at: index)
         }
+        if let index = Self.shiftSwitchStyleOptions.firstIndex(
+            where: { $0.value == current.shiftSwitchStyle }
+        ) {
+            shiftSwitchStylePopUpButton?.selectItem(at: index)
+        }
         if let index = Self.arrangements.firstIndex(
             of: current.keyboardArrangement
         ) {
@@ -369,6 +421,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         preferences.update {
             $0.shiftKeyPreference = Self.shiftOptions[index].value
+        }
+    }
+
+    @objc private func shiftSwitchStyleDidChange(_ sender: NSPopUpButton) {
+        let index = sender.indexOfSelectedItem
+        guard Self.shiftSwitchStyleOptions.indices.contains(index) else {
+            return
+        }
+        preferences.update {
+            $0.shiftSwitchStyle = Self.shiftSwitchStyleOptions[index].value
         }
     }
 

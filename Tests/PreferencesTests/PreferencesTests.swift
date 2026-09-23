@@ -34,6 +34,44 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(malformed.chineseInputScheme, .zhuyin)
     }
 
+    func testShiftSwitchStyleDefaultsToInputSourceAndRoundTrips() {
+        XCTAssertEqual(Preferences.default.shiftSwitchStyle, .inputSource)
+        XCTAssertEqual(
+            Preferences.decoded(from: [:]).shiftSwitchStyle,
+            .inputSource
+        )
+
+        for style in ShiftSwitchStyle.allCases {
+            let stored = Preferences(shiftSwitchStyle: style).encoded()
+            XCTAssertEqual(
+                Preferences.decoded(from: stored).shiftSwitchStyle,
+                style
+            )
+        }
+
+        let malformed = Preferences.decoded(
+            from: [
+                PreferenceKey.version.rawValue: Preferences.currentVersion,
+                PreferenceKey.shiftSwitchStyle.rawValue: "unknown",
+            ]
+        )
+        XCTAssertEqual(malformed.shiftSwitchStyle, .inputSource)
+    }
+
+    func testShiftSwitchStyleIsReadWithoutAVersionBump() {
+        // Settings written before this field existed keep every other value,
+        // and an older build reading a newer file ignores the unknown key.
+        let stored: [String: Any] = [
+            PreferenceKey.version.rawValue: Preferences.currentVersion,
+            PreferenceKey.shiftLanguageToggle.rawValue: "right",
+            PreferenceKey.shiftSwitchStyle.rawValue: "withinInputMethod",
+        ]
+        let decoded = Preferences.decoded(from: stored)
+
+        XCTAssertEqual(decoded.shiftKeyPreference, .right)
+        XCTAssertEqual(decoded.shiftSwitchStyle, .withinInputMethod)
+    }
+
     func testICloudSyncPreferenceRoundTripsAndDefaultsOn() {
         let stored = Preferences(iCloudSyncEnabled: false).encoded()
 

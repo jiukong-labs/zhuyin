@@ -212,6 +212,9 @@ struct AcceptanceScript {
     let keystrokes: [Keystroke]
     let expectation: String
     let includedInDefaultRun: Bool
+    /// Also requires the Chinese mode the run selected to remain selected,
+    /// proving the keystrokes changed language without an input source change.
+    let keepsInputSource: Bool
 
     init(
         // Documents one representative syllable for the arrangement even
@@ -219,11 +222,13 @@ struct AcceptanceScript {
         probe _: [Int],
         keystrokes: [Keystroke],
         expectation: String,
-        includedInDefaultRun: Bool = true
+        includedInDefaultRun: Bool = true,
+        keepsInputSource: Bool = false
     ) {
         self.keystrokes = keystrokes
         self.expectation = expectation
         self.includedInDefaultRun = includedInDefaultRun
+        self.keepsInputSource = keepsInputSource
     }
 }
 
@@ -615,6 +620,18 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試ㄨㄛ"
     ),
+    // Requires JiukongShiftSwitchStyle = withinInputMethod before the process
+    // starts. Shift must type English while the Chinese mode stays selected.
+    "shift-within-input-method": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            .modifierTap(kVK_Shift, flag: .maskShift),
+            Keystroke(kVK_ANSI_1),
+        ],
+        expectation: "1",
+        includedInDefaultRun: false,
+        keepsInputSource: true
+    ),
     // Requires JiukongKeyboardArrangement = eten before the process starts.
     "eten": AcceptanceScript(
         probe: [kVK_ANSI_X, kVK_ANSI_O, kVK_ANSI_3],
@@ -738,12 +755,19 @@ for keystroke in script.keystrokes {
 usleep(700_000)
 
 let text = focusedText(pid: clientPID)
-let passed = text == script.expectation
+let selectedInputSourceID = currentInputSourceID()
+let keptInputSource = !script.keepsInputSource
+    || selectedInputSourceID == inputMethodBundleID
+let passed = text == script.expectation && keptInputSource
 finish(
     """
     \(passed ? "pass" : "FAIL") \(scriptName)
       expected: \(script.expectation.debugDescription)
       actual:   \(text.debugDescription)
-    """,
+    """ + (script.keepsInputSource ? """
+
+      expected source: \(inputMethodBundleID)
+      actual source:   \(selectedInputSourceID)
+    """ : ""),
     code: passed ? 0 : 1
 )

@@ -6,19 +6,54 @@ final class SilentClientDetectorTests: XCTestCase {
         detector.switchedToChinese(at: 100)
 
         // A plain key at 100.5 never reaches the input method.
-        XCTAssertFalse(detector.shouldReattach(now: 100.6, lastPlainKeyDown: 100.5))
-        XCTAssertTrue(detector.shouldReattach(now: 100.71, lastPlainKeyDown: 100.5))
+        let grace = SilentClientDetector.deliveryGrace
+        XCTAssertFalse(detector.shouldReattach(now: 100.5 + grace - 0.01, lastPlainKeyDown: 100.5))
+        XCTAssertTrue(detector.shouldReattach(now: 100.5 + grace + 0.01, lastPlainKeyDown: 100.5))
+    }
+
+    func testGraceStaysShortEnoughToLimitLeakedKeys() {
+        // Every key typed while waiting reaches the client as English; at an
+        // ordinary eight keys per second this bounds the leak to one key.
+        XCTAssertLessThanOrEqual(SilentClientDetector.deliveryGrace, 0.1)
+    }
+
+    func testBlockedMainThreadPostponesTheDecisionOneSample() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+
+        // Keys the client delivered while the main thread was blocked may
+        // still be queued behind this sample.
+        XCTAssertFalse(detector.shouldReattach(
+            now: 100.7,
+            lastPlainKeyDown: 100.5,
+            mainThreadWasBusy: true
+        ))
+        detector.clientDeliveredKeyDown(at: 100.5, mode: .chinese)
+        XCTAssertFalse(detector.isWatching)
+    }
+
+    func testBlockedMainThreadOnlyDelaysARealSilentClient() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+
+        XCTAssertFalse(detector.shouldReattach(
+            now: 100.7,
+            lastPlainKeyDown: 100.5,
+            mainThreadWasBusy: true
+        ))
+        XCTAssertTrue(detector.shouldReattach(now: 100.715, lastPlainKeyDown: 100.5))
     }
 
     func testContinuousTypingDoesNotPostponeTheReattach() {
         var detector = SilentClientDetector()
         detector.switchedToChinese(at: 100)
 
-        // Keys every 100 ms never leave a 200 ms pause, yet none of them
-        // reached the input method; the first one has waited long enough.
+        // Keys every 30 ms never leave a pause as long as the grace, yet
+        // none of them reached the input method; the first one has waited
+        // long enough.
         XCTAssertFalse(detector.shouldReattach(now: 100.52, lastPlainKeyDown: 100.5))
-        XCTAssertFalse(detector.shouldReattach(now: 100.62, lastPlainKeyDown: 100.6))
-        XCTAssertTrue(detector.shouldReattach(now: 100.72, lastPlainKeyDown: 100.7))
+        XCTAssertFalse(detector.shouldReattach(now: 100.55, lastPlainKeyDown: 100.53))
+        XCTAssertTrue(detector.shouldReattach(now: 100.59, lastPlainKeyDown: 100.56))
         XCTAssertEqual(detector.firstUndeliveredKey, 100.5)
     }
 

@@ -23,6 +23,9 @@ final class ClientDeliveryFallback {
     private var shiftTapDetector = SystemShiftTapDetector()
     private var arbiter = ShiftToggleArbiter()
     private var silentClientDetector = SilentClientDetector()
+    /// False while watching a switch made inside the input method. No source
+    /// change happened, so re-attaching would add one; the watch only traces.
+    private var recoversSilentClient = true
     private var lastKeyDownCount: UInt32?
     private var lastPlainKeyDown: TimeInterval?
     private var lastPollTime: TimeInterval?
@@ -95,14 +98,18 @@ final class ClientDeliveryFallback {
 
     /// Reports a language switch the user asked for. A switch to Chinese is
     /// watched for a client that stops handing keys to the input method.
-    func languageModeSwitched(to mode: LanguageMode) {
+    func languageModeSwitched(to mode: LanguageMode, recoversSilentClient: Bool) {
         precondition(Thread.isMainThread)
         switch mode {
         case .chinese:
             let now = ProcessInfo.processInfo.systemUptime
             silentClientDetector.switchedToChinese(at: now)
+            self.recoversSilentClient = recoversSilentClient
             watchStartedAt = now
-            jiukongShiftTrace("silent watch: armed after switch to chinese")
+            jiukongShiftTrace(
+                "silent watch: armed after switch to chinese"
+                    + (recoversSilentClient ? "" : " (trace only, switched within input method)")
+            )
         case .english:
             silentClientDetector.stopWatching()
             watchStartedAt = nil
@@ -198,6 +205,7 @@ final class ClientDeliveryFallback {
 
     private func poll() {
         let now = ProcessInfo.processInfo.systemUptime
+        let previousPoll = lastPollTime
         recordCadence(now: now)
         let flags = CGEventSource.flagsState(Self.eventState)
         let sample = Self.sampleKeyboard(now: now, flags: flags)
@@ -225,16 +233,26 @@ final class ClientDeliveryFallback {
         notePlainKeyDowns(in: sample, flags: flags, now: now)
         if silentClientDetector.shouldReattach(
             now: now,
-            lastPlainKeyDown: lastPlainKeyDown
+            lastPlainKeyDown: lastPlainKeyDown,
+            mainThreadWasBusy: previousPoll.map {
+                now - $0 > Self.busyMainThreadGap
+            } ?? false
         ) {
             jiukongShiftTrace(
                 "silent watch: SILENT CLIENT — plain key at "
                     + String(format: "%.4f", silentClientDetector.firstUndeliveredKey ?? 0)
                     + " (latest "
                     + String(format: "%.4f", lastPlainKeyDown ?? 0)
-                    + ") never delivered; reattaching, hasController=\(activeController != nil)"
+                    + ") never delivered; "
+                    + (recoversSilentClient ? "reattaching" : "not reattaching (switched within input method)")
+                    + ", hasController=\(activeController != nil)"
             )
-            activeController?.reattachSilentClient()
+            if recoversSilentClient {
+                activeController?.reattachSilentClient()
+            } else {
+                silentClientDetector.stopWatching()
+                watchStartedAt = nil
+            }
         } else if wasWatching, !silentClientDetector.isWatching, watchStartedAt != nil {
             jiukongShiftTrace("silent watch: gave up or expired")
             watchStartedAt = nil
@@ -267,7 +285,7 @@ final class ClientDeliveryFallback {
         let gap = now - lastPollTime
         statsTicks += 1
         statsMaxGap = max(statsMaxGap, gap)
-        if gap > 0.05 {
+        if gap > Self.busyMainThreadGap {
             jiukongShiftTrace("fallback poll gap \(Int(gap * 1000))ms")
         }
         if now - statsStart >= 60 {
@@ -303,6 +321,10 @@ final class ClientDeliveryFallback {
     }
 
     private static let eventState = CGEventSourceStateID.combinedSessionState
+
+    /// A gap this long between samples means the main thread was blocked, so
+    /// key events the client already sent may still be waiting to be handled.
+    private static let busyMainThreadGap: TimeInterval = 0.05
 
     private static func sampleKeyboard(
         now: TimeInterval,

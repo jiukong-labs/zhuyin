@@ -206,7 +206,7 @@ final class InputController: IMKInputController {
             )
             ClientDeliveryFallback.shared.clientDeliveredKeyDown(
                 at: event.timestamp,
-                mode: currentInputSourceMode(),
+                mode: deliveredKeyMode(),
                 from: self
             )
             if reattachmentGuard.isPending,
@@ -667,6 +667,21 @@ final class InputController: IMKInputController {
         toggleLanguageMode(using: client())
     }
 
+    /// The language a delivered key was typed in. Recovery switches the
+    /// selected source itself, so that style trusts the source; a language
+    /// toggled inside Jiukong may differ from the source that stays selected.
+    private func deliveredKeyMode() -> LanguageMode? {
+        guard let selectedMode = currentInputSourceMode() else {
+            return nil
+        }
+        switch preferences.current.shiftSwitchStyle {
+        case .inputSource:
+            return selectedMode
+        case .withinInputMethod:
+            return languageModeController.mode
+        }
+    }
+
     private func currentInputSourceMode() -> LanguageMode? {
         LanguageMode.mode(
             forInputSourceID: Self.currentInputSourceID(),
@@ -680,6 +695,12 @@ final class InputController: IMKInputController {
         cancelPendingReattachment()
         guard let currentMode = currentInputSourceMode() else { return }
         finishComposition(reason: .lifecycle, using: inputClient)
+        if preferences.current.shiftSwitchStyle.togglesWithinInputMethod(
+            selectedMode: currentMode
+        ) {
+            toggleLanguageModeWithinInputMethod(using: inputClient)
+            return
+        }
         let mode = currentMode.toggled
         jiukongShiftTrace(
             "[\(traceTag)]   toggling from=\(languageModeController.mode.rawValue)"
@@ -713,7 +734,37 @@ final class InputController: IMKInputController {
         languageModeController.synchronize(withSystemMode: mode)
         cursorIndicator.update(mode: mode)
         synchronizeCompositionActivity()
-        ClientDeliveryFallback.shared.languageModeSwitched(to: mode)
+        ClientDeliveryFallback.shared.languageModeSwitched(
+            to: mode,
+            recoversSilentClient: true
+        )
+    }
+
+    /// Leaves the selected input source alone, so no client sees a source
+    /// change. macOS then shows neither its own source indicator nor a new
+    /// input menu icon, and Jiukong's indicators are the only feedback.
+    private func toggleLanguageModeWithinInputMethod(using inputClient: Any?) {
+        let mode = languageModeController.toggleWithinInputMethod()
+        jiukongShiftTrace(
+            "[\(traceTag)]   toggled within input method to=\(mode.rawValue)"
+                + " source=\(Self.currentInputSourceID() ?? "?")"
+        )
+        cursorIndicator.update(mode: mode)
+        synchronizeCompositionActivity()
+        if !cursorIndicator.isEnabled {
+            LanguageModeHUD.shared.show(
+                mode: mode,
+                indicator: preferences.current.cursorIndicator,
+                clientWindowLevel: self.inputClient(from: inputClient)?
+                    .windowLevel() ?? CGWindowLevelForKey(.normalWindow)
+            )
+        }
+        // Nothing here gives a client a reason to stop routing keys, so a
+        // silent client is only traced, as evidence for choosing this style.
+        ClientDeliveryFallback.shared.languageModeSwitched(
+            to: mode,
+            recoversSilentClient: false
+        )
     }
 
     /// Moves the input source to English and back to Chinese. A client that
@@ -887,13 +938,15 @@ final class InputController: IMKInputController {
         // the input source away from Jiukong entirely, which Caps Lock does
         // when it switches to ABC. Showing the remembered 中 then tells the
         // user they are typing Chinese while the keyboard is somewhere else.
-        guard let mode = currentInputSourceMode() else {
+        guard currentInputSourceMode() != nil else {
             cursorIndicator.setActive(false)
             return
         }
 
+        // Activation has already reconciled this with the selected source.
+        // A language toggled inside Jiukong is not visible in that source.
         cursorIndicator.apply(preferences.current.cursorIndicator)
-        cursorIndicator.update(mode: mode)
+        cursorIndicator.update(mode: languageModeController.mode)
         cursorIndicator.setActive(true)
     }
 
@@ -941,7 +994,10 @@ final class InputController: IMKInputController {
             }
             return
         }
-        languageModeController.synchronize(withSystemMode: mode)
+        languageModeController.activate(
+            withSystemMode: mode,
+            style: preferences.current.shiftSwitchStyle
+        )
     }
 
     private func resetTransientInputState() {
