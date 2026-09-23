@@ -3,10 +3,18 @@ import Foundation
 /// Lets one physical Shift tap switch the language at most once when both the
 /// client-delivered event path and the keyboard-state fallback observe it.
 struct ShiftToggleArbiter {
-    /// The state sample and client event can differ slightly in hardware time.
+    /// How far a client edge may precede the sampled edge of the same tap.
     /// Timestamp matching requires both edges and an overlapping interval;
     /// proximity of two releases alone cannot identify a physical gesture.
     static let matchWindow: TimeInterval = 0.02
+    /// How far a client release may trail the sampled release of the same
+    /// tap. A client forwards each Shift edge after WindowServer records it:
+    /// measured client presses trailed by up to 131 ms and releases by up to
+    /// 72 ms, never leading by more than a few milliseconds. Requiring the
+    /// press within 20 ms made the fallback switch back taps that the client
+    /// had already switched. A lag that separates the two intervals remains
+    /// the observed-counter path's job.
+    static let clientReleaseLag: TimeInterval = 0.05
     static let fallbackDelay: TimeInterval = 0.12
     static let expiry: TimeInterval = 0.5
     private static let memory: TimeInterval = 2
@@ -57,7 +65,7 @@ struct ShiftToggleArbiter {
             counter: observedReleaseCounter
         )
         if let index = closestMatch(
-            for: gesture,
+            forClient: gesture,
             among: fallbackToggles.indices.filter {
                 fallbackToggles[$0].matchingClient == nil
             },
@@ -72,7 +80,7 @@ struct ShiftToggleArbiter {
         }
 
         if let index = closestMatch(
-            for: gesture,
+            forClient: gesture,
             among: pendingTaps.indices,
             gestureAt: { pendingTaps[$0] }
         ) ?? pendingTaps.firstIndex(where: { $0 == counterMatch }) {
@@ -95,7 +103,7 @@ struct ShiftToggleArbiter {
         }
 
         if let index = closestMatch(
-            for: tap,
+            forPolled: tap,
             among: clientConclusions.indices.filter {
                 clientConclusions[$0].matchingFallback == nil
             },
@@ -159,11 +167,32 @@ struct ShiftToggleArbiter {
     }
 
     private func closestMatch<Indices: Sequence>(
-        for gesture: SystemShiftTap,
+        forClient client: SystemShiftTap,
         among indices: Indices,
         gestureAt: (Int) -> SystemShiftTap
     ) -> Int? where Indices.Element == Int {
-        indices.filter { Self.matches(gestureAt($0), gesture) }.min {
+        closestMatch(for: client, among: indices, gestureAt: gestureAt) {
+            Self.matches(client: client, polled: $0)
+        }
+    }
+
+    private func closestMatch<Indices: Sequence>(
+        forPolled polled: SystemShiftTap,
+        among indices: Indices,
+        gestureAt: (Int) -> SystemShiftTap
+    ) -> Int? where Indices.Element == Int {
+        closestMatch(for: polled, among: indices, gestureAt: gestureAt) {
+            Self.matches(client: $0, polled: polled)
+        }
+    }
+
+    private func closestMatch<Indices: Sequence>(
+        for gesture: SystemShiftTap,
+        among indices: Indices,
+        gestureAt: (Int) -> SystemShiftTap,
+        matching: (SystemShiftTap) -> Bool
+    ) -> Int? where Indices.Element == Int {
+        indices.filter { matching(gestureAt($0)) }.min {
             let first = gestureAt($0)
             let second = gestureAt($1)
             return abs(first.pressTime - gesture.pressTime)
@@ -229,13 +258,16 @@ struct ShiftToggleArbiter {
     }
 
     private static func matches(
-        _ first: SystemShiftTap,
-        _ second: SystemShiftTap
+        client: SystemShiftTap,
+        polled: SystemShiftTap
     ) -> Bool {
-        first.side == second.side
-            && abs(first.pressTime - second.pressTime) <= matchWindow
-            && abs(first.releaseTime - second.releaseTime) <= matchWindow
-            && max(first.pressTime, second.pressTime)
-                < min(first.releaseTime, second.releaseTime)
+        let pressLag = client.pressTime - polled.pressTime
+        let releaseLag = client.releaseTime - polled.releaseTime
+        return client.side == polled.side
+            && pressLag >= -matchWindow
+            && releaseLag >= -matchWindow
+            && releaseLag <= clientReleaseLag
+            && max(client.pressTime, polled.pressTime)
+                < min(client.releaseTime, polled.releaseTime)
     }
 }

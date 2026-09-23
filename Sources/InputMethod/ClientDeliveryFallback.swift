@@ -211,6 +211,11 @@ final class ClientDeliveryFallback {
                     + " seenAfterMs=\(Int((now - tap.releaseTime) * 1000))"
             )
             arbiter.fallbackObserved(tap)
+        } else if let rejection = shiftTapDetector.lastRejection {
+            jiukongShiftTrace(
+                "fallback tap rejected reason=\(rejection)"
+                    + " release=\(String(format: "%.4f", sample.lastModifierChangeTime))"
+            )
         }
         if let controller = activeController {
             applyFallbackTaps(arbiter.dueFallbackTaps(now: now), to: controller)
@@ -224,8 +229,10 @@ final class ClientDeliveryFallback {
         ) {
             jiukongShiftTrace(
                 "silent watch: SILENT CLIENT — plain key at "
+                    + String(format: "%.4f", silentClientDetector.firstUndeliveredKey ?? 0)
+                    + " (latest "
                     + String(format: "%.4f", lastPlainKeyDown ?? 0)
-                    + " never delivered; reattaching, hasController=\(activeController != nil)"
+                    + ") never delivered; reattaching, hasController=\(activeController != nil)"
             )
             activeController?.reattachSilentClient()
         } else if wasWatching, !silentClientDetector.isWatching, watchStartedAt != nil {

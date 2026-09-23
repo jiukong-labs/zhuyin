@@ -231,6 +231,70 @@ final class ShiftToggleArbiterTests: XCTestCase {
         XCTAssertFalse(conclude(client, on: &arbiter))
     }
 
+    func testClientPressTrailingTheSampleStillMatchesOnePhysicalTap() {
+        // Chrome, 2026-09-23 13:41:07: the client concluded first with a press
+        // 49.7 ms after the sampled one, and the fallback switched back.
+        var arbiter = ShiftToggleArbiter()
+        let client = makeTap(side: .right, press: 76580.9039, release: 76580.9628)
+        let polled = makeTap(side: .right, press: 76580.8542, release: 76580.9601)
+
+        XCTAssertTrue(conclude(client, on: &arbiter))
+        arbiter.fallbackObserved(polled)
+        XCTAssertEqual(arbiter.dueFallbackTaps(now: 76581.2), [])
+    }
+
+    func testTrailingClientConclusionCancelsAPendingFallback() {
+        // 13:41:08: the sample came first; the client press trailed by 29 ms.
+        var arbiter = ShiftToggleArbiter()
+        let polled = makeTap(side: .right, press: 76582.1683, release: 76582.2428)
+        let client = makeTap(side: .right, press: 76582.1977, release: 76582.2472)
+
+        arbiter.fallbackObserved(polled)
+        XCTAssertTrue(conclude(client, on: &arbiter))
+        XCTAssertEqual(arbiter.dueFallbackTaps(now: 76582.5), [])
+    }
+
+    func testClientReleaseTrailingTheSampleStillMatches() {
+        // 11:26:41: the client release trailed by 33.1 ms.
+        var arbiter = ShiftToggleArbiter()
+        let polled = makeTap(side: .right, press: 68515.4418, release: 68515.5610)
+        let client = makeTap(side: .right, press: 68515.4472, release: 68515.5941)
+
+        arbiter.fallbackObserved(polled)
+        XCTAssertTrue(conclude(client, on: &arbiter))
+        XCTAssertEqual(arbiter.dueFallbackTaps(now: 68515.8), [])
+    }
+
+    func testTrailingClientEventAfterTheFallbackSwitchedMustNotSwitchAgain() {
+        // The 74.3 ms press lag measured at 12:04:18, arriving after the
+        // fallback has already switched.
+        var arbiter = ShiftToggleArbiter()
+        let polled = makeTap(side: .right, press: 70772.7465, release: 70772.8529)
+        let client = makeTap(side: .right, press: 70772.8208, release: 70772.8553)
+
+        arbiter.fallbackObserved(polled)
+        XCTAssertEqual(arbiter.dueFallbackTaps(now: 70772.98), [polled])
+        XCTAssertFalse(conclude(client, on: &arbiter))
+    }
+
+    func testClientReleaseLeadingTheSampleBeyondToleranceDoesNotMatch() {
+        var arbiter = ShiftToggleArbiter()
+        let polled = makeTap(press: 49.92, release: 50)
+
+        XCTAssertTrue(conclude(makeTap(press: 49.92, release: 49.97), on: &arbiter))
+        arbiter.fallbackObserved(polled)
+        XCTAssertEqual(arbiter.dueFallbackTaps(now: 50.2), [polled])
+    }
+
+    func testClientReleaseTrailingBeyondTheLagWindowDoesNotMatch() {
+        var arbiter = ShiftToggleArbiter()
+        let polled = makeTap(press: 49.9, release: 50)
+
+        XCTAssertTrue(conclude(makeTap(press: 49.95, release: 50.06), on: &arbiter))
+        arbiter.fallbackObserved(polled)
+        XCTAssertEqual(arbiter.dueFallbackTaps(now: 50.2), [polled])
+    }
+
     func testSeparateTapsAreJudgedIndependently() {
         var arbiter = ShiftToggleArbiter()
         let dropped = makeTap(release: 51)

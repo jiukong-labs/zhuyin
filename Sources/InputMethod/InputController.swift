@@ -36,6 +36,10 @@ final class InputController: IMKInputController {
     private var compositionBuffer = CompositionBuffer()
     private var shiftToggleController = ShiftToggleController()
     private var reattachmentGuard = ClientReattachmentGuard()
+    /// Keys typed while a recovery had the client on its temporary English
+    /// source, replayed in Chinese once it returns.
+    private var keysHeldDuringReattachment: [NSEvent] = []
+    private var heldKeysClient: (any IMKTextInput)?
     /// Short identity for this controller instance. IMK creates one controller
     /// per client connection, so a trace that only names the client cannot
     /// show which instance actually received an event.
@@ -205,6 +209,10 @@ final class InputController: IMKInputController {
                 mode: currentInputSourceMode(),
                 from: self
             )
+            if reattachmentGuard.isPending,
+               holdDuringReattachment(event, inputClient: inputClient) {
+                return true
+            }
             shiftToggleController.noteKeyDown()
             hideSavedPhraseConfirmation()
         default:
@@ -488,6 +496,7 @@ final class InputController: IMKInputController {
                 + " [\(shiftToggleController.diagnosticState)]"
         )
         ClientDeliveryFallback.shared.controllerDidDeactivate(self)
+        releaseHeldKeysAsTyped()
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: sender)
         cursorIndicator.updateCompositionActive(false)
@@ -496,6 +505,7 @@ final class InputController: IMKInputController {
 
     override func inputControllerWillClose() {
         ClientDeliveryFallback.shared.controllerDidDeactivate(self)
+        releaseHeldKeysAsTyped()
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: client())
         super.inputControllerWillClose()
@@ -759,6 +769,7 @@ final class InputController: IMKInputController {
                 currentMode: self.currentInputSourceMode(),
                 isCurrentClient: isCurrentClient
             ) else {
+                self.releaseHeldKeysAsTyped()
                 ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
                 return
             }
@@ -777,7 +788,13 @@ final class InputController: IMKInputController {
                     succeeded: succeeded
                 )
                 jiukongShiftTrace("reattach: back to chinese")
+                if succeeded {
+                    self.replayHeldKeysInChinese()
+                } else {
+                    self.releaseHeldKeysAsTyped()
+                }
             } catch {
+                self.releaseHeldKeysAsTyped()
                 ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
                 NSLog(
                     "Jiukong Zhuyin could not return to Chinese after reattaching: %@",
@@ -790,8 +807,55 @@ final class InputController: IMKInputController {
     func cancelPendingReattachment() {
         guard reattachmentGuard.isPending else { return }
         reattachmentGuard.cancel()
+        releaseHeldKeysAsTyped()
         ClientDeliveryFallback.shared.reattachmentFinished(from: self, succeeded: false)
         jiukongShiftTrace("[\(traceTag)] reattach: cancelled")
+    }
+
+    /// Holds a key typed during the temporary English source. Any other key
+    /// first releases the held ones as typed, preserving the typing order.
+    private func holdDuringReattachment(
+        _ event: NSEvent,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        let hasCommandModifier = !event.modifierFlags
+            .intersection([.command, .control, .option, .function])
+            .isEmpty
+        guard ReattachmentKeyHold.holds(
+            characters: event.characters,
+            hasCommandModifier: hasCommandModifier
+        ) else {
+            releaseHeldKeysAsTyped()
+            return false
+        }
+        keysHeldDuringReattachment.append(event)
+        heldKeysClient = inputClient
+        jiukongShiftTrace("[\(traceTag)] reattach: holding a key for chinese")
+        return true
+    }
+
+    private func replayHeldKeysInChinese() {
+        guard let inputClient = heldKeysClient else { return }
+        let events = keysHeldDuringReattachment
+        keysHeldDuringReattachment.removeAll()
+        heldKeysClient = nil
+        jiukongShiftTrace("[\(traceTag)] reattach: replaying \(events.count) held keys in chinese")
+        for event in events where !handle(event, client: inputClient) {
+            // Chinese input passes this key on; type it as the client would.
+            commitText(event.characters ?? "", to: inputClient)
+        }
+    }
+
+    /// The recovery did not return to Chinese, so the held keys mean what
+    /// the English source would have typed.
+    private func releaseHeldKeysAsTyped() {
+        guard let inputClient = heldKeysClient else { return }
+        let text = keysHeldDuringReattachment.compactMap(\.characters).joined()
+        let count = keysHeldDuringReattachment.count
+        keysHeldDuringReattachment.removeAll()
+        heldKeysClient = nil
+        jiukongShiftTrace("[\(traceTag)] reattach: typed \(count) held keys as english")
+        commitText(text, to: inputClient)
     }
 
     private static let reattachSettleDelay: TimeInterval = 0.1

@@ -38,6 +38,18 @@ struct SystemShiftTap: Equatable {
     var releaseCounter: UInt32? = nil
 }
 
+/// Why a Shift release seen by polling did not count as a standalone tap.
+enum SystemShiftTapRejection: Equatable {
+    /// Polling started while Shift was already held.
+    case pressNotObserved
+    /// Both Shift keys, a change of side, or another modifier during the hold.
+    case interrupted
+    case keyDown(count: UInt32)
+    case mouseDown(count: UInt32)
+    /// Modifier events other than exactly this press and release.
+    case modifierEvents(count: UInt32)
+}
+
 /// Recognizes standalone Shift taps from successive keyboard-state samples.
 ///
 /// A tap qualifies only when exactly one Shift key went down and came back up
@@ -55,6 +67,8 @@ struct SystemShiftTapDetector {
     private var candidate: ShiftKeySide?
     private var isInterrupted = false
     private var baseline: Baseline?
+    /// Set by `ingest` when the sample ends a Shift gesture without a tap.
+    private(set) var lastRejection: SystemShiftTapRejection?
 
     mutating func reset() {
         previous = nil
@@ -64,6 +78,7 @@ struct SystemShiftTapDetector {
     /// Feeds the next sample and returns a tap when this sample completes one.
     mutating func ingest(_ sample: SystemKeyboardSample) -> SystemShiftTap? {
         defer { previous = sample }
+        lastRejection = nil
 
         let isShiftDown = sample.leftShiftDown || sample.rightShiftDown
         guard let previous else {
@@ -129,20 +144,33 @@ struct SystemShiftTapDetector {
         }
     }
 
-    private func completedTap(at sample: SystemKeyboardSample) -> SystemShiftTap? {
+    private mutating func completedTap(at sample: SystemKeyboardSample) -> SystemShiftTap? {
+        guard let baseline else {
+            lastRejection = .pressNotObserved
+            return nil
+        }
         guard let candidate,
               !isInterrupted,
-              !sample.otherModifierDown,
-              let baseline else {
+              !sample.otherModifierDown else {
+            lastRejection = .interrupted
             return nil
         }
 
         // Exactly the Shift press and its release may have changed modifiers.
         let expectedFlagsChanged: UInt32 = 2
-        guard sample.keyDownCount &- baseline.keyDownCount == 0,
-              sample.mouseDownCount &- baseline.mouseDownCount == 0,
-              sample.flagsChangedCount &- baseline.flagsChangedCount
-                == expectedFlagsChanged else {
+        let keyDowns = sample.keyDownCount &- baseline.keyDownCount
+        let mouseDowns = sample.mouseDownCount &- baseline.mouseDownCount
+        let modifierEvents = sample.flagsChangedCount &- baseline.flagsChangedCount
+        guard keyDowns == 0 else {
+            lastRejection = .keyDown(count: keyDowns)
+            return nil
+        }
+        guard mouseDowns == 0 else {
+            lastRejection = .mouseDown(count: mouseDowns)
+            return nil
+        }
+        guard modifierEvents == expectedFlagsChanged else {
+            lastRejection = .modifierEvents(count: modifierEvents)
             return nil
         }
 

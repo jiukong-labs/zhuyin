@@ -10,6 +10,18 @@ final class SilentClientDetectorTests: XCTestCase {
         XCTAssertTrue(detector.shouldReattach(now: 100.71, lastPlainKeyDown: 100.5))
     }
 
+    func testContinuousTypingDoesNotPostponeTheReattach() {
+        var detector = SilentClientDetector()
+        detector.switchedToChinese(at: 100)
+
+        // Keys every 100 ms never leave a 200 ms pause, yet none of them
+        // reached the input method; the first one has waited long enough.
+        XCTAssertFalse(detector.shouldReattach(now: 100.52, lastPlainKeyDown: 100.5))
+        XCTAssertFalse(detector.shouldReattach(now: 100.62, lastPlainKeyDown: 100.6))
+        XCTAssertTrue(detector.shouldReattach(now: 100.72, lastPlainKeyDown: 100.7))
+        XCTAssertEqual(detector.firstUndeliveredKey, 100.5)
+    }
+
     func testDeliveredKeyStopsWatching() {
         var detector = SilentClientDetector()
         detector.switchedToChinese(at: 100)
@@ -233,5 +245,27 @@ final class SilentClientDetectorTests: XCTestCase {
 
         XCTAssertFalse(guardState.claim(token: oldToken, currentMode: .english, isCurrentClient: true))
         XCTAssertTrue(guardState.claim(token: newToken, currentMode: .english, isCurrentClient: true))
+    }
+
+    func testTypingKeysAreHeldDuringReattachment() {
+        for characters in ["k", "J", "1", ";", " ", "-"] {
+            XCTAssertTrue(
+                ReattachmentKeyHold.holds(characters: characters, hasCommandModifier: false),
+                characters
+            )
+        }
+    }
+
+    func testEditingNavigationAndShortcutKeysAreNotHeld() {
+        let returnKey = "\r", tab = "\t", delete = "\u{7F}", escape = "\u{1B}"
+        let leftArrow = "\u{F702}"
+        for characters in [returnKey, tab, delete, escape, leftArrow, ""] {
+            XCTAssertFalse(
+                ReattachmentKeyHold.holds(characters: characters, hasCommandModifier: false),
+                characters.debugDescription
+            )
+        }
+        XCTAssertFalse(ReattachmentKeyHold.holds(characters: nil, hasCommandModifier: false))
+        XCTAssertFalse(ReattachmentKeyHold.holds(characters: "c", hasCommandModifier: true))
     }
 }

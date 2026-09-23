@@ -6,6 +6,16 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Fixed
 
+- Stop one Shift tap from switching the language and then immediately back.
+  An app delivers each Shift edge after macOS records it, with the press up to
+  about 130 ms late; matching now allows that lag instead of treating the
+  delivered tap and the polled tap as two taps.
+- Keep keys typed during silent-client recovery in Chinese. Keys typed while
+  the client briefly sits on the English source are held and replayed once
+  Chinese returns, instead of appearing as English letters. Recovery also
+  starts 200 ms after the first undelivered key, even while typing continues.
+- Record why keyboard-state polling rejects a Shift release, such as a key or
+  click during the hold, to diagnose taps that neither path switches.
 - Prevent a delayed Shift event pair from undoing a language switch already
   seen by keyboard-state polling. Correlate one unclaimed physical release
   using an unchanged modifier-event counter when both callbacks arrive after

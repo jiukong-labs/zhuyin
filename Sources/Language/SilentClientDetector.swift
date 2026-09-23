@@ -21,6 +21,10 @@ struct SilentClientDetector {
 
     private var watchStart: TimeInterval?
     private var keyWindowStart: TimeInterval?
+    /// The first plain key typed since the key window opened. While the watch
+    /// lasts, no key typed since then has reached the input method, so this
+    /// one has waited longest; later keys must not postpone the decision.
+    private(set) var firstUndeliveredKey: TimeInterval?
     private var attempts = 0
     private(set) var isReattaching = false
 
@@ -32,6 +36,7 @@ struct SilentClientDetector {
     mutating func switchedToChinese(at time: TimeInterval) {
         watchStart = time
         keyWindowStart = time
+        firstUndeliveredKey = nil
         attempts = 0
         isReattaching = false
     }
@@ -63,6 +68,7 @@ struct SilentClientDetector {
             return
         }
         keyWindowStart = time
+        firstUndeliveredKey = nil
         isReattaching = false
     }
 
@@ -70,6 +76,7 @@ struct SilentClientDetector {
     mutating func stopWatching() {
         watchStart = nil
         keyWindowStart = nil
+        firstUndeliveredKey = nil
         attempts = 0
         isReattaching = false
     }
@@ -78,6 +85,8 @@ struct SilentClientDetector {
     ///
     /// `lastPlainKeyDown` is the hardware time of the most recent key-down
     /// typed without Command or Control, or nil when there has been none.
+    /// Continuous typing leaves no pause after that latest key, so the
+    /// detector judges the first key it saw in the window instead.
     mutating func shouldReattach(
         now: TimeInterval,
         lastPlainKeyDown: TimeInterval?
@@ -92,8 +101,12 @@ struct SilentClientDetector {
         guard !isReattaching, let keyWindowStart else {
             return false
         }
-        guard let key = lastPlainKeyDown,
-              key > keyWindowStart,
+        if firstUndeliveredKey == nil,
+           let key = lastPlainKeyDown,
+           key > keyWindowStart {
+            firstUndeliveredKey = key
+        }
+        guard let key = firstUndeliveredKey,
               now - key >= Self.deliveryGrace else {
             return false
         }
@@ -146,5 +159,25 @@ struct ClientReattachmentGuard {
         // cancel or complete a recovery that started after it.
         pendingToken = nil
         return currentMode == .english && isCurrentClient
+    }
+}
+
+/// Decides which keys to hold while a recovery has the client on its
+/// temporary English source. A client that hands keys over then works again,
+/// but its user was typing Chinese; only keys that would type text are held
+/// for replay, so editing and navigation keys keep their meaning.
+enum ReattachmentKeyHold {
+    static func holds(characters: String?, hasCommandModifier: Bool) -> Bool {
+        guard !hasCommandModifier,
+              let characters,
+              !characters.isEmpty else {
+            return false
+        }
+        // Return, Tab, Delete and Escape are control characters; arrows and
+        // function keys use the private range AppKit reserves for them.
+        return characters.unicodeScalars.allSatisfy {
+            !CharacterSet.controlCharacters.contains($0)
+                && !(0xF700...0xF8FF).contains($0.value)
+        }
     }
 }

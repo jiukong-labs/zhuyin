@@ -49,6 +49,7 @@ final class SystemShiftTapDetectorTests: XCTestCase {
         keyboard.keyDowns += 1
         _ = detector.ingest(keyboard.hold())
         XCTAssertNil(detector.ingest(keyboard.release()))
+        XCTAssertEqual(detector.lastRejection, .keyDown(count: 1))
     }
 
     func testKeyTypedBetweenSamplesBeforeReleaseIsAChord() {
@@ -81,6 +82,7 @@ final class SystemShiftTapDetectorTests: XCTestCase {
         keyboard.mouseDowns += 1
         _ = detector.ingest(keyboard.hold())
         XCTAssertNil(detector.ingest(keyboard.release()))
+        XCTAssertEqual(detector.lastRejection, .mouseDown(count: 1))
     }
 
     func testOtherModifierHeldWithShiftIsAChord() {
@@ -94,6 +96,7 @@ final class SystemShiftTapDetectorTests: XCTestCase {
         keyboard.flagsChanged += 1
         _ = detector.ingest(keyboard.hold())
         XCTAssertNil(detector.ingest(keyboard.release()))
+        XCTAssertEqual(detector.lastRejection, .interrupted)
     }
 
     func testOtherModifierAlreadyHeldAtPressIsAChord() {
@@ -116,6 +119,7 @@ final class SystemShiftTapDetectorTests: XCTestCase {
         keyboard.flagsChanged += 2
         _ = detector.ingest(keyboard.hold())
         XCTAssertNil(detector.ingest(keyboard.release()))
+        XCTAssertEqual(detector.lastRejection, .modifierEvents(count: 4))
     }
 
     func testBothShiftKeysDoNotTap() {
@@ -127,6 +131,7 @@ final class SystemShiftTapDetectorTests: XCTestCase {
         _ = detector.ingest(keyboard.sample(left: true, right: true))
         _ = detector.ingest(keyboard.sample(left: true, right: false))
         XCTAssertNil(detector.ingest(keyboard.release()))
+        XCTAssertEqual(detector.lastRejection, .interrupted)
     }
 
     func testShiftHeldWhenPollingStartsIsNotATap() {
@@ -135,6 +140,7 @@ final class SystemShiftTapDetectorTests: XCTestCase {
 
         XCTAssertNil(detector.ingest(keyboard.sample(left: true, right: false)))
         XCTAssertNil(detector.ingest(keyboard.release()))
+        XCTAssertEqual(detector.lastRejection, .pressNotObserved)
     }
 
     func testResetForgetsAHeldShift() {
