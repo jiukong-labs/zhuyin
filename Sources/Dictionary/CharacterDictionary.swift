@@ -554,9 +554,15 @@ final class CantoneseDictionary {
         }
 
         var seenText: Set<String> = []
-        return Array(values.lazy.filter {
-            seenText.insert($0.text).inserted
-        }.prefix(limit))
+        var result: [CantoneseDictionaryEntry] = []
+        result.reserveCapacity(min(limit, values.count))
+        for entry in values where seenText.insert(entry.text).inserted {
+            result.append(entry)
+            if result.count == limit {
+                break
+            }
+        }
+        return result
     }
 
     static func normalizedQuery(_ rawQuery: String) -> String? {
