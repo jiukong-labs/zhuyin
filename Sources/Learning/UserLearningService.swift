@@ -718,6 +718,7 @@ final class CantoneseLearningService {
     private let now: () -> Date
     private var recordsByKey: [String: [String: CantoneseLearningRecord]]
     private var cloudSync: CantoneseLearningCloudSyncing?
+    private var preferencesObserver: NSObjectProtocol?
 
     private convenience init() {
         do {
@@ -742,6 +743,13 @@ final class CantoneseLearningService {
                     }
                 )
                 cloudSync = coordinator
+                preferencesObserver = NotificationCenter.default.addObserver(
+                    forName: PreferencesController.didChangeNotification,
+                    object: preferences,
+                    queue: nil
+                ) { [weak self] _ in
+                    self?.cloudSync?.preferenceDidChange()
+                }
                 coordinator.start()
             }
         } catch {
@@ -761,6 +769,13 @@ final class CantoneseLearningService {
         queue = DispatchQueue(label: queueLabel, qos: .userInitiated)
         recordsByKey = Self.load(fileURL: fileURL, fileManager: fileManager)
         cloudSync = nil
+        preferencesObserver = nil
+    }
+
+    deinit {
+        if let preferencesObserver {
+            NotificationCenter.default.removeObserver(preferencesObserver)
+        }
     }
 
     func records(for key: String) -> [String: CantoneseLearningRecord] {
@@ -898,6 +913,7 @@ final class CantoneseLearningService {
 protocol CantoneseLearningCloudSyncing: AnyObject {
     func start()
     func noteLocalChange()
+    func preferenceDidChange()
 }
 
 protocol CantoneseLearningCloudTransporting: AnyObject {
@@ -943,6 +959,15 @@ final class CantoneseLearningCloudSyncCoordinator:
     func start() {
         queue.async { [weak self] in
             self?.synchronize()
+        }
+    }
+
+    func preferenceDidChange() {
+        queue.async { [weak self] in
+            guard let self, isEnabled() else {
+                return
+            }
+            synchronize()
         }
     }
 
