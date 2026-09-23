@@ -214,6 +214,7 @@
 		E809D1E93C26198090007BA8 /* UpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8DF5A2899531361D999647 /* UpdateController.swift */; };
 		E81211C53220DB0622314336 /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
+		EDAA791EF7F09A8474A9A8D2 /* jyut6ping3.chars.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */; };
 		EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
 		F154953E8795E872037E4B08 /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E38BA26E2A742FE938ED829 /* CryptoKit.framework */; };
@@ -227,7 +228,6 @@
 		FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */; };
 		FBAF5AFE01B9D5EE4BDAFFF3 /* CursorIndicatorAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */; };
 		FF9E6E8589539CF01B832346 /* ProcessEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E02E22713564B559C471CEE /* ProcessEntitlements.swift */; };
-		A6C1F2D3045E6789ABCDEF01 /* jyut6ping3.chars.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = B7D2E3F4056A789ABCDEF012 /* jyut6ping3.chars.dict.yaml */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -259,6 +259,7 @@
 		3949A14825AABD914BE95424 /* LICENSE */ = {isa = PBXFileReference; path = LICENSE; sourceTree = "<group>"; };
 		3956B2AE2EBC770F628C9DB3 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducer.swift; sourceTree = "<group>"; };
+		3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = jyut6ping3.chars.dict.yaml; sourceTree = "<group>"; };
 		3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllableTests.swift; sourceTree = "<group>"; };
 		3E134113536FB1FB0AC3B7E0 /* UpdateRelease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRelease.swift; sourceTree = "<group>"; };
 		3FDCB9CE64ABC1794476C217 /* ClientDeliveryFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDeliveryFallback.swift; sourceTree = "<group>"; };
@@ -379,7 +380,6 @@
 		FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesController.swift; sourceTree = "<group>"; };
 		FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchive.swift; sourceTree = "<group>"; };
 		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		B7D2E3F4056A789ABCDEF012 /* jyut6ping3.chars.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Data/RimeCantonese/jyut6ping3.chars.dict.yaml"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -744,6 +744,7 @@
 			children = (
 				BB1DDC53E12EF783886019DD /* MOEIdioms */,
 				5473FDC4769107B1D825A14B /* MOERevisedDictionary */,
+				F36DF13EDE6F44C283A10E5D /* RimeCantonese */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -880,6 +881,14 @@
 				5E22AD0F0E53E2614E50243E /* ZhuyinKeyboardArrangementTests.swift */,
 			);
 			path = KeyboardTests;
+			sourceTree = "<group>";
+		};
+		F36DF13EDE6F44C283A10E5D /* RimeCantonese */ = {
+			isa = PBXGroup;
+			children = (
+				3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */,
+			);
+			path = RimeCantonese;
 			sourceTree = "<group>";
 		};
 		FBF4B12D57E5448B2A7FF29A = {
@@ -1030,11 +1039,11 @@
 				A983D01C34A682BE5E9A5CB5 /* JiukongEnglishAColor.tiff in Resources */,
 				80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */,
 				28AB81FC9394CA3AC7667269 /* JiukongZhuyin.sqlite3 in Resources */,
-				A6C1F2D3045E6789ABCDEF01 /* jyut6ping3.chars.dict.yaml in Resources */,
 				FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */,
 				21E3AD251A8F91C2BABCE41D /* LICENSE in Resources */,
 				A5DB6ECF4DB8559F53142A27 /* THIRD_PARTY_NOTICES.md in Resources */,
 				582D9AC95E5A0B8A1F901FC9 /* idiomsdict_usage_note.txt in Resources */,
+				EDAA791EF7F09A8474A9A8D2 /* jyut6ping3.chars.dict.yaml in Resources */,
 				80712CA4184D87603AE489B5 /* reviseddict_usage_note.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
