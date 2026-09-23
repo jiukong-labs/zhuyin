@@ -164,6 +164,27 @@ final class CharacterDictionaryTests: XCTestCase {
         )
     }
 
+    func testCantoneseLearningKeyIgnoresToneDigits() {
+        XCTAssertEqual(
+            CantoneseDictionary.learningKey(
+                for: ["nei5", "hou2"]
+            ),
+            "neihou"
+        )
+        XCTAssertEqual(
+            CantoneseDictionary.learningKey(
+                for: ["do1", "ze6"]
+            ),
+            "doze"
+        )
+        XCTAssertNil(CantoneseDictionary.learningKey(for: []))
+        XCTAssertNil(
+            CantoneseDictionary.learningKey(
+                for: ["invalid"]
+            )
+        )
+    }
+
     func testCantoneseWordsAreFilteredByTraditionalRepertoire() throws {
         let characters = """
         ---
