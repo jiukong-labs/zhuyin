@@ -227,6 +227,7 @@
 		FB6FDDEA301CFF20A86C2D5C /* InputMethodKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA10CF0D1E479C8C3619A5A0 /* InputMethodKit.framework */; };
 		FBAF5AFE01B9D5EE4BDAFFF3 /* CursorIndicatorAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */; };
 		FF9E6E8589539CF01B832346 /* ProcessEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E02E22713564B559C471CEE /* ProcessEntitlements.swift */; };
+		A6C1F2D3045E6789ABCDEF01 /* jyut6ping3.chars.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = B7D2E3F4056A789ABCDEF012 /* jyut6ping3.chars.dict.yaml */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -378,6 +379,7 @@
 		FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesController.swift; sourceTree = "<group>"; };
 		FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchive.swift; sourceTree = "<group>"; };
 		FF54C97D4D0041E4DF9AF644 /* Jiukong Zhuyin Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jiukong Zhuyin Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7D2E3F4056A789ABCDEF012 /* jyut6ping3.chars.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Data/RimeCantonese/jyut6ping3.chars.dict.yaml"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1028,6 +1030,7 @@
 				A983D01C34A682BE5E9A5CB5 /* JiukongEnglishAColor.tiff in Resources */,
 				80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */,
 				28AB81FC9394CA3AC7667269 /* JiukongZhuyin.sqlite3 in Resources */,
+				A6C1F2D3045E6789ABCDEF01 /* jyut6ping3.chars.dict.yaml in Resources */,
 				FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */,
 				21E3AD251A8F91C2BABCE41D /* LICENSE in Resources */,
 				A5DB6ECF4DB8559F53142A27 /* THIRD_PARTY_NOTICES.md in Resources */,
