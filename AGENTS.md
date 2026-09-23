@@ -34,11 +34,12 @@ Existing, documented exceptions are limited to:
 - the pinned headword-and-reading extracts of the Ministry of Education's
   《成語典》 2020 and 《重編國語辭典修訂本》 datasets, used only for the
   separately identified government-sourced four-character phrase candidates; and
-- the pinned `rime/rime-cantonese` `jyut6ping3.chars.dict.yaml` character
-  and Jyutping data, explicitly approved on 2026-09-23 for the Cantonese input
-  mode. This exception is data-only: it does not permit copying Rime runtime
-  code, schemas, composition/ranking implementations, OpenCC data, maps, or
-  the upstream words/phrase dictionaries without separate approval.
+- the pinned `rime/rime-cantonese` `jyut6ping3.chars.dict.yaml` and
+  `jyut6ping3.words.dict.yaml` character/word Jyutping data, explicitly
+  approved on 2026-09-23 for the Cantonese input mode. This exception is
+  data-only: it does not permit copying Rime runtime code, schemas,
+  composition/ranking implementations, OpenCC data, maps, or the upstream
+  phrase-only dictionary without separate approval.
 
 The exact sources, transformations, versions, and licenses for these
 exceptions are listed in `THIRD_PARTY_NOTICES.md` and their `Data/*/README.md`
