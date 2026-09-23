@@ -1053,9 +1053,8 @@ final class InputController: IMKInputController {
         }
 
         if let letter = key?.lowercaseASCIILetter {
-            if cantoneseInput.last?.isNumber == true {
-                flushCantoneseComposition(to: inputClient)
-            }
+            // Keep a tone digit inside the same composition so multi-syllable
+            // queries such as "nei5hou2" can continue after the first tone.
             cantoneseInput.append(letter)
             refreshCantoneseCandidates(on: inputClient)
             return true
@@ -1086,7 +1085,9 @@ final class InputController: IMKInputController {
             .map { index, entry in
                 Candidate(
                     text: entry.text,
-                    pronunciation: entry.reading,
+                    pronunciationSequence: entry.pronunciationSequence,
+                    // Keep Cantonese built-in words non-deletable until the
+                    // Cantonese learning/suppression store is implemented.
                     type: .character,
                     baseRank: index,
                     sourceOrder: Int64(entry.sourceOrder),

@@ -95,27 +95,31 @@ The license's full usage note is retained verbatim in
 requirement. Like the 《成語典》 data above, this data itself is not covered
 by Jiukong Zhuyin's MIT License.
 
-## Rime Cantonese Jyutping character data
+## Rime Cantonese Jyutping character and word data
 
-Jiukong's optional Cantonese input mode contains character-to-Jyutping data
+Jiukong's optional Cantonese input mode contains character and multi-character
+word Jyutping data
 from the Rime Cantonese project:
 
 - Maintainer: Cantonese Computational Linguistics Infrastructure Development
   Workgroup (CanCLID) / Rime Cantonese contributors
 - Upstream: https://github.com/rime/rime-cantonese
-- File: `jyut6ping3.chars.dict.yaml`
+- Files: `jyut6ping3.chars.dict.yaml`,
+  `jyut6ping3.words.dict.yaml`
 - Pinned commit: `259f0e48bba840c3a2e0d117539e96937f3d89bc`
 - Upstream data version: `2026.08.10`
 - Retrieved: 2026-09-23
 - License: Creative Commons Attribution 4.0 International (CC BY 4.0),
   https://creativecommons.org/licenses/by/4.0/
 
-Jiukong retains this source-verbatim character/readings file under
-`Data/RimeCantonese` and uses it only as input data for its independently
-implemented Jyutping lookup. The Rime runtime, Rime schema implementation,
-OpenCC tables, maps database, and Rime Cantonese words/phrase dictionaries are
-not incorporated in this milestone. Runtime candidates are additionally
-filtered through Jiukong's Taiwan Traditional CNS plane 1/2 repertoire.
+Jiukong retains these source-verbatim character/readings and word/readings
+files under `Data/RimeCantonese` and uses them only as input data for its
+independently implemented Jyutping lookup. The Rime runtime, Rime schema
+implementation, OpenCC tables, maps database, and phrase-only dictionary are
+not incorporated. Runtime candidates are additionally filtered through
+Jiukong's Taiwan Traditional CNS plane 1/2 repertoire. Jiukong's matching
+logic, including optional per-syllable tone digits, is independently
+implemented.
 
 This Rime Cantonese data is not covered by Jiukong's MIT License; redistribution
 and adaptation of that data remain governed by CC BY 4.0.

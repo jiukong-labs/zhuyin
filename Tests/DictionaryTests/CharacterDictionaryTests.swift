@@ -112,6 +112,86 @@ final class CharacterDictionaryTests: XCTestCase {
         XCTAssertEqual(dictionary.entries(for: "n3i"), [])
     }
 
+    func testCantoneseDictionaryMatchesMultiSyllableWordsWithOptionalTones() throws {
+        let characters = """
+        ---
+        name: chars
+        ...
+        多\tdo1
+        謝\tze6
+        你\tnei5
+        好\thou2
+        """
+        let words = """
+        ---
+        name: words
+        ...
+        多謝\tdo1 ze6
+        """
+
+        let dictionary = try CantoneseDictionary(
+            characterContents: characters,
+            wordContents: words,
+            allowedCharacters: ["多", "謝", "你", "好"]
+        )
+
+        for query in ["doze", "do1ze", "doze6", "do1ze6"] {
+            XCTAssertEqual(
+                dictionary.entries(for: query).first?.text,
+                "多謝",
+                query
+            )
+        }
+        XCTAssertEqual(
+            dictionary.entries(for: "do1ze6").first?.pronunciationSequence,
+            ["do1", "ze6"]
+        )
+        XCTAssertFalse(
+            dictionary.entries(for: "do2ze6").contains {
+                $0.text == "多謝"
+            }
+        )
+
+        // Jiukong keeps a tiny first-party supplement for everyday phrases
+        // that upstream leaves to Rime's phrase encoder.
+        XCTAssertEqual(
+            dictionary.entries(for: "neihou").first?.text,
+            "你好"
+        )
+        XCTAssertEqual(
+            dictionary.entries(for: "nei5hou2").first?.text,
+            "你好"
+        )
+    }
+
+    func testCantoneseWordsAreFilteredByTraditionalRepertoire() throws {
+        let characters = """
+        ---
+        name: chars
+        ...
+        多\tdo1
+        謝\tze6
+        """
+        let words = """
+        ---
+        name: words
+        ...
+        多謝\tdo1 ze6
+        多谢\tdo1 ze6
+        """
+
+        let dictionary = try CantoneseDictionary(
+            characterContents: characters,
+            wordContents: words,
+            allowedCharacters: ["多", "謝"]
+        )
+
+        XCTAssertEqual(
+            dictionary.entries(for: "doze").map(\.text),
+            ["多謝"]
+        )
+    }
+
     func testCantoneseDictionaryFiltersOutputByAllowedTraditionalRepertoire() throws {
         let source = """
         ---
