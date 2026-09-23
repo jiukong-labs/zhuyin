@@ -687,3 +687,142 @@ final class UserLearningService: UserLearningProviding {
         cloudSync?.noteUpsert(identity)
     }
 }
+
+
+struct CantoneseLearningRecord: Codable, Equatable {
+    let text: String
+    let key: String
+    let selectionCount: Int64
+    let lastSelectedAt: Date?
+}
+
+/// Local-only candidate preference learning for Cantonese.
+///
+/// This deliberately stays outside `user.sqlite` and the current CloudKit
+/// model because those identities validate Bopomofo readings. Keeping a
+/// separate versioned file prevents Jyutping data from masquerading as Zhuyin
+/// while still allowing Cantonese candidates to learn immediately.
+final class CantoneseLearningService {
+    static let shared = CantoneseLearningService()
+
+    private struct Archive: Codable {
+        static let currentVersion = 1
+        let version: Int
+        let records: [CantoneseLearningRecord]
+    }
+
+    private let queue: DispatchQueue
+    private let fileURL: URL?
+    private let fileManager: FileManager
+    private let now: () -> Date
+    private var recordsByKey: [String: [String: CantoneseLearningRecord]]
+
+    private convenience init() {
+        do {
+            let location = try UserDataLocation.userDomain()
+            try location.prepareDirectory()
+            self.init(fileURL: location.cantoneseLearningURL)
+        } catch {
+            self.init(fileURL: nil)
+        }
+    }
+
+    init(
+        fileURL: URL?,
+        fileManager: FileManager = .default,
+        now: @escaping () -> Date = Date.init,
+        queueLabel: String = "tw.idv.jiukong.cantonese-learning"
+    ) {
+        self.fileURL = fileURL
+        self.fileManager = fileManager
+        self.now = now
+        queue = DispatchQueue(label: queueLabel, qos: .userInitiated)
+        recordsByKey = Self.load(fileURL: fileURL, fileManager: fileManager)
+    }
+
+    func records(for key: String) -> [String: CantoneseLearningRecord] {
+        queue.sync {
+            recordsByKey[key] ?? [:]
+        }
+    }
+
+    func recordSelection(text: String, key: String) {
+        guard !text.isEmpty, !key.isEmpty else {
+            return
+        }
+
+        queue.sync {
+            let old = recordsByKey[key]?[text]
+            let count = old?.selectionCount ?? 0
+            let nextCount = count == Int64.max ? Int64.max : count + 1
+            let record = CantoneseLearningRecord(
+                text: text,
+                key: key,
+                selectionCount: nextCount,
+                lastSelectedAt: now()
+            )
+            recordsByKey[key, default: [:]][text] = record
+            persist()
+        }
+    }
+
+    private func persist() {
+        guard let fileURL else {
+            return
+        }
+
+        let allRecords = recordsByKey.values
+            .flatMap { $0.values }
+            .sorted {
+                if $0.key != $1.key {
+                    return $0.key < $1.key
+                }
+                return $0.text < $1.text
+            }
+        let archive = Archive(
+            version: Archive.currentVersion,
+            records: allRecords
+        )
+        guard let data = try? JSONEncoder().encode(archive) else {
+            return
+        }
+
+        do {
+            try data.write(to: fileURL, options: .atomic)
+            try? fileManager.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: fileURL.path
+            )
+        } catch {
+            // Personalization is best-effort; input must keep working even if
+            // the user data location becomes temporarily unwritable.
+        }
+    }
+
+    private static func load(
+        fileURL: URL?,
+        fileManager: FileManager
+    ) -> [String: [String: CantoneseLearningRecord]] {
+        guard let fileURL,
+              fileManager.fileExists(atPath: fileURL.path),
+              let data = try? Data(contentsOf: fileURL),
+              let archive = try? JSONDecoder().decode(Archive.self, from: data),
+              archive.version == Archive.currentVersion else {
+            return [:]
+        }
+
+        var result: [String: [String: CantoneseLearningRecord]] = [:]
+        for record in archive.records
+        where !record.text.isEmpty && !record.key.isEmpty {
+            let existing = result[record.key]?[record.text]
+            if existing == nil
+                || record.selectionCount > existing!.selectionCount
+                || (record.selectionCount == existing!.selectionCount
+                    && (record.lastSelectedAt ?? .distantPast)
+                    > (existing!.lastSelectedAt ?? .distantPast)) {
+                result[record.key, default: [:]][record.text] = record
+            }
+        }
+        return result
+    }
+}
