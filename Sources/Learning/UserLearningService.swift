@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import os
 
@@ -716,12 +717,41 @@ final class CantoneseLearningService {
     private let fileManager: FileManager
     private let now: () -> Date
     private var recordsByKey: [String: [String: CantoneseLearningRecord]]
+    private var cloudSync: CantoneseLearningCloudSyncing?
+    private var preferencesObserver: NSObjectProtocol?
 
     private convenience init() {
         do {
             let location = try UserDataLocation.userDomain()
             try location.prepareDirectory()
             self.init(fileURL: location.cantoneseLearningURL)
+
+            let preferences = PreferencesController.shared
+            if ProcessEntitlements.isEntitledForICloudContainer(
+                CloudKitUserDataTransport.containerIdentifier
+            ) {
+                let coordinator = CantoneseLearningCloudSyncCoordinator(
+                    transport: CloudKitCantoneseLearningTransport(),
+                    isEnabled: {
+                        preferences.current.iCloudSyncEnabled
+                    },
+                    localRecords: { [weak self] in
+                        self?.allRecords() ?? []
+                    },
+                    mergeRemoteRecords: { [weak self] records in
+                        self?.mergeRemote(records) ?? []
+                    }
+                )
+                cloudSync = coordinator
+                preferencesObserver = NotificationCenter.default.addObserver(
+                    forName: PreferencesController.didChangeNotification,
+                    object: preferences,
+                    queue: nil
+                ) { [weak self] _ in
+                    self?.cloudSync?.preferenceDidChange()
+                }
+                coordinator.start()
+            }
         } catch {
             self.init(fileURL: nil)
         }
@@ -738,6 +768,14 @@ final class CantoneseLearningService {
         self.now = now
         queue = DispatchQueue(label: queueLabel, qos: .userInitiated)
         recordsByKey = Self.load(fileURL: fileURL, fileManager: fileManager)
+        cloudSync = nil
+        preferencesObserver = nil
+    }
+
+    deinit {
+        if let preferencesObserver {
+            NotificationCenter.default.removeObserver(preferencesObserver)
+        }
     }
 
     func records(for key: String) -> [String: CantoneseLearningRecord] {
@@ -763,6 +801,34 @@ final class CantoneseLearningService {
             )
             recordsByKey[key, default: [:]][text] = record
             persist()
+            cloudSync?.noteLocalChange()
+        }
+    }
+
+    func allRecords() -> [CantoneseLearningRecord] {
+        queue.sync {
+            Self.sortedRecords(recordsByKey)
+        }
+    }
+
+    @discardableResult
+    func mergeRemote(
+        _ remoteRecords: [CantoneseLearningRecord]
+    ) -> [CantoneseLearningRecord] {
+        queue.sync {
+            var changed = false
+            for record in remoteRecords
+            where !record.text.isEmpty && !record.key.isEmpty {
+                let existing = recordsByKey[record.key]?[record.text]
+                if Self.shouldPrefer(record, over: existing) {
+                    recordsByKey[record.key, default: [:]][record.text] = record
+                    changed = true
+                }
+            }
+            if changed {
+                persist()
+            }
+            return Self.sortedRecords(recordsByKey)
         }
     }
 
@@ -771,14 +837,7 @@ final class CantoneseLearningService {
             return
         }
 
-        let allRecords = recordsByKey.values
-            .flatMap { $0.values }
-            .sorted {
-                if $0.key != $1.key {
-                    return $0.key < $1.key
-                }
-                return $0.text < $1.text
-            }
+        let allRecords = Self.sortedRecords(recordsByKey)
         let archive = Archive(
             version: Archive.currentVersion,
             records: allRecords
@@ -815,14 +874,310 @@ final class CantoneseLearningService {
         for record in archive.records
         where !record.text.isEmpty && !record.key.isEmpty {
             let existing = result[record.key]?[record.text]
-            if existing == nil
-                || record.selectionCount > existing!.selectionCount
-                || (record.selectionCount == existing!.selectionCount
-                    && (record.lastSelectedAt ?? .distantPast)
-                    > (existing!.lastSelectedAt ?? .distantPast)) {
+            if shouldPrefer(record, over: existing) {
                 result[record.key, default: [:]][record.text] = record
             }
         }
         return result
+    }
+
+    private static func shouldPrefer(
+        _ candidate: CantoneseLearningRecord,
+        over existing: CantoneseLearningRecord?
+    ) -> Bool {
+        guard let existing else {
+            return true
+        }
+        if candidate.selectionCount != existing.selectionCount {
+            return candidate.selectionCount > existing.selectionCount
+        }
+        return (candidate.lastSelectedAt ?? .distantPast)
+            > (existing.lastSelectedAt ?? .distantPast)
+    }
+
+    private static func sortedRecords(
+        _ recordsByKey: [String: [String: CantoneseLearningRecord]]
+    ) -> [CantoneseLearningRecord] {
+        recordsByKey.values
+            .flatMap { $0.values }
+            .sorted {
+                if $0.key != $1.key {
+                    return $0.key < $1.key
+                }
+                return $0.text < $1.text
+            }
+    }
+}
+
+
+protocol CantoneseLearningCloudSyncing: AnyObject {
+    func start()
+    func noteLocalChange()
+    func preferenceDidChange()
+}
+
+protocol CantoneseLearningCloudTransporting: AnyObject {
+    func fetch(
+        completion: @escaping (Result<[CantoneseLearningRecord], Error>) -> Void
+    )
+
+    func save(
+        _ records: [CantoneseLearningRecord],
+        completion: @escaping (Result<Void, Error>) -> Void
+    )
+}
+
+final class CantoneseLearningCloudSyncCoordinator:
+    CantoneseLearningCloudSyncing
+{
+    private let queue = DispatchQueue(
+        label: "tw.idv.jiukong.cantonese-learning-cloud",
+        qos: .utility
+    )
+    private let transport: CantoneseLearningCloudTransporting
+    private let isEnabled: () -> Bool
+    private let localRecords: () -> [CantoneseLearningRecord]
+    private let mergeRemoteRecords:
+        ([CantoneseLearningRecord]) -> [CantoneseLearningRecord]
+    private var debounceWorkItem: DispatchWorkItem?
+    private var synchronizing = false
+    private var synchronizeAgain = false
+
+    init(
+        transport: CantoneseLearningCloudTransporting,
+        isEnabled: @escaping () -> Bool,
+        localRecords: @escaping () -> [CantoneseLearningRecord],
+        mergeRemoteRecords:
+            @escaping ([CantoneseLearningRecord]) -> [CantoneseLearningRecord]
+    ) {
+        self.transport = transport
+        self.isEnabled = isEnabled
+        self.localRecords = localRecords
+        self.mergeRemoteRecords = mergeRemoteRecords
+    }
+
+    func start() {
+        queue.async { [weak self] in
+            self?.synchronize()
+        }
+    }
+
+    func preferenceDidChange() {
+        queue.async { [weak self] in
+            guard let self, isEnabled() else {
+                return
+            }
+            synchronize()
+        }
+    }
+
+    func noteLocalChange() {
+        queue.async { [weak self] in
+            guard let self else {
+                return
+            }
+            debounceWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.synchronize()
+            }
+            debounceWorkItem = work
+            queue.asyncAfter(deadline: .now() + 1.5, execute: work)
+        }
+    }
+
+    private func synchronize() {
+        guard isEnabled() else {
+            return
+        }
+        if synchronizing {
+            synchronizeAgain = true
+            return
+        }
+
+        synchronizing = true
+        transport.fetch { [weak self] result in
+            guard let self else {
+                return
+            }
+            self.queue.async {
+                switch result {
+                case let .failure(error):
+                    Self.log(error)
+                    self.finish()
+                case let .success(remote):
+                    let merged = self.mergeRemoteRecords(remote)
+                    let local = merged.isEmpty ? self.localRecords() : merged
+                    self.transport.save(local) { [weak self] saveResult in
+                        guard let self else {
+                            return
+                        }
+                        self.queue.async {
+                            if case let .failure(error) = saveResult {
+                                Self.log(error)
+                            }
+                            self.finish()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func finish() {
+        synchronizing = false
+        if synchronizeAgain {
+            synchronizeAgain = false
+            synchronize()
+        }
+    }
+
+    private static func log(_ error: Error) {
+        Logger(
+            subsystem: "tw.idv.jiukong.inputmethod.zhuyin",
+            category: "CantoneseCloudLearning"
+        ).error(
+            "Cantonese iCloud learning sync failed: \(error.localizedDescription, privacy: .public)"
+        )
+    }
+}
+
+final class CloudKitCantoneseLearningTransport:
+    CantoneseLearningCloudTransporting
+{
+    static let recordType = "JKCantoneseLearning"
+    private static let recordName = "v1-learning"
+    private static let schemaVersion: Int64 = 1
+    private static let schemaField = "schemaVersion"
+    private static let payloadField = "payload"
+
+    private let container: CKContainer
+    private let database: CKDatabase
+    private let lock = NSLock()
+    private var cachedRecord: CKRecord?
+
+    init(
+        container: CKContainer = CKContainer(
+            identifier: CloudKitUserDataTransport.containerIdentifier
+        )
+    ) {
+        self.container = container
+        database = container.privateCloudDatabase
+    }
+
+    func fetch(
+        completion: @escaping (Result<[CantoneseLearningRecord], Error>) -> Void
+    ) {
+        container.accountStatus { [weak self] status, error in
+            guard let self else {
+                return
+            }
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard status == .available else {
+                completion(.failure(Self.accountError(status)))
+                return
+            }
+
+            let recordID = CKRecord.ID(recordName: Self.recordName)
+            database.fetch(withRecordID: recordID) {
+                [weak self] record, error in
+                guard let self else {
+                    return
+                }
+                if let ckError = error as? CKError,
+                   ckError.code == .unknownItem {
+                    lock.lock()
+                    cachedRecord = nil
+                    lock.unlock()
+                    completion(.success([]))
+                    return
+                }
+                if let error {
+                    completion(.failure(error))
+                    return
+                }
+                guard let record else {
+                    completion(.success([]))
+                    return
+                }
+                do {
+                    let records = try Self.decode(record)
+                    lock.lock()
+                    cachedRecord = record
+                    lock.unlock()
+                    completion(.success(records))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+
+    func save(
+        _ records: [CantoneseLearningRecord],
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        do {
+            let data = try JSONEncoder().encode(records)
+            lock.lock()
+            let record = cachedRecord ?? CKRecord(
+                recordType: Self.recordType,
+                recordID: CKRecord.ID(recordName: Self.recordName)
+            )
+            lock.unlock()
+
+            record[Self.schemaField] = NSNumber(value: Self.schemaVersion)
+            record.encryptedValues[Self.payloadField] = data as NSData
+
+            database.save(record) { [weak self] saved, error in
+                if let error {
+                    completion(.failure(error))
+                    return
+                }
+                if let saved {
+                    self?.lock.lock()
+                    self?.cachedRecord = saved
+                    self?.lock.unlock()
+                }
+                completion(.success(()))
+            }
+        } catch {
+            completion(.failure(error))
+        }
+    }
+
+    private static func decode(
+        _ record: CKRecord
+    ) throws -> [CantoneseLearningRecord] {
+        guard record.recordType == recordType,
+              (record[schemaField] as? NSNumber)?.int64Value
+                == schemaVersion,
+              let data = record.encryptedValues[payloadField] as? Data else {
+            throw CloudUserDataModelError.invalidPayload
+        }
+        return try JSONDecoder().decode(
+            [CantoneseLearningRecord].self,
+            from: data
+        )
+    }
+
+    private static func accountError(
+        _ status: CKAccountStatus
+    ) -> Error {
+        switch status {
+        case .noAccount:
+            return CloudKitUserDataTransportError.noAccount
+        case .restricted:
+            return CloudKitUserDataTransportError.accountRestricted
+        case .temporarilyUnavailable:
+            return CloudKitUserDataTransportError
+                .accountTemporarilyUnavailable
+        case .couldNotDetermine, .available:
+            return CloudKitUserDataTransportError.accountStatusUnknown
+        @unknown default:
+            return CloudKitUserDataTransportError.accountStatusUnknown
+        }
     }
 }

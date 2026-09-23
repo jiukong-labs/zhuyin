@@ -523,4 +523,114 @@ final class CantoneseLearningServiceTests: XCTestCase {
         XCTAssertEqual(service.records(for: "nei").keys.sorted(), ["你"])
         XCTAssertEqual(service.records(for: "nin").keys.sorted(), ["年"])
     }
+
+    func testRemoteMergePrefersHigherCountThenNewerDate() {
+        let service = CantoneseLearningService(fileURL: nil)
+        service.mergeRemote([
+            CantoneseLearningRecord(
+                text: "你",
+                key: "nei",
+                selectionCount: 3,
+                lastSelectedAt: Date(timeIntervalSince1970: 100)
+            ),
+        ])
+
+        service.mergeRemote([
+            CantoneseLearningRecord(
+                text: "你",
+                key: "nei",
+                selectionCount: 2,
+                lastSelectedAt: Date(timeIntervalSince1970: 999)
+            ),
+            CantoneseLearningRecord(
+                text: "我",
+                key: "ngo",
+                selectionCount: 1,
+                lastSelectedAt: Date(timeIntervalSince1970: 200)
+            ),
+        ])
+        XCTAssertEqual(
+            service.records(for: "nei")["你"]?.selectionCount,
+            3
+        )
+        XCTAssertEqual(service.records(for: "ngo")["我"]?.selectionCount, 1)
+
+        service.mergeRemote([
+            CantoneseLearningRecord(
+                text: "你",
+                key: "nei",
+                selectionCount: 3,
+                lastSelectedAt: Date(timeIntervalSince1970: 300)
+            ),
+        ])
+        XCTAssertEqual(
+            service.records(for: "nei")["你"]?.lastSelectedAt,
+            Date(timeIntervalSince1970: 300)
+        )
+    }
+
+    func testCloudCoordinatorFetchesMergesAndSavesUnion() {
+        let transport = ProbeCantoneseCloudTransport()
+        transport.remote = [
+            CantoneseLearningRecord(
+                text: "我",
+                key: "ngo",
+                selectionCount: 4,
+                lastSelectedAt: Date(timeIntervalSince1970: 40)
+            ),
+        ]
+        let service = CantoneseLearningService(fileURL: nil)
+        service.mergeRemote([
+            CantoneseLearningRecord(
+                text: "你",
+                key: "nei",
+                selectionCount: 2,
+                lastSelectedAt: Date(timeIntervalSince1970: 20)
+            ),
+        ])
+
+        let saved = expectation(description: "cloud save")
+        transport.didSave = {
+            saved.fulfill()
+        }
+
+        let coordinator = CantoneseLearningCloudSyncCoordinator(
+            transport: transport,
+            isEnabled: { true },
+            localRecords: { service.allRecords() },
+            mergeRemoteRecords: { service.mergeRemote($0) }
+        )
+        coordinator.start()
+        wait(for: [saved], timeout: 2)
+
+        XCTAssertEqual(
+            Set(transport.saved.map { $0.text }),
+            Set(["你", "我"])
+        )
+        XCTAssertEqual(service.records(for: "ngo")["我"]?.selectionCount, 4)
+    }
 }
+
+private final class ProbeCantoneseCloudTransport:
+    CantoneseLearningCloudTransporting
+{
+    var remote: [CantoneseLearningRecord] = []
+    private(set) var saved: [CantoneseLearningRecord] = []
+    var didSave: (() -> Void)?
+
+    func fetch(
+        completion: @escaping (Result<[CantoneseLearningRecord], Error>) -> Void
+    ) {
+        completion(.success(remote))
+    }
+
+    func save(
+        _ records: [CantoneseLearningRecord],
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        saved = records
+        completion(.success(()))
+        didSave?()
+    }
+}
+
