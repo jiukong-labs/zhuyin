@@ -21,6 +21,7 @@ final class InputController: IMKInputController {
     )
 
     private let candidateProvider: CharacterCandidateProvider?
+    private let cantoneseDictionary: CantoneseDictionary?
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
     private lazy var cursorIndicator = CursorIndicatorController.shared
     private let languageModeController = LanguageModeController.shared
@@ -42,6 +43,8 @@ final class InputController: IMKInputController {
     )
     private var candidateSession: CandidateSession?
     private var candidateSyllable: BopomofoSyllable?
+    private var cantoneseInput = ""
+    private var isCantoneseCandidateSession = false
     /// Whether Left/Right has entered explicit text-caret positioning. The
     /// following unit is optional because an active caret at the text end has
     /// no unit on its right.
@@ -89,8 +92,23 @@ final class InputController: IMKInputController {
                     CandidateTextDisplayability.canRender($0)
                 }
             )
+
+            do {
+                cantoneseDictionary = try CantoneseDictionary(
+                    bundle: .main,
+                    allowedCharacters: try dictionary
+                        .generalCandidateCharacterTexts()
+                )
+            } catch {
+                cantoneseDictionary = nil
+                NSLog(
+                    "Jiukong could not load Cantonese Jyutping data: %@",
+                    error.localizedDescription
+                )
+            }
         } catch {
             candidateProvider = nil
+            cantoneseDictionary = nil
             NSLog(
                 "Jiukong Zhuyin could not load its character dictionary: %@",
                 error.localizedDescription
@@ -193,6 +211,10 @@ final class InputController: IMKInputController {
 
         guard languageModeController.mode == .chinese else {
             return false
+        }
+
+        if preferences.current.chineseInputScheme == .cantonese {
+            return handleCantoneseInput(event, inputClient: inputClient)
         }
 
         adoptKeyboardArrangementIfChanged(using: inputClient)
@@ -344,6 +366,29 @@ final class InputController: IMKInputController {
     /// The input-source menu shown from the macOS input menu.
     override func menu() -> NSMenu! {
         let menu = NSMenu(title: "久空輸入法")
+
+        let inputSchemeItem = NSMenuItem(
+            title: "中文輸入",
+            action: nil,
+            keyEquivalent: ""
+        )
+        let inputSchemeMenu = NSMenu(title: "中文輸入")
+        for scheme in ChineseInputScheme.allCases {
+            let item = NSMenuItem(
+                title: scheme.displayName,
+                action: #selector(selectChineseInputScheme(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = scheme.rawValue
+            item.state = preferences.current.chineseInputScheme == scheme
+                ? .on : .off
+            inputSchemeMenu.addItem(item)
+        }
+        inputSchemeItem.submenu = inputSchemeMenu
+        menu.addItem(inputSchemeItem)
+        menu.addItem(.separator())
+
         let settingsItem = NSMenuItem(
             title: "偏好設定…",
             action: #selector(showSettings(_:)),
@@ -378,6 +423,19 @@ final class InputController: IMKInputController {
         updateItem.target = self
         menu.addItem(updateItem)
         return menu
+    }
+
+    @objc private func selectChineseInputScheme(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let scheme = ChineseInputScheme(rawValue: rawValue),
+              scheme != preferences.current.chineseInputScheme else {
+            return
+        }
+
+        finishComposition(reason: .lifecycle, using: client())
+        preferences.update {
+            $0.chineseInputScheme = scheme
+        }
     }
 
     /// Opening settings ends the current composition first, so text cannot be
@@ -497,6 +555,16 @@ final class InputController: IMKInputController {
         using sender: Any?
     ) {
         defer { synchronizeCompositionActivity() }
+
+        if hasCantoneseComposition {
+            guard let inputClient = inputClient(from: sender) else {
+                resetCantoneseComposition()
+                discardAllComposition()
+                return
+            }
+            flushCantoneseComposition(to: inputClient)
+        }
+
         guard candidateSession != nil
             || inputSession.hasComposition
             || !compositionBuffer.isEmpty else {
@@ -764,7 +832,7 @@ final class InputController: IMKInputController {
     }
 
     private var hasActiveComposition: Bool {
-        CompositionActivityState.isActive(
+        hasCantoneseComposition || CompositionActivityState.isActive(
             hasCandidateSession: candidateSession != nil,
             inputSessionHasComposition: inputSession.hasComposition,
             compositionBufferIsEmpty: compositionBuffer.isEmpty
@@ -877,6 +945,261 @@ final class InputController: IMKInputController {
             )
         }
         return result.handled
+    }
+
+    private var hasCantoneseComposition: Bool {
+        !cantoneseInput.isEmpty || isCantoneseCandidateSession
+    }
+
+    private func handleCantoneseInput(
+        _ event: NSEvent,
+        inputClient: any IMKTextInput
+    ) -> Bool {
+        let key = MacVirtualKeyResolver.key(for: event.keyCode)
+
+        switch key {
+        case .deleteBackward:
+            guard !cantoneseInput.isEmpty else {
+                return false
+            }
+            cantoneseInput.removeLast()
+            refreshCantoneseCandidates(on: inputClient)
+            return true
+
+        case .escape:
+            guard hasCantoneseComposition else {
+                return false
+            }
+            discardCantoneseComposition(on: inputClient)
+            return true
+
+        case .space:
+            if let session = candidateSession,
+               isCantoneseCandidateSession {
+                commitCantoneseCandidate(
+                    session.preferredCandidate,
+                    to: inputClient
+                )
+                return true
+            }
+            guard !cantoneseInput.isEmpty else {
+                return false
+            }
+            flushCantoneseComposition(to: inputClient)
+            commitText(" ", to: inputClient)
+            return true
+
+        case .returnKey, .keypadEnter:
+            if let session = candidateSession,
+               isCantoneseCandidateSession {
+                commitCantoneseCandidate(
+                    session.highlightedCandidate,
+                    to: inputClient
+                )
+                return true
+            }
+            guard !cantoneseInput.isEmpty else {
+                return false
+            }
+            flushCantoneseComposition(to: inputClient)
+            return true
+
+        default:
+            break
+        }
+
+        if let digit = key?.decimalDigit, (1 ... 9).contains(digit) {
+            if (1 ... 6).contains(digit),
+               !cantoneseInput.isEmpty,
+               cantoneseInput.last?.isNumber != true {
+                cantoneseInput.append(String(digit))
+                refreshCantoneseCandidates(on: inputClient)
+                return true
+            }
+
+            if let session = candidateSession,
+               isCantoneseCandidateSession,
+               let candidate = session.candidate(
+                   atSelectionKeyIndex: digit - 1
+               ) {
+                commitCantoneseCandidate(candidate, to: inputClient)
+                return true
+            }
+        }
+
+        if let session = candidateSession,
+           isCantoneseCandidateSession,
+           let command = CandidateCommandRouter.command(
+               keyCode: event.keyCode,
+               modifierFlags: event.modifierFlags,
+               isExpanded: session.isExpanded,
+               isExplicitSelectionContext: true
+           ) {
+            performCantoneseCandidateCommand(
+                command,
+                inputClient: inputClient
+            )
+            return true
+        }
+
+        let modifiers = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .subtracting(.capsLock)
+        guard modifiers.isEmpty else {
+            if hasCantoneseComposition {
+                flushCantoneseComposition(to: inputClient)
+            }
+            return false
+        }
+
+        if let letter = key?.lowercaseASCIILetter {
+            if cantoneseInput.last?.isNumber == true {
+                flushCantoneseComposition(to: inputClient)
+            }
+            cantoneseInput.append(letter)
+            refreshCantoneseCandidates(on: inputClient)
+            return true
+        }
+
+        if hasCantoneseComposition {
+            flushCantoneseComposition(to: inputClient)
+        }
+        return false
+    }
+
+    private func refreshCantoneseCandidates(
+        on inputClient: any IMKTextInput
+    ) {
+        if isCantoneseCandidateSession {
+            clearCandidatePresentation()
+        }
+
+        updateCantoneseMarkedText(on: inputClient)
+        guard !cantoneseInput.isEmpty,
+              let cantoneseDictionary else {
+            return
+        }
+
+        let candidates = cantoneseDictionary.entries(for: cantoneseInput)
+            .filter { CandidateTextDisplayability.canRender($0.text) }
+            .enumerated()
+            .map { index, entry in
+                Candidate(
+                    text: entry.text,
+                    pronunciation: entry.reading,
+                    type: .character,
+                    baseRank: index,
+                    sourceOrder: Int64(entry.sourceOrder),
+                    baseFrequency: entry.weight
+                )
+            }
+        guard var session = CandidateSession(
+            pronunciation: cantoneseInput,
+            candidates: candidates
+        ) else {
+            return
+        }
+
+        _ = session.expand()
+        candidateSession = session
+        candidateSyllable = nil
+        isCantoneseCandidateSession = true
+        updateCantoneseMarkedText(on: inputClient)
+        presentCandidates(session, inputClient: inputClient)
+    }
+
+    private func performCantoneseCandidateCommand(
+        _ command: CandidateCommand,
+        inputClient: any IMKTextInput
+    ) {
+        guard let session = candidateSession,
+              isCantoneseCandidateSession else {
+            return
+        }
+
+        switch CandidateCommandReducer.reduce(command, session: session) {
+        case let .update(updatedSession):
+            candidateSession = updatedSession
+            presentCandidates(updatedSession, inputClient: inputClient)
+        case let .commit(candidate, _):
+            commitCantoneseCandidate(candidate, to: inputClient)
+        case .cancel:
+            discardCantoneseComposition(on: inputClient)
+        case .deleteBackward:
+            if !cantoneseInput.isEmpty {
+                cantoneseInput.removeLast()
+                refreshCantoneseCandidates(on: inputClient)
+            }
+        case .handledWithoutChange:
+            break
+        }
+    }
+
+    private func commitCantoneseCandidate(
+        _ candidate: Candidate,
+        to inputClient: any IMKTextInput
+    ) {
+        resetCantoneseComposition()
+        clearMarkedText(on: inputClient)
+        commitText(candidate.text, to: inputClient)
+        synchronizeCompositionActivity()
+    }
+
+    private func flushCantoneseComposition(
+        to inputClient: any IMKTextInput
+    ) {
+        if let session = candidateSession,
+           isCantoneseCandidateSession {
+            commitCantoneseCandidate(
+                session.preferredCandidate,
+                to: inputClient
+            )
+            return
+        }
+
+        let rawText = cantoneseInput
+        resetCantoneseComposition()
+        clearMarkedText(on: inputClient)
+        if !rawText.isEmpty {
+            commitText(rawText, to: inputClient)
+        }
+        synchronizeCompositionActivity()
+    }
+
+    private func discardCantoneseComposition(
+        on inputClient: any IMKTextInput
+    ) {
+        resetCantoneseComposition()
+        clearMarkedText(on: inputClient)
+        synchronizeCompositionActivity()
+    }
+
+    private func resetCantoneseComposition() {
+        if isCantoneseCandidateSession {
+            clearCandidatePresentation()
+        }
+        cantoneseInput = ""
+        isCantoneseCandidateSession = false
+    }
+
+    private func updateCantoneseMarkedText(
+        on inputClient: any IMKTextInput
+    ) {
+        defer { synchronizeCompositionActivity() }
+        guard !cantoneseInput.isEmpty else {
+            clearMarkedText(on: inputClient)
+            return
+        }
+
+        captureCompositionFallbackAnchorIfNeeded(on: inputClient)
+        inputClient.setMarkedText(
+            cantoneseInput as NSString,
+            selectionRange: NSRange(
+                location: cantoneseInput.utf16.count,
+                length: 0
+            ),
+            replacementRange: Self.currentSelectionRange
+        )
     }
 
     private func beginCandidateSelection(
@@ -1639,6 +1962,7 @@ final class InputController: IMKInputController {
         let sessionID = candidateSession?.id
         candidateSession = nil
         candidateSyllable = nil
+        isCantoneseCandidateSession = false
         revisionCandidateUnitID = nil
         lastCandidateAnchor = nil
         pendingInsertionAnchorUnitID = nil
@@ -1772,6 +2096,7 @@ final class InputController: IMKInputController {
 
     private func discardAllComposition() {
         defer { synchronizeCompositionActivity() }
+        resetCantoneseComposition()
         hidePhraseSelectionPresentation()
         discardCandidateState()
         _ = inputSession.discardComposition()
@@ -2088,10 +2413,14 @@ extension InputController: CandidateWindowPresenterDelegate {
         }
 
         if let inputClient = inputClient(from: client()) {
-            flushComposition(
-                reason: .clientHandoff,
-                to: inputClient
-            )
+            if isCantoneseCandidateSession {
+                flushCantoneseComposition(to: inputClient)
+            } else {
+                flushComposition(
+                    reason: .clientHandoff,
+                    to: inputClient
+                )
+            }
         } else {
             discardAllComposition()
         }
@@ -2109,8 +2438,12 @@ extension InputController: CandidateWindowPresenterDelegate {
             return
         }
 
-        _ = acceptCandidate(candidate, reason: .mouse)
-        updateMarkedComposition(on: inputClient)
+        if isCantoneseCandidateSession {
+            commitCantoneseCandidate(candidate, to: inputClient)
+        } else {
+            _ = acceptCandidate(candidate, reason: .mouse)
+            updateMarkedComposition(on: inputClient)
+        }
     }
 
     func candidateWindowPresenter(
@@ -2118,6 +2451,9 @@ extension InputController: CandidateWindowPresenterDelegate {
         requestsActionForCandidateAt index: Int,
         sessionID: UUID
     ) {
+        guard !isCantoneseCandidateSession else {
+            return
+        }
         guard var session = candidateSession,
               session.id == sessionID,
               let candidate = session.candidate(at: index),
