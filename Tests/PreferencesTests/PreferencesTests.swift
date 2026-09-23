@@ -14,6 +14,26 @@ final class PreferencesTests: XCTestCase {
         XCTAssertFalse(preferences.showsRareCandidates)
     }
 
+    func testChineseInputSchemeDefaultsToZhuyinAndRoundTrips() {
+        XCTAssertEqual(Preferences.default.chineseInputScheme, .zhuyin)
+
+        for scheme in ChineseInputScheme.allCases {
+            let stored = Preferences(chineseInputScheme: scheme).encoded()
+            XCTAssertEqual(
+                Preferences.decoded(from: stored).chineseInputScheme,
+                scheme
+            )
+        }
+
+        let malformed = Preferences.decoded(
+            from: [
+                PreferenceKey.version.rawValue: Preferences.currentVersion,
+                PreferenceKey.chineseInputScheme.rawValue: "unknown",
+            ]
+        )
+        XCTAssertEqual(malformed.chineseInputScheme, .zhuyin)
+    }
+
     func testICloudSyncPreferenceRoundTripsAndDefaultsOn() {
         let stored = Preferences(iCloudSyncEnabled: false).encoded()
 
