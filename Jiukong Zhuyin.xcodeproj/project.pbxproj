@@ -215,6 +215,7 @@
 		E81211C53220DB0622314336 /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		E896398AE7C47441EB7C1FA9 /* CandidateCommandReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1613B5168B215B9F510502 /* CandidateCommandReducerTests.swift */; };
 		EDAA791EF7F09A8474A9A8D2 /* jyut6ping3.chars.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */; };
+		112233445566778899AABBCC /* jyut6ping3.words.dict.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 2233445566778899AABBCCDD /* jyut6ping3.words.dict.yaml */; };
 		EFCBEE5E567827B60368C2E6 /* UserDataArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */; };
 		F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E74D5C9092354C9CF3EA41 /* KeyboardLayout.swift */; };
 		F154953E8795E872037E4B08 /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E38BA26E2A742FE938ED829 /* CryptoKit.framework */; };
@@ -260,6 +261,7 @@
 		3956B2AE2EBC770F628C9DB3 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		3A545CAC8F4BD34F6A5E08F3 /* CandidateCommandReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateCommandReducer.swift; sourceTree = "<group>"; };
 		3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = jyut6ping3.chars.dict.yaml; sourceTree = "<group>"; };
+		2233445566778899AABBCCDD /* jyut6ping3.words.dict.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = jyut6ping3.words.dict.yaml; sourceTree = "<group>"; };
 		3C33B04771685814347CC1EF /* BopomofoSyllableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoSyllableTests.swift; sourceTree = "<group>"; };
 		3E134113536FB1FB0AC3B7E0 /* UpdateRelease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRelease.swift; sourceTree = "<group>"; };
 		3FDCB9CE64ABC1794476C217 /* ClientDeliveryFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDeliveryFallback.swift; sourceTree = "<group>"; };
@@ -887,6 +889,7 @@
 			isa = PBXGroup;
 			children = (
 				3B6E3D74DDB89EE816081021 /* jyut6ping3.chars.dict.yaml */,
+				2233445566778899AABBCCDD /* jyut6ping3.words.dict.yaml */,
 			);
 			path = RimeCantonese;
 			sourceTree = "<group>";
@@ -1044,6 +1047,7 @@
 				A5DB6ECF4DB8559F53142A27 /* THIRD_PARTY_NOTICES.md in Resources */,
 				582D9AC95E5A0B8A1F901FC9 /* idiomsdict_usage_note.txt in Resources */,
 				EDAA791EF7F09A8474A9A8D2 /* jyut6ping3.chars.dict.yaml in Resources */,
+				112233445566778899AABBCC /* jyut6ping3.words.dict.yaml in Resources */,
 				80712CA4184D87603AE489B5 /* reviseddict_usage_note.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
