@@ -40,8 +40,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     ]
 
     private static let shiftSwitchStyleOptions: [(title: String, value: ShiftSwitchStyle)] = [
-        ("切換 macOS 輸入來源", .inputSource),
-        ("在久空內部切換", .withinInputMethod),
+        ("切換輸入模式（選單列圖示會變）", .inputSource),
+        ("只在久空內部切換（選單列圖示不變）", .withinInputMethod),
     ]
 
     init(
@@ -219,7 +219,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
         let shiftSwitchStyleLabel = NSTextField(
             wrappingLabelWithString:
-                "切換 macOS 輸入來源：選單列圖示會跟著變成中或 A。Chrome、VS Code 等 App 偶爾會在切到中文後，把最前面幾個鍵當英文送出。\n在久空內部切換：不更換輸入來源，不會觸發這個問題；但選單列圖示不再跟著變，請看游標指示器（未開啟時會短暫顯示中或 A）。"
+                "切換輸入模式：在久空的「中」與「A」兩個輸入模式之間切換，選單列圖示跟著變。Chrome、VS Code 等 App 偶爾會在切到中文後，把最前面幾個鍵當英文送出。\n只在久空內部切換：輸入模式停在「中」，只改變久空內部的中英狀態，不會觸發這個問題；選單列圖示不跟著變，請看游標指示器（未開啟時會短暫顯示中或 A）。兩種方式都不會切到 macOS 內建的 ABC。"
         )
         shiftSwitchStyleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         shiftSwitchStyleLabel.textColor = .secondaryLabelColor
