@@ -468,3 +468,59 @@ private final class FailingLearningStore: UserLearningStoring {
     }
 
 }
+
+
+final class CantoneseLearningServiceTests: XCTestCase {
+    func testSelectionPersistsAndIncrementsAcrossInstances() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let url = directory.appendingPathComponent("cantonese-learning.json")
+        var now = Date(timeIntervalSince1970: 100)
+
+        let first = CantoneseLearningService(
+            fileURL: url,
+            now: { now }
+        )
+        first.recordSelection(text: "你好", key: "neihou")
+        XCTAssertEqual(
+            first.records(for: "neihou")["你好"]?.selectionCount,
+            1
+        )
+
+        now = Date(timeIntervalSince1970: 200)
+        let second = CantoneseLearningService(
+            fileURL: url,
+            now: { now }
+        )
+        second.recordSelection(text: "你好", key: "neihou")
+
+        let record = second.records(for: "neihou")["你好"]
+        XCTAssertEqual(record?.selectionCount, 2)
+        XCTAssertEqual(record?.lastSelectedAt, now)
+    }
+
+    func testDifferentJyutpingKeysRemainIndependent() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let service = CantoneseLearningService(
+            fileURL: directory.appendingPathComponent("learning.json")
+        )
+        service.recordSelection(text: "你", key: "nei")
+        service.recordSelection(text: "年", key: "nin")
+
+        XCTAssertEqual(service.records(for: "nei").keys.sorted(), ["你"])
+        XCTAssertEqual(service.records(for: "nin").keys.sorted(), ["年"])
+    }
+}
