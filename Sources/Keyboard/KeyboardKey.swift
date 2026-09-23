@@ -53,3 +53,54 @@ enum KeyboardKey: Hashable {
     case returnKey
     case keypadEnter
 }
+
+
+extension KeyboardKey {
+    var lowercaseASCIILetter: String? {
+        switch self {
+        case .letterA: return "a"
+        case .letterB: return "b"
+        case .letterC: return "c"
+        case .letterD: return "d"
+        case .letterE: return "e"
+        case .letterF: return "f"
+        case .letterG: return "g"
+        case .letterH: return "h"
+        case .letterI: return "i"
+        case .letterJ: return "j"
+        case .letterK: return "k"
+        case .letterL: return "l"
+        case .letterM: return "m"
+        case .letterN: return "n"
+        case .letterO: return "o"
+        case .letterP: return "p"
+        case .letterQ: return "q"
+        case .letterR: return "r"
+        case .letterS: return "s"
+        case .letterT: return "t"
+        case .letterU: return "u"
+        case .letterV: return "v"
+        case .letterW: return "w"
+        case .letterX: return "x"
+        case .letterY: return "y"
+        case .letterZ: return "z"
+        default: return nil
+        }
+    }
+
+    var decimalDigit: Int? {
+        switch self {
+        case .digit0: return 0
+        case .digit1: return 1
+        case .digit2: return 2
+        case .digit3: return 3
+        case .digit4: return 4
+        case .digit5: return 5
+        case .digit6: return 6
+        case .digit7: return 7
+        case .digit8: return 8
+        case .digit9: return 9
+        default: return nil
+        }
+    }
+}
