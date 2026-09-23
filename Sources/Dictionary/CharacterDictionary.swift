@@ -611,6 +611,31 @@ final class CantoneseDictionary {
                 words[key, default: []].append(entry)
             }
         }
+
+        // A tiny Jiukong-owned supplement covers everyday phrases that the
+        // upstream explicit-reading word table leaves to Rime's phrase
+        // encoder. Keep this list deliberately small and independently
+        // reviewable rather than importing the phrase-only upstream file.
+        for supplement in Self.firstPartyWordSupplements {
+            guard supplement.text.allSatisfy({
+                allowedCharacters.contains(String($0))
+            }) else {
+                continue
+            }
+            let key = supplement.pronunciationSequence
+                .compactMap(Self.tonelessReading)
+                .joined()
+            words[key, default: []].append(
+                CantoneseDictionaryEntry(
+                    text: supplement.text,
+                    pronunciationSequence: supplement.pronunciationSequence,
+                    sourceOrder: sourceOrder,
+                    weight: 1
+                )
+            )
+            sourceOrder += 1
+        }
+
         wordTonelessIndex = words.mapValues(Self.sorted)
     }
 
@@ -803,6 +828,12 @@ final class CantoneseDictionary {
         }
         return Double(text) ?? 1
     }
+
+    private static let firstPartyWordSupplements: [
+        (text: String, pronunciationSequence: [String])
+    ] = [
+        ("你好", ["nei5", "hou2"]),
+    ]
 
     private static func sorted(
         _ entries: [CantoneseDictionaryEntry]
