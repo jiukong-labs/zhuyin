@@ -505,7 +505,9 @@ final class CantoneseDictionary {
 
             let text = String(fields[0])
                 .precomposedStringWithCanonicalMapping
-            let reading = String(fields[1]).lowercased()
+            let reading = String(fields[1])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
             guard text.count == 1,
                   allowedCharacters.contains(text),
                   let tonelessReading = Self.tonelessReading(from: reading) else {
@@ -558,22 +560,22 @@ final class CantoneseDictionary {
     }
 
     static func normalizedQuery(_ rawQuery: String) -> String? {
-        let query = rawQuery.lowercased()
+        let query = rawQuery
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
         guard !query.isEmpty else {
             return nil
         }
 
-        var characters = Array(query)
-        if let last = characters.last, last.isNumber {
-            guard ("1" ... "6").contains(String(last)) else {
+        var bytes = Array(query.utf8)
+        if let last = bytes.last, (48 ... 57).contains(last) {
+            guard (49 ... 54).contains(last) else {
                 return nil
             }
-            characters.removeLast()
+            bytes.removeLast()
         }
-        guard !characters.isEmpty,
-              characters.allSatisfy({
-                  $0.isASCII && $0.isLetter && $0.isLowercase
-              }) else {
+        guard !bytes.isEmpty,
+              bytes.allSatisfy({ (97 ... 122).contains($0) }) else {
             return nil
         }
         return query
@@ -581,8 +583,8 @@ final class CantoneseDictionary {
 
     private static func tonelessReading(from reading: String) -> String? {
         guard let normalized = normalizedQuery(reading),
-              let last = normalized.last,
-              last.isNumber else {
+              let last = normalized.utf8.last,
+              (49 ... 54).contains(last) else {
             return nil
         }
         return String(normalized.dropLast())
