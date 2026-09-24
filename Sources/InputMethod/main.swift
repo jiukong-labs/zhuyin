@@ -85,6 +85,7 @@ private func runApplication() throws {
     // Owns the cursor indicator's visibility for as long as this process
     // runs, independent of any particular client's text-field focus.
     SystemInputSourceObserver.shared.start()
+    SecureFieldSourceGuard.shared.start()
     startCloudServices()
     UpdateController.shared.startAutomaticChecks()
     jiukongDebugLog("main.swift finished starting SystemInputSourceObserver")

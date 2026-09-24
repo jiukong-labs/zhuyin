@@ -18,6 +18,19 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Fixed
 
+- Return to Jiukong after a password field. A password field allows only
+  ASCII-capable input sources, so macOS switches to one such as ABC; after a
+  Chrome password field lost focus to another app, macOS left ABC selected.
+  When a switch away from Jiukong coincides with secure input starting, Jiukong
+  is selected again 0.3 s after secure input ends if that source is still
+  selected. Switches the user makes, including under Terminal's Secure
+  Keyboard Entry, are left alone.
+- Keep Shift working after another app activates the input method again during
+  an app switch. LINE and Finder can activate and deactivate once more after
+  the next app has activated, which left keyboard-state polling without a
+  current app, so every Shift tap the focused app still delivered was ignored
+  until the next activation. The most recently activated app that has not
+  deactivated now takes over, as does any app that delivers an event.
 - Stop one Shift tap from switching the language and then immediately back.
   An app delivers each Shift edge after macOS records it, with the press up to
   about 130 ms late; matching now allows that lag instead of treating the
