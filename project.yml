@@ -184,6 +184,7 @@ targets:
       - path: Sources/Dictionary
       - path: Sources/InputMethod/InputMethodConfiguration.swift
       - path: Sources/Keyboard
+      - path: Sources/Language/ActiveControllerTracker.swift
       - path: Sources/Language/LanguageMode.swift
       - path: Sources/Language/ShiftToggleController.swift
       - path: Sources/Language/SilentClientDetector.swift

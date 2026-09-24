@@ -43,7 +43,7 @@ final class InputController: IMKInputController {
     /// Short identity for this controller instance. IMK creates one controller
     /// per client connection, so a trace that only names the client cannot
     /// show which instance actually received an event.
-    private lazy var traceTag: String = String(
+    private(set) lazy var traceTag: String = String(
         UInt(bitPattern: ObjectIdentifier(self).hashValue) & 0xffff,
         radix: 16
     )
@@ -157,6 +157,13 @@ final class InputController: IMKInputController {
             return false
         }
         defer { synchronizeCompositionActivity() }
+
+        if ClientDeliveryFallback.shared.controllerReceivedEvent(self) {
+            jiukongShiftTrace(
+                "[\(traceTag)] fallback adopted this controller:"
+                    + " its client delivered an event while another was current"
+            )
+        }
 
         switch event.type {
         case .flagsChanged:

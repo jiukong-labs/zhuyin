@@ -33,7 +33,8 @@ final class ClientDeliveryFallback {
     private var statsTicks = 0
     private var statsMaxGap: TimeInterval = 0
     private var watchStartedAt: TimeInterval?
-    private weak var activeController: InputController?
+    private var controllers = ActiveControllerTracker<InputController>()
+    private var activeController: InputController? { controllers.current }
     private var timer: Timer?
     private var activity: NSObjectProtocol?
 
@@ -41,24 +42,47 @@ final class ClientDeliveryFallback {
 
     func controllerDidActivate(_ controller: InputController) {
         precondition(Thread.isMainThread)
-        if let previous = activeController, previous !== controller {
-            previous.cancelPendingReattachment()
-            stopPolling()
-        }
-        activeController = controller
-        startPolling()
+        let previous = activeController
+        controllers.activated(controller)
+        handOver(from: previous)
     }
 
     /// Controllers hand over with overlap: a new one can activate before the
     /// previous one deactivates, so only the current controller stops polling.
+    /// Deactivating it resumes the newest controller still active.
     func controllerDidDeactivate(_ controller: InputController) {
         precondition(Thread.isMainThread)
-        guard activeController === controller else {
+        let previous = activeController
+        guard controllers.deactivated(controller) else {
             return
         }
-        controller.cancelPendingReattachment()
-        activeController = nil
-        stopPolling()
+        handOver(from: previous)
+        if let resumed = activeController {
+            jiukongShiftTrace("fallback resumed [\(resumed.traceTag)], still active")
+        }
+    }
+
+    /// The client routes keys to the controller that receives them, even
+    /// when activation calls said otherwise. Returns true if this controller
+    /// had not been the one served.
+    func controllerReceivedEvent(_ controller: InputController) -> Bool {
+        precondition(Thread.isMainThread)
+        let previous = activeController
+        guard controllers.receivedEvent(from: controller) else {
+            return false
+        }
+        handOver(from: previous)
+        return true
+    }
+
+    private func handOver(from previous: InputController?) {
+        if let previous, previous !== activeController {
+            previous.cancelPendingReattachment()
+            stopPolling()
+        }
+        if activeController != nil {
+            startPolling()
+        }
     }
 
     func isActive(_ controller: InputController) -> Bool {
