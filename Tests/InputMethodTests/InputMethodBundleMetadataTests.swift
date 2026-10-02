@@ -52,7 +52,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let expectedModes = [
             (
                 "tw.idv.jiukong.inputmethod.zhuyin.Chinese",
-                "JiukongChineseColor.tiff"
+                "JiukongMenuIcon.tiff"
             ),
             (
                 "tw.idv.jiukong.inputmethod.zhuyin.English",
@@ -105,7 +105,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
 
     func testModeIconsContainMenuBarScaleRepresentations() throws {
         for assetName in [
-            "JiukongChineseColor.tiff",
+            "JiukongMenuIcon.tiff",
             "JiukongEnglishAColor.tiff",
         ] {
             let assetURL = repositoryRoot
@@ -141,7 +141,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
 
     func testModeIconsFillAndCenterMenuBarCanvas() throws {
         for assetName in [
-            "JiukongChineseColor.tiff",
+            "JiukongMenuIcon.tiff",
             "JiukongEnglishAColor.tiff",
         ] {
             let assetURL = repositoryRoot
@@ -188,8 +188,9 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let iconAppearance = try XCTUnwrap(
             NSAppearance(named: .darkAqua)
         )
+        // The Chinese mode shows the Jiukong mark rather than a glyph in the
+        // indicator's language color, so only the English A is matched.
         let cases: [(String, LanguageMode)] = [
-            ("JiukongChineseColor.tiff", .chinese),
             ("JiukongEnglishAColor.tiff", .english),
         ]
 

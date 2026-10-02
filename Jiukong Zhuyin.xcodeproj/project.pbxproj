@@ -122,7 +122,6 @@
 		7E116391F827EC6CB00B98D0 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645337CF4873F583CF52DC03 /* UpdateInstaller.swift */; };
 		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
 		7FAC91725DD3BA0C1FD5A503 /* CloudKitUserDataTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */; };
-		8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */; };
 		80712CA4184D87603AE489B5 /* reviseddict_usage_note.txt in Resources */ = {isa = PBXBuildFile; fileRef = 52585F1659FDE1B503AF4C48 /* reviseddict_usage_note.txt */; };
 		80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */; };
 		82C7B20D1A38E5D3A6F84893 /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
@@ -141,6 +140,7 @@
 		9039F5A7FF8C462C8DC0CE60 /* CandidateWindowGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EAC6E2E779D03B2EA7598C3 /* CandidateWindowGeometryTests.swift */; };
 		911BE00DEAF2D048893B9BE4 /* UserDataManagementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41AD9FD532E11E8C8224086E /* UserDataManagementTests.swift */; };
 		9287CE720D6704310DC434EC /* SettingsPaneBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8A97993E9F64F784A88C56 /* SettingsPaneBuilder.swift */; };
+		93E7EF21C28754CAD881D955 /* JiukongMenuIcon.tiff in Resources */ = {isa = PBXBuildFile; fileRef = AE9238A5BFDBC6C2322B1894 /* JiukongMenuIcon.tiff */; };
 		93E94D975A38BB4DF37C9B1D /* CloudSyncStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2D193AE0A0EB6D678E9964 /* CloudSyncStateStore.swift */; };
 		9400F25BFE4125223C0A4C94 /* CharacterDictionaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7895A9545C5B00692874ED5E /* CharacterDictionaryTests.swift */; };
 		95522E389CFF44DD09F42E1E /* CharacterLearningRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */; };
@@ -279,7 +279,6 @@
 		443AFD224DBEF6F890A10793 /* UserDataCloudSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataCloudSyncCoordinator.swift; sourceTree = "<group>"; };
 		4497D9BCA68975759C628228 /* CursorIndicatorGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorGeometryTests.swift; sourceTree = "<group>"; };
 		49C712FAE9F86D20F0D8DDA0 /* CursorIndicatorContentViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorContentViewTests.swift; sourceTree = "<group>"; };
-		4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongChineseColor.tiff; sourceTree = "<group>"; };
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
 		4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuffer.swift; sourceTree = "<group>"; };
@@ -347,6 +346,7 @@
 		AB7307E6AF04437571E89464 /* CandidateSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSessionTests.swift; sourceTree = "<group>"; };
 		AD9DDBF2EF58C7464499850B /* CompositionActivityStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionActivityStateTests.swift; sourceTree = "<group>"; };
 		ADA9A220B1F956AABB6E5674 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = InfoPlist.strings; sourceTree = "<group>"; };
+		AE9238A5BFDBC6C2322B1894 /* JiukongMenuIcon.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongMenuIcon.tiff; sourceTree = "<group>"; };
 		AF11A4B9A4441015056013E9 /* SQLiteDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteDatabase.swift; sourceTree = "<group>"; };
 		AF4EAFAF400FF306E24BD9EE /* PreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesStore.swift; sourceTree = "<group>"; };
 		B0E6F6ABBF2A1E20A1B2B7CE /* CloudPreferencesSyncCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudPreferencesSyncCoordinatorTests.swift; sourceTree = "<group>"; };
@@ -524,8 +524,8 @@
 		32605061876F4DEB36D9D8D0 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
-				4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */,
 				89A231FF829D0C1175F3EBAE /* JiukongEnglishAColor.tiff */,
+				AE9238A5BFDBC6C2322B1894 /* JiukongMenuIcon.tiff */,
 				6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */,
 				4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */,
 			);
@@ -1058,8 +1058,8 @@
 				174786A95696AC964BBB4E9C /* CNS11643_NOTICE.txt in Resources */,
 				B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */,
 				7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */,
-				8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */,
 				A983D01C34A682BE5E9A5CB5 /* JiukongEnglishAColor.tiff in Resources */,
+				93E7EF21C28754CAD881D955 /* JiukongMenuIcon.tiff in Resources */,
 				80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */,
 				28AB81FC9394CA3AC7667269 /* JiukongZhuyin.sqlite3 in Resources */,
 				FAA8AF736F00BE3C1D98B4B2 /* JiukongZhuyin.tiff in Resources */,

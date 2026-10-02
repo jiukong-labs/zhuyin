@@ -16,8 +16,25 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
   language, or a brief 中／A appears when it is off. Choosing a Jiukong mode
   from the input menu still sets the language in either style.
 
+### Changed
+
+- Show the Jiukong icon instead of the red 中 for the Chinese input mode in
+  the menu bar and input menu. With the "switch only within Jiukong (menu
+  icon stays)" style the menu-bar icon no longer follows Shift, so a fixed 中
+  read as a language indicator even while typing English. The English mode
+  keeps its blue A.
+
 ### Fixed
 
+- Offer phrases that start inside a provisional phrase in the candidate
+  chooser. Typing `ㄕˋ ㄨㄟˊ ㄒㄩㄢ` turned `ㄕˋ ㄨㄟˊ` into the provisional
+  「視為」, and because a later phrase may not take only part of one, the
+  saved 「維萱」 never appeared. Built-in and saved phrases that cross a
+  provisional phrase now follow the ordinary multi-reading phrases in the
+  chooser; choosing one returns each reading left in front of it to that
+  reading's first standalone character, giving 「是維萱」. They never become
+  the first candidate, so continued typing still keeps 「室友有沒有」, and
+  explicitly chosen phrases are still never split.
 - Return to Jiukong after a password field. A password field allows only
   ASCII-capable input sources, so macOS switches to one such as ABC; after a
   Chrome password field lost focus to another app, macOS left ABC selected.

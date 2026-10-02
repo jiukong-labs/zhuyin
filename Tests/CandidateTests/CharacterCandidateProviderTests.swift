@@ -488,6 +488,117 @@ final class CharacterCandidateProviderTests: XCTestCase {
         XCTAssertEqual(learning.requestedPhraseReadings, [readings])
     }
 
+    /// 是維萱: continued typing turns ㄕˋ ㄨㄟˊ into the provisional 「視為」.
+    /// The saved 「維萱」 must still be offered, yet even pinned it never
+    /// becomes the preferred candidate that continued typing would accept.
+    func testChooserOffersSavedPhraseAcrossProvisionalPhraseWithoutPreferringIt() throws {
+        let learning = LearningSpy()
+        let nameReadings = ["ㄨㄟˊ", "ㄒㄩㄢ"]
+        learning.phraseRecordsByPronunciation[nameReadings] = [
+            makePhraseRecord(
+                id: 40,
+                phrase: "維萱",
+                readings: nameReadings,
+                selectionCount: 4,
+                pinned: true
+            ),
+        ]
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        var buffer = CompositionBuffer()
+        for reading in ["ㄕˋ", "ㄨㄟˊ"] {
+            let session = try XCTUnwrap(CandidateSession(
+                pronunciation: reading,
+                candidates: try provider.candidates(
+                    for: reading,
+                    phraseQueries: buffer.phraseLookupQueries(
+                        appending: reading,
+                        minimumUnitCount: 1
+                    )
+                )
+            ))
+            XCTAssertTrue(buffer.acceptCandidate(
+                session.preferredCandidate,
+                reason: session.commitReason(for: .implicitPassThrough)
+            ))
+        }
+        XCTAssertEqual(buffer.text, "視為")
+        let standalone = try XCTUnwrap(provider.candidates(for: "ㄕˋ").first?.text)
+
+        let candidates = try provider.candidates(
+            for: "ㄒㄩㄢ",
+            phraseQueries: buffer.phraseLookupQueries(
+                appending: "ㄒㄩㄢ",
+                minimumUnitCount: 1
+            )
+        )
+
+        XCTAssertNil(candidates.first?.provisionalSplit)
+        XCTAssertEqual(candidates.firstIndex { $0.text == "維萱" }, 1)
+        let name = candidates[1]
+        XCTAssertTrue(name.isUserPhrase)
+        XCTAssertEqual(
+            name.provisionalSplit,
+            ProvisionalPhraseSplit(remainderTexts: [standalone])
+        )
+        XCTAssertTrue(buffer.acceptCandidate(name, reason: .number(2)))
+        XCTAssertEqual(buffer.text, standalone + "維萱")
+
+        let snapshot = try XCTUnwrap(buffer.takeCommitSnapshot())
+        for selection in snapshot.pendingCandidateSelections {
+            provider.recordCommittedSelection(
+                selection.candidate,
+                reason: selection.reason
+            )
+        }
+        XCTAssertEqual(learning.recordedPhraseSelections.map(\.phrase), ["維萱"])
+        XCTAssertEqual(
+            learning.recordedSelections,
+            [Selection(character: standalone, pronunciation: "ㄕˋ")]
+        )
+    }
+
+    func testChooserOffersBuiltInPhraseAcrossProvisionalPhraseAfterOrdinaryPhrases() throws {
+        let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
+        var buffer = CompositionBuffer()
+        buffer.append(text: "室", pronunciation: "ㄕˋ")
+        XCTAssertTrue(buffer.acceptCandidate(
+            Candidate(text: "室友", pronunciationSequence: ["ㄕˋ", "ㄧㄡˇ"], type: .phrase),
+            reason: .automaticContinuation
+        ))
+        XCTAssertTrue(buffer.acceptCandidate(
+            Candidate(text: "沒", pronunciation: "ㄇㄟˊ"),
+            reason: .automaticContinuation
+        ))
+        let standalone = try XCTUnwrap(provider.candidates(for: "ㄕˋ").first?.text)
+
+        let candidates = try provider.candidates(
+            for: "ㄧㄡˇ",
+            phraseQueries: buffer.phraseLookupQueries(
+                appending: "ㄧㄡˇ",
+                minimumUnitCount: 1
+            )
+        )
+
+        XCTAssertEqual(candidates.first?.text, "沒有")
+        XCTAssertNil(candidates.first?.provisionalSplit)
+        let splitIndex = try XCTUnwrap(
+            candidates.firstIndex { $0.provisionalSplit != nil }
+        )
+        XCTAssertEqual(splitIndex, 1)
+        XCTAssertEqual(candidates[splitIndex].text, "有沒有")
+        XCTAssertFalse(candidates[splitIndex].isUserPhrase)
+        XCTAssertEqual(
+            candidates[splitIndex].provisionalSplit,
+            ProvisionalPhraseSplit(remainderTexts: [standalone])
+        )
+        XCTAssertEqual(candidates.filter { $0.provisionalSplit != nil }.count, 1)
+        XCTAssertTrue(buffer.acceptCandidate(candidates[splitIndex], reason: .number(2)))
+        XCTAssertEqual(buffer.text, standalone + "有沒有")
+    }
+
     func testFirstPartyPhraseReplacesWrongAutomaticCharacterForTest() throws {
         let provider = CharacterCandidateProvider(dictionary: try makeDictionary())
         var buffer = CompositionBuffer()

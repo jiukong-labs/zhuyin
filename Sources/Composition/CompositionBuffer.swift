@@ -46,22 +46,30 @@ struct PendingCandidateSelection: Equatable {
 ///
 /// `existingSuffixUnitIDs` covers all readings except the final active one.
 /// Queries are emitted longest-first by `CompositionBuffer`.
+///
+/// `provisionalRemainderReadings` is set only when the query starts inside an
+/// automatically accepted provisional phrase. It holds that phrase's leading
+/// readings, which a matching candidate leaves behind as standalone
+/// characters.
 struct CompositionPhraseQuery: Equatable {
     let pronunciationSequence: [String]
     let existingSuffixUnitIDs: [UUID]
     let existingOutputPattern: PhraseOutputPattern?
     let existingPunctuationText: String
+    let provisionalRemainderReadings: [String]?
 
     init(
         pronunciationSequence: [String],
         existingSuffixUnitIDs: [UUID],
         existingOutputPattern: PhraseOutputPattern? = nil,
-        existingPunctuationText: String = ""
+        existingPunctuationText: String = "",
+        provisionalRemainderReadings: [String]? = nil
     ) {
         self.pronunciationSequence = pronunciationSequence
         self.existingSuffixUnitIDs = existingSuffixUnitIDs
         self.existingOutputPattern = existingOutputPattern
         self.existingPunctuationText = existingPunctuationText
+        self.provisionalRemainderReadings = provisionalRemainderReadings
     }
 
     var unitCount: Int {
@@ -574,36 +582,21 @@ struct CompositionBuffer: Equatable {
               let focusedIndex = units.firstIndex(where: { $0.id == unitID }),
               units[focusedIndex].kind == .reading,
               units[focusedIndex].pronunciation == readings.last,
-              let replacementUnits = phraseUnits(for: candidate) else {
-            return []
-        }
-
-        let existingReadings = Array(readings.dropLast())
-        let prefix = suffixUnits(
-            endingAt: focusedIndex,
-            readingCount: existingReadings.count
-        )
-        guard prefix.filter({ $0.kind == .reading }).map(\.pronunciation)
-                == existingReadings,
-              punctuationMatchesCandidatePrefix(
-                  prefix,
-                  candidate: candidate
+              let replacementUnits = phraseUnits(for: candidate),
+              let span = phraseReplacementSpan(
+                  for: candidate,
+                  endingAt: focusedIndex
               ) else {
             return []
         }
 
-        let removalRange = (focusedIndex - prefix.count) ..< (focusedIndex + 1)
-        units.removeSubrange(removalRange)
-        pruneInvalidPendingSelections()
-        units.insert(contentsOf: replacementUnits, at: removalRange.lowerBound)
-        pendingCandidateSelections.append(
-            PendingCandidateSelection(
-                candidate: candidate,
-                reason: reason,
-                coveredUnitIDs: replacementUnits.map(\.id)
-            )
+        replace(
+            span.startIndex ..< (focusedIndex + 1),
+            with: span,
+            phraseUnits: replacementUnits,
+            candidate: candidate,
+            reason: reason
         )
-        clearSelection()
         return replacementUnits
     }
 
@@ -624,49 +617,20 @@ struct CompositionBuffer: Equatable {
     /// emitted so punctuated shortcuts such as 「嗎？」 can participate.
     ///
     /// Explicitly accepted phrases bound the context. Automatically accepted
-    /// previews may extend into longer phrases, but a suffix cannot start
-    /// inside an existing phrase and consume only part of it.
+    /// previews may extend into longer phrases. A suffix that starts inside
+    /// one and would consume only part of it is emitted as a split query
+    /// (`provisionalRemainderReadings`), which only the chooser offers.
     func phraseLookupQueries(
         appending pronunciation: String,
         minimumUnitCount: Int = Self.minimumPhraseUnitCount,
         maximumUnitCount: Int = Self.maximumPhraseUnitCount
     ) -> [CompositionPhraseQuery] {
-        guard !pronunciation.isEmpty,
-              minimumUnitCount >= 1,
-              maximumUnitCount >= minimumUnitCount else {
-            return []
-        }
-
-        let contextStart = unlockedContextStartIndex(before: units.endIndex)
-        let precedingReadingUnits = units[contextStart...]
-            .filter { $0.kind == .reading }
-        let longestCount = min(maximumUnitCount, precedingReadingUnits.count + 1)
-        guard longestCount >= minimumUnitCount else {
-            return []
-        }
-
-        return stride(
-            from: longestCount,
-            through: minimumUnitCount,
-            by: -1
-        ).compactMap { unitCount in
-            let existingUnitCount = unitCount - 1
-            let suffix = suffixUnits(
-                endingAt: units.endIndex,
-                readingCount: existingUnitCount
-            )
-            let suffixReadings = suffix.filter { $0.kind == .reading }
-            guard suffixReadings.count == existingUnitCount else {
-                return nil
-            }
-            return CompositionPhraseQuery(
-                pronunciationSequence: suffixReadings.map(\.pronunciation)
-                    + [pronunciation],
-                existingSuffixUnitIDs: suffix.map(\.id),
-                existingOutputPattern: punctuationPattern(for: suffix),
-                existingPunctuationText: punctuationText(in: suffix)
-            )
-        }
+        phraseLookupQueries(
+            appending: pronunciation,
+            endingAt: units.endIndex,
+            minimumUnitCount: minimumUnitCount,
+            maximumUnitCount: maximumUnitCount
+        )
     }
 
     /// Like `phraseLookupQueries(appending:)`, but scoped to the context that
@@ -682,17 +646,33 @@ struct CompositionBuffer: Equatable {
         minimumUnitCount: Int = Self.minimumPhraseUnitCount,
         maximumUnitCount: Int = Self.maximumPhraseUnitCount
     ) -> [CompositionPhraseQuery] {
-        guard !pronunciation.isEmpty,
-              minimumUnitCount >= 1,
-              maximumUnitCount >= minimumUnitCount,
-              let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
+        guard let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID })
         else {
             return []
         }
+        return phraseLookupQueries(
+            appending: pronunciation,
+            endingAt: anchorIndex,
+            minimumUnitCount: minimumUnitCount,
+            maximumUnitCount: maximumUnitCount
+        )
+    }
 
-        let contextStart = unlockedContextStartIndex(before: anchorIndex)
-        let context = units[contextStart..<anchorIndex]
-        let precedingReadingUnits = context.filter { $0.kind == .reading }
+    private func phraseLookupQueries(
+        appending pronunciation: String,
+        endingAt endIndex: Int,
+        minimumUnitCount: Int,
+        maximumUnitCount: Int
+    ) -> [CompositionPhraseQuery] {
+        guard !pronunciation.isEmpty,
+              minimumUnitCount >= 1,
+              maximumUnitCount >= minimumUnitCount else {
+            return []
+        }
+
+        let contextStart = unlockedContextStartIndex(before: endIndex)
+        let precedingReadingUnits = units[contextStart..<endIndex]
+            .filter { $0.kind == .reading }
         let longestCount = min(maximumUnitCount, precedingReadingUnits.count + 1)
         guard longestCount >= minimumUnitCount else {
             return []
@@ -704,20 +684,35 @@ struct CompositionBuffer: Equatable {
             by: -1
         ).compactMap { unitCount in
             let existingUnitCount = unitCount - 1
-            let contextSuffix = suffixUnits(
-                endingAt: anchorIndex,
+            let suffix: ArraySlice<CompositionUnit>
+            let remainderReadings: [String]?
+            let ordinarySuffix = suffixUnits(
+                endingAt: endIndex,
                 readingCount: existingUnitCount
             )
-            let suffixReadings = contextSuffix.filter { $0.kind == .reading }
-            guard suffixReadings.count == existingUnitCount else {
+            if ordinarySuffix.filter({ $0.kind == .reading }).count
+                == existingUnitCount {
+                suffix = ordinarySuffix
+                remainderReadings = nil
+            } else if let split = provisionalSplitSuffix(
+                endingAt: endIndex,
+                readingCount: existingUnitCount
+            ) {
+                suffix = split.suffix
+                remainderReadings = split.remainder
+                    .filter { $0.kind == .reading }
+                    .map(\.pronunciation)
+            } else {
                 return nil
             }
             return CompositionPhraseQuery(
-                pronunciationSequence: suffixReadings.map(\.pronunciation)
-                    + [pronunciation],
-                existingSuffixUnitIDs: contextSuffix.map(\.id),
-                existingOutputPattern: punctuationPattern(for: contextSuffix),
-                existingPunctuationText: punctuationText(in: contextSuffix)
+                pronunciationSequence: suffix
+                    .filter { $0.kind == .reading }
+                    .map(\.pronunciation) + [pronunciation],
+                existingSuffixUnitIDs: suffix.map(\.id),
+                existingOutputPattern: punctuationPattern(for: suffix),
+                existingPunctuationText: punctuationText(in: suffix),
+                provisionalRemainderReadings: remainderReadings
             )
         }
     }
@@ -982,37 +977,21 @@ struct CompositionBuffer: Equatable {
               (minimumReadingCount ... Self.maximumPhraseUnitCount)
                 .contains(readings.count),
               readings.allSatisfy({ !$0.isEmpty }),
-              let replacementUnits = phraseUnits(for: candidate) else {
-            return false
-        }
-
-        let existingReadings = Array(readings.dropLast())
-        let suffix = suffixUnits(
-            endingAt: units.endIndex,
-            readingCount: existingReadings.count
-        )
-        guard suffix.filter({ $0.kind == .reading }).map(\.pronunciation)
-                == existingReadings,
-              punctuationMatchesCandidatePrefix(
-                  suffix,
-                  candidate: candidate
+              let replacementUnits = phraseUnits(for: candidate),
+              let span = phraseReplacementSpan(
+                  for: candidate,
+                  endingAt: units.endIndex
               ) else {
             return false
         }
 
-        if !suffix.isEmpty {
-            units.removeLast(suffix.count)
-        }
-        pruneInvalidPendingSelections()
-        units.append(contentsOf: replacementUnits)
-        pendingCandidateSelections.append(
-            PendingCandidateSelection(
-                candidate: candidate,
-                reason: reason,
-                coveredUnitIDs: replacementUnits.map(\.id)
-            )
+        replace(
+            span.startIndex ..< units.endIndex,
+            with: span,
+            phraseUnits: replacementUnits,
+            candidate: candidate,
+            reason: reason
         )
-        clearSelection()
         return true
     }
 
@@ -1060,38 +1039,134 @@ struct CompositionBuffer: Equatable {
                 .contains(readings.count),
               readings.allSatisfy({ !$0.isEmpty }),
               let anchorIndex = units.firstIndex(where: { $0.id == anchorUnitID }),
-              let replacementUnits = phraseUnits(for: candidate)
+              let replacementUnits = phraseUnits(for: candidate),
+              let span = phraseReplacementSpan(
+                  for: candidate,
+                  endingAt: anchorIndex
+              )
         else {
             return []
         }
 
-        let existingReadings = Array(readings.dropLast())
-        let suffix = suffixUnits(
-            endingAt: anchorIndex,
-            readingCount: existingReadings.count
+        replace(
+            span.startIndex ..< anchorIndex,
+            with: span,
+            phraseUnits: replacementUnits,
+            candidate: candidate,
+            reason: reason
         )
-        guard suffix.filter({ $0.kind == .reading }).map(\.pronunciation)
+        return replacementUnits
+    }
+
+    private struct PhraseReplacementSpan {
+        let startIndex: Int
+        let remainderUnits: [CompositionUnit]
+        let remainderSelections: [PendingCandidateSelection]
+    }
+
+    /// The existing units a phrase candidate takes over when its final
+    /// reading lands at `endIndex`.
+    ///
+    /// An ordinary candidate absorbs exactly its leading readings. A split
+    /// candidate also takes the provisional phrase it starts inside: that
+    /// phrase's leading readings become standalone characters again, keeping
+    /// their unit identities like any other single-character revision.
+    private func phraseReplacementSpan(
+        for candidate: Candidate,
+        endingAt endIndex: Int
+    ) -> PhraseReplacementSpan? {
+        let existingReadings = Array(candidate.pronunciationSequence.dropLast())
+        let remainder: ArraySlice<CompositionUnit>
+        let prefix: ArraySlice<CompositionUnit>
+        if candidate.provisionalSplit != nil {
+            guard let split = provisionalSplitSuffix(
+                endingAt: endIndex,
+                readingCount: existingReadings.count
+            ) else {
+                return nil
+            }
+            remainder = split.remainder
+            prefix = split.suffix
+        } else {
+            prefix = suffixUnits(
+                endingAt: endIndex,
+                readingCount: existingReadings.count
+            )
+            remainder = units[prefix.startIndex ..< prefix.startIndex]
+        }
+        guard prefix.filter({ $0.kind == .reading }).map(\.pronunciation)
                 == existingReadings,
               punctuationMatchesCandidatePrefix(
-                  suffix,
+                  prefix,
                   candidate: candidate
               ) else {
-            return []
+            return nil
         }
 
-        let removalRange = (anchorIndex - suffix.count) ..< anchorIndex
+        let remainderTexts = candidate.provisionalSplit?.remainderTexts ?? []
+        guard remainder.filter({ $0.kind == .reading }).count
+                == remainderTexts.count,
+              remainderTexts.allSatisfy({ !$0.isEmpty }) else {
+            return nil
+        }
+        var nextText = remainderTexts.makeIterator()
+        var remainderUnits: [CompositionUnit] = []
+        var remainderSelections: [PendingCandidateSelection] = []
+        for unit in remainder {
+            guard unit.kind == .reading, let text = nextText.next() else {
+                remainderUnits.append(unit)
+                continue
+            }
+            let rebuiltUnit = CompositionUnit(
+                id: unit.id,
+                text: text,
+                pronunciation: unit.pronunciation
+            )
+            remainderUnits.append(rebuiltUnit)
+            // Exactly what continued typing records for a standalone
+            // character, as if the provisional phrase had never formed.
+            remainderSelections.append(
+                PendingCandidateSelection(
+                    candidate: Candidate(
+                        text: text,
+                        pronunciation: unit.pronunciation
+                    ),
+                    reason: .automaticContinuation,
+                    coveredUnitIDs: [unit.id]
+                )
+            )
+        }
+        return PhraseReplacementSpan(
+            startIndex: remainder.startIndex,
+            remainderUnits: remainderUnits,
+            remainderSelections: remainderSelections
+        )
+    }
+
+    private mutating func replace(
+        _ removalRange: Range<Int>,
+        with span: PhraseReplacementSpan,
+        phraseUnits: [CompositionUnit],
+        candidate: Candidate,
+        reason: CandidateCommitReason
+    ) {
         units.removeSubrange(removalRange)
         pruneInvalidPendingSelections()
-        units.insert(contentsOf: replacementUnits, at: removalRange.lowerBound)
+        units.insert(
+            contentsOf: span.remainderUnits + phraseUnits,
+            at: removalRange.lowerBound
+        )
+        pendingCandidateSelections.append(
+            contentsOf: span.remainderSelections
+        )
         pendingCandidateSelections.append(
             PendingCandidateSelection(
                 candidate: candidate,
                 reason: reason,
-                coveredUnitIDs: replacementUnits.map(\.id)
+                coveredUnitIDs: phraseUnits.map(\.id)
             )
         )
         clearSelection()
-        return replacementUnits
     }
 
     private func isValid(_ unit: CompositionUnit) -> Bool {
@@ -1160,8 +1235,51 @@ struct CompositionBuffer: Equatable {
         endingAt endIndex: Int,
         readingCount: Int
     ) -> ArraySlice<CompositionUnit> {
-        guard readingCount > 0, endIndex > units.startIndex else {
+        // A longer match may absorb an entire automatic preview (形式 →
+        // 行事曆), but must not steal its trailing characters (室友 → 有沒有).
+        // Only a split candidate from the chooser may; see
+        // `provisionalSplitSuffix`.
+        guard let startIndex = suffixStartIndex(
+            endingAt: endIndex,
+            readingCount: readingCount
+        ), acceptedPhraseCut(at: startIndex, endingAt: endIndex) == nil else {
             return units[endIndex ..< endIndex]
+        }
+        return units[startIndex ..< endIndex]
+    }
+
+    /// A suffix that starts inside an automatically accepted provisional
+    /// phrase, and the leading part of that phrase it would leave behind.
+    /// Explicitly chosen phrases are never split.
+    private func provisionalSplitSuffix(
+        endingAt endIndex: Int,
+        readingCount: Int
+    ) -> (
+        remainder: ArraySlice<CompositionUnit>,
+        suffix: ArraySlice<CompositionUnit>
+    )? {
+        guard let startIndex = suffixStartIndex(
+            endingAt: endIndex,
+            readingCount: readingCount
+        ),
+              let cut = acceptedPhraseCut(at: startIndex, endingAt: endIndex),
+              cut.allowsExtension else {
+            return nil
+        }
+        return (
+            units[cut.range.lowerBound ..< startIndex],
+            units[startIndex ..< endIndex]
+        )
+    }
+
+    /// Where a suffix holding `readingCount` readings and ending at
+    /// `endIndex` starts, without regard to the phrases it may cut into.
+    private func suffixStartIndex(
+        endingAt endIndex: Int,
+        readingCount: Int
+    ) -> Int? {
+        guard readingCount > 0 else {
+            return endIndex
         }
         let lowerLimit = unlockedContextStartIndex(before: endIndex)
         var foundReadings = 0
@@ -1172,19 +1290,20 @@ struct CompositionBuffer: Equatable {
                 foundReadings += 1
             }
         }
-        guard foundReadings == readingCount else {
-            return units[endIndex ..< endIndex]
-        }
-        // A longer match may absorb an entire automatic preview (形式 →
-        // 行事曆), but must not steal its trailing characters (室友 → 有沒有).
-        guard !acceptedPhraseRanges().contains(where: {
+        return foundReadings == readingCount ? startIndex : nil
+    }
+
+    /// The accepted phrase that a suffix starting at `startIndex` would cut
+    /// into, keeping only that phrase's trailing units.
+    private func acceptedPhraseCut(
+        at startIndex: Int,
+        endingAt endIndex: Int
+    ) -> (range: Range<Int>, allowsExtension: Bool)? {
+        acceptedPhraseRanges().first {
             $0.range.lowerBound < startIndex
                 && startIndex < $0.range.upperBound
                 && $0.range.upperBound <= endIndex
-        }) else {
-            return units[endIndex ..< endIndex]
         }
-        return units[startIndex ..< endIndex]
     }
 
     private func outputPattern(

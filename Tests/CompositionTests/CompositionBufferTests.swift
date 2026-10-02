@@ -313,7 +313,12 @@ final class CompositionBufferTests: XCTestCase {
             CompositionPhraseQuery(
                 pronunciationSequence: calendar.pronunciationSequence,
                 existingSuffixUnitIDs: provisionalIDs
-            )
+            ),
+            CompositionPhraseQuery(
+                pronunciationSequence: ["ㄕˋ", "ㄌㄧˋ"],
+                existingSuffixUnitIDs: [provisionalIDs[1]],
+                provisionalRemainderReadings: ["ㄒㄧㄥˊ"]
+            ),
         ])
         XCTAssertEqual(
             CompositionPresentation.make(buffer: buffer, previewing: calendar)?.text,
@@ -344,9 +349,10 @@ final class CompositionBufferTests: XCTestCase {
             $0.pronunciationSequence == phrase.pronunciationSequence
                 && $0.existingSuffixUnitIDs == buffer.units.suffix(2).map(\.id)
         })
-        XCTAssertFalse(queries.contains {
+        // Starting at 「友」 is only ever a chooser split query.
+        XCTAssertTrue(queries.filter {
             $0.existingSuffixUnitIDs.first == roommateIDs.last
-        })
+        }.allSatisfy { $0.provisionalRemainderReadings == ["ㄕˋ"] })
         XCTAssertTrue(buffer.acceptCandidate(phrase, reason: .automaticContinuation))
         XCTAssertEqual(buffer.text, "室友有沒有")
         XCTAssertEqual(buffer.units.prefix(2).map(\.id), roommateIDs)
@@ -378,13 +384,18 @@ final class CompositionBufferTests: XCTestCase {
         let roommateIDs = buffer.units.map(\.id)
         buffer.append(text: "沒", pronunciation: "ㄇㄟˊ")
         let intrudingPhrase = phraseCandidate("有沒有", readings: ["ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"])
-        XCTAssertEqual(buffer.phraseLookupQueries(appending: "ㄧㄡˇ").map(\.pronunciationSequence), [
+        let queries = buffer.phraseLookupQueries(appending: "ㄧㄡˇ")
+        XCTAssertEqual(queries.filter { $0.provisionalRemainderReadings == nil }.map(\.pronunciationSequence), [
             ["ㄕˋ", "ㄧㄡˇ", "ㄇㄟˊ", "ㄧㄡˇ"], ["ㄇㄟˊ", "ㄧㄡˇ"]
+        ])
+        XCTAssertEqual(queries.filter { $0.provisionalRemainderReadings != nil }.map(\.pronunciationSequence), [
+            intrudingPhrase.pronunciationSequence
         ])
         XCTAssertFalse(buffer.acceptCandidate(intrudingPhrase, reason: .automaticContinuation))
         let anchor = try XCTUnwrap(buffer.append(text: "有", pronunciation: "ㄧㄡˇ"))
         XCTAssertFalse(buffer.phraseLookupQueries(appending: "ㄧㄡˇ", before: anchor.id).contains {
             $0.pronunciationSequence == intrudingPhrase.pronunciationSequence
+                && $0.provisionalRemainderReadings == nil
         })
         XCTAssertTrue(buffer.insertCandidate(intrudingPhrase, before: anchor.id, reason: .automaticContinuation).isEmpty)
         XCTAssertTrue(buffer.replaceRevisionSuffix(endingAt: anchor.id, candidate: intrudingPhrase, reason: .returnKey).isEmpty)
@@ -405,6 +416,7 @@ final class CompositionBufferTests: XCTestCase {
             let trailing = try XCTUnwrap(buffer.append(text: "文", pronunciation: "ㄨㄣˊ"))
             let calendar = phraseCandidate("行事曆", readings: ["ㄒㄧㄥˊ", "ㄕˋ", "ㄌㄧˋ"])
             let queries = buffer.phraseLookupQueries(appending: "ㄌㄧˋ", before: anchor.id)
+                .filter { $0.provisionalRemainderReadings == nil }
             XCTAssertEqual(queries.map(\.pronunciationSequence), [calendar.pronunciationSequence])
             let replacements: [CompositionUnit]
             if revising {
@@ -417,6 +429,144 @@ final class CompositionBufferTests: XCTestCase {
             XCTAssertEqual(buffer.text, revising ? "行事曆文" : "行事曆中文")
             XCTAssertEqual(buffer.units.last, trailing)
             XCTAssertEqual(buffer.pendingCandidateSelections.map { $0.candidate.text }, ["行事曆"])
+        }
+    }
+
+    /// 是維萱: ㄕˋ ㄨㄟˊ automatically becomes the provisional 「視為」, so the
+    /// saved 「維萱」 could never be reached. The chooser's split candidate
+    /// takes 「為」 and returns 「視」 to the standalone 「是」.
+    func testSplitCandidateTakesTrailingReadingsOfProvisionalPhrase() throws {
+        var buffer = CompositionBuffer()
+        XCTAssertTrue(buffer.acceptCandidate(
+            characterCandidate("是", reading: "ㄕˋ"), reason: .automaticContinuation
+        ))
+        XCTAssertTrue(buffer.acceptCandidate(
+            phraseCandidate("視為", readings: ["ㄕˋ", "ㄨㄟˊ"]), reason: .automaticContinuation
+        ))
+        let provisionalIDs = buffer.units.map(\.id)
+        let queries = buffer.phraseLookupQueries(appending: "ㄒㄩㄢ", minimumUnitCount: 1)
+        XCTAssertEqual(queries, [
+            CompositionPhraseQuery(
+                pronunciationSequence: ["ㄕˋ", "ㄨㄟˊ", "ㄒㄩㄢ"],
+                existingSuffixUnitIDs: provisionalIDs
+            ),
+            CompositionPhraseQuery(
+                pronunciationSequence: ["ㄨㄟˊ", "ㄒㄩㄢ"],
+                existingSuffixUnitIDs: [provisionalIDs[1]],
+                provisionalRemainderReadings: ["ㄕˋ"]
+            ),
+            CompositionPhraseQuery(
+                pronunciationSequence: ["ㄒㄩㄢ"],
+                existingSuffixUnitIDs: []
+            ),
+        ])
+
+        let name = splitPhraseCandidate(
+            "維萱", readings: ["ㄨㄟˊ", "ㄒㄩㄢ"], remainderTexts: ["是"]
+        )
+        XCTAssertEqual(
+            CompositionPresentation.make(buffer: buffer, previewing: name)?.text,
+            "是維萱"
+        )
+        XCTAssertEqual(buffer.text, "視為")
+        // The same phrase without the split marker still may not cut in.
+        XCTAssertFalse(buffer.acceptCandidate(
+            phraseCandidate("維萱", readings: ["ㄨㄟˊ", "ㄒㄩㄢ"]), reason: .number(2)
+        ))
+        XCTAssertTrue(buffer.acceptCandidate(name, reason: .number(2)))
+
+        XCTAssertEqual(buffer.text, "是維萱")
+        XCTAssertEqual(buffer.pronunciationSequence, ["ㄕˋ", "ㄨㄟˊ", "ㄒㄩㄢ"])
+        XCTAssertEqual(buffer.units.first?.id, provisionalIDs[0])
+        let snapshot = try XCTUnwrap(buffer.takeCommitSnapshot())
+        XCTAssertEqual(snapshot.pendingCandidateSelections, [
+            PendingCandidateSelection(
+                candidate: characterCandidate("是", reading: "ㄕˋ"),
+                reason: .automaticContinuation,
+                coveredUnitIDs: [provisionalIDs[0]]
+            ),
+            PendingCandidateSelection(
+                candidate: name,
+                reason: .number(2),
+                coveredUnitIDs: snapshot.units.suffix(2).map(\.id)
+            ),
+        ])
+    }
+
+    func testSplitCandidateRebuildsEveryLeadingReadingAndProtectsItsChoice() {
+        var buffer = CompositionBuffer()
+        buffer.append(text: "不", pronunciation: "ㄅㄨˋ")
+        buffer.append(text: "得", pronunciation: "ㄉㄜˊ")
+        XCTAssertTrue(buffer.acceptCandidate(
+            phraseCandidate("不得了", readings: ["ㄅㄨˋ", "ㄉㄜˊ", "ㄌㄧㄠˇ"]),
+            reason: .automaticContinuation
+        ))
+        let understand = splitPhraseCandidate(
+            "了解", readings: ["ㄌㄧㄠˇ", "ㄐㄧㄝˇ"], remainderTexts: ["布", "德"]
+        )
+        XCTAssertFalse(buffer.acceptCandidate(
+            splitPhraseCandidate("了解", readings: ["ㄌㄧㄠˇ", "ㄐㄧㄝˇ"], remainderTexts: ["布"]),
+            reason: .mouse
+        ))
+        XCTAssertTrue(buffer.acceptCandidate(understand, reason: .mouse))
+        XCTAssertEqual(buffer.text, "布德了解")
+        XCTAssertEqual(
+            buffer.pendingCandidateSelections.map(\.coveredUnitIDs.count),
+            [1, 1, 2]
+        )
+
+        // The explicitly chosen split is a hard boundary like any other choice.
+        XCTAssertTrue(buffer.phraseLookupQueries(appending: "ㄕˋ").isEmpty)
+    }
+
+    func testExplicitPhraseChoiceIsNeverSplit() throws {
+        var buffer = CompositionBuffer()
+        buffer.append(text: "是", pronunciation: "ㄕˋ")
+        XCTAssertTrue(buffer.acceptCandidate(
+            phraseCandidate("視為", readings: ["ㄕˋ", "ㄨㄟˊ"]), reason: .number(1)
+        ))
+        let name = splitPhraseCandidate(
+            "維萱", readings: ["ㄨㄟˊ", "ㄒㄩㄢ"], remainderTexts: ["是"]
+        )
+        XCTAssertFalse(buffer.phraseLookupQueries(appending: "ㄒㄩㄢ", minimumUnitCount: 1).contains {
+            $0.provisionalRemainderReadings != nil
+        })
+        XCTAssertFalse(buffer.acceptCandidate(name, reason: .number(2)))
+        XCTAssertEqual(buffer.text, "視為")
+    }
+
+    func testSplitCandidateWorksAtInsertionAndRevisionCaret() throws {
+        for revising in [false, true] {
+            var buffer = CompositionBuffer()
+            buffer.append(text: "是", pronunciation: "ㄕˋ")
+            XCTAssertTrue(buffer.acceptCandidate(
+                phraseCandidate("視為", readings: ["ㄕˋ", "ㄨㄟˊ"]), reason: .automaticContinuation
+            ))
+            let anchor = try XCTUnwrap(buffer.append(
+                text: revising ? "萱" : "了", pronunciation: revising ? "ㄒㄩㄢ" : "ㄌㄜ˙"
+            ))
+            let trailing = try XCTUnwrap(buffer.append(text: "好", pronunciation: "ㄏㄠˇ"))
+            let name = splitPhraseCandidate(
+                "維萱", readings: ["ㄨㄟˊ", "ㄒㄩㄢ"], remainderTexts: ["是"]
+            )
+            XCTAssertTrue(buffer.phraseLookupQueries(appending: "ㄒㄩㄢ", before: anchor.id).contains {
+                $0.pronunciationSequence == name.pronunciationSequence
+                    && $0.provisionalRemainderReadings == ["ㄕˋ"]
+            })
+            let replacements: [CompositionUnit]
+            if revising {
+                replacements = buffer.replaceRevisionSuffix(endingAt: anchor.id, candidate: name, reason: .number(2))
+            } else {
+                XCTAssertEqual(
+                    CompositionPresentation.make(buffer: buffer, previewing: name, insertionAnchorUnitID: anchor.id)?.text,
+                    "是維萱了好"
+                )
+                replacements = buffer.insertCandidate(name, before: anchor.id, reason: .number(2))
+            }
+            XCTAssertEqual(replacements.map(\.text).joined(), "維萱")
+            XCTAssertEqual(buffer.text, revising ? "是維萱好" : "是維萱了好")
+            XCTAssertEqual(buffer.units.last, trailing)
+            XCTAssertEqual(buffer.pendingCandidateSelections.map { $0.candidate.text }, ["是", "維萱"])
         }
     }
 
@@ -1266,6 +1416,21 @@ final class CompositionBufferTests: XCTestCase {
             text: text,
             pronunciationSequence: readings,
             type: .phrase
+        )
+    }
+
+    private func splitPhraseCandidate(
+        _ text: String,
+        readings: [String],
+        remainderTexts: [String]
+    ) -> Candidate {
+        Candidate(
+            text: text,
+            pronunciationSequence: readings,
+            type: .phrase,
+            provisionalSplit: ProvisionalPhraseSplit(
+                remainderTexts: remainderTexts
+            )
         )
     }
 }

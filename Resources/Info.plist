@@ -39,9 +39,9 @@
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>JiukongChineseColor.tiff</string>
+				<string>JiukongMenuIcon.tiff</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>JiukongChineseColor.tiff</string>
+				<string>JiukongMenuIcon.tiff</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
 				<key>tsInputModeScriptKey</key>
@@ -89,12 +89,12 @@
 	<string>Copyright © 2026 oldming101.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>TISIconIsTemplate</key>
+	<false/>
 	<key>TISInputSourceID</key>
 	<string>tw.idv.jiukong.inputmethod.zhuyin</string>
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hant</string>
-	<key>TISIconIsTemplate</key>
-	<false/>
 	<key>tsInputMethodCharacterRepertoireKey</key>
 	<array>
 		<string>Hant</string>

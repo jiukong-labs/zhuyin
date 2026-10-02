@@ -80,10 +80,32 @@ final class CharacterCandidateProvider {
         )
         let displayableCandidates = (phraseCandidates + characterCandidates)
             .filter { isCandidateDisplayable($0.text) }
-        return ranker.ranked(
-            displayableCandidates,
-            at: now()
+        let rankedAt = now()
+        var ordinaryCandidates = ranker.ranked(
+            displayableCandidates.filter { $0.provisionalSplit == nil },
+            at: rankedAt
         )
+        let splitCandidates = ranker.ranked(
+            displayableCandidates.filter { $0.provisionalSplit != nil },
+            at: rankedAt
+        )
+        guard !ordinaryCandidates.isEmpty else {
+            return []
+        }
+
+        // A phrase that splits a provisional phrase is only for the chooser.
+        // It never becomes the first candidate, so continued typing keeps the
+        // provisional phrase exactly as before. It follows the ordinary
+        // multi-reading phrases and precedes the remaining characters, which
+        // keeps it near the front of the chooser.
+        let ordinaryPhraseEnd = ordinaryCandidates.lastIndex {
+            $0.type == .phrase && $0.pronunciationSequence.count > 1
+        }.map { $0 + 1 } ?? 0
+        ordinaryCandidates.insert(
+            contentsOf: splitCandidates,
+            at: max(1, ordinaryPhraseEnd)
+        )
+        return ordinaryCandidates
     }
 
     private func customReadingCandidates(
@@ -354,6 +376,7 @@ final class CharacterCandidateProvider {
     ) throws -> [Candidate] {
         var seenQueries: Set<[String]> = []
         var seenCandidates: Set<CandidateID> = []
+        var standaloneTexts: [String: String] = [:]
         var result: [Candidate] = []
         for query in queries {
             let readings = query.pronunciationSequence
@@ -362,6 +385,29 @@ final class CharacterCandidateProvider {
                     .contains(readings.count),
                   seenQueries.insert(readings).inserted else {
                 continue
+            }
+
+            // A split leaves the provisional phrase's leading readings
+            // behind as the character each reading would show on its own.
+            var provisionalSplit: ProvisionalPhraseSplit?
+            if let remainderReadings = query.provisionalRemainderReadings {
+                var remainderTexts: [String] = []
+                for reading in remainderReadings {
+                    if standaloneTexts[reading] == nil {
+                        standaloneTexts[reading] = try candidates(for: reading)
+                            .first?.text
+                    }
+                    guard let text = standaloneTexts[reading] else {
+                        break
+                    }
+                    remainderTexts.append(text)
+                }
+                guard remainderTexts.count == remainderReadings.count else {
+                    continue
+                }
+                provisionalSplit = ProvisionalPhraseSplit(
+                    remainderTexts: remainderTexts
+                )
             }
 
             // A removed built-in phrase is filtered out of the dictionary's
@@ -409,7 +455,8 @@ final class CharacterCandidateProvider {
                     lastUsed: record.lastUsedAt,
                     pinned: record.pinned,
                     isUserPhrase: true,
-                    outputPattern: record.outputPattern
+                    outputPattern: record.outputPattern,
+                    provisionalSplit: provisionalSplit
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue
@@ -435,7 +482,8 @@ final class CharacterCandidateProvider {
                     baseFrequency: ranker.frequencyBonus(
                         selectionCount: entry.defaultSelectionCount
                     ),
-                    outputPattern: entry.outputPattern
+                    outputPattern: entry.outputPattern,
+                    provisionalSplit: provisionalSplit
                 )
                 guard seenCandidates.insert(candidate.id).inserted else {
                     continue

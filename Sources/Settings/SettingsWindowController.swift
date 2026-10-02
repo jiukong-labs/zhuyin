@@ -219,7 +219,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
         let shiftSwitchStyleLabel = NSTextField(
             wrappingLabelWithString:
-                "切換輸入模式：在久空的「中」與「A」兩個輸入模式之間切換，選單列圖示跟著變。Chrome、VS Code 等 App 偶爾會在切到中文後，把最前面幾個鍵當英文送出。\n只在久空內部切換：輸入模式停在「中」，只改變久空內部的中英狀態，不會觸發這個問題；選單列圖示不跟著變，請看游標指示器（未開啟時會短暫顯示中或 A）。兩種方式都不會切到 macOS 內建的 ABC。"
+                "切換輸入模式：在「久空中文」與「久空英文」兩個輸入模式之間切換，選單列圖示跟著變。Chrome、VS Code 等 App 偶爾會在切到中文後，把最前面幾個鍵當英文送出。\n只在久空內部切換：輸入模式停在「久空中文」，只改變久空內部的中英狀態，不會觸發這個問題；選單列圖示不跟著變，請看游標指示器（未開啟時會短暫顯示中或 A）。兩種方式都不會切到 macOS 內建的 ABC。"
         )
         shiftSwitchStyleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         shiftSwitchStyleLabel.textColor = .secondaryLabelColor

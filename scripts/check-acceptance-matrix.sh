@@ -28,6 +28,7 @@ typeset -a required=(
   builtin-phrase
   provisional-phrase-extension
   phrase-homophone-boundary
+  provisional-phrase-split
   sentence
   revision-arrows
   revision-candidate-rows

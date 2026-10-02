@@ -360,6 +360,23 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "室友有沒有"
     ),
+    // ㄕˋ ㄧㄡˇ ㄇㄟˊ ㄧㄡˇ still previews 室友沒有, but the chooser offers
+    // 有沒有 in slot 2 across the provisional 室友, whose 室 returns to 是.
+    "provisional-phrase-split": AcceptanceScript(
+        probe: standardProbe,
+        keystrokes: [
+            Keystroke(kVK_ANSI_G), Keystroke(kVK_ANSI_4),
+            Keystroke(kVK_ANSI_U), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_ANSI_A), Keystroke(kVK_ANSI_O),
+            Keystroke(kVK_ANSI_6),
+            Keystroke(kVK_ANSI_U), Keystroke(kVK_ANSI_Period),
+            Keystroke(kVK_ANSI_3),
+            Keystroke(kVK_DownArrow),
+            Keystroke(kVK_ANSI_2), Keystroke(kVK_Return),
+        ],
+        expectation: "是有沒有"
+    ),
     // Holds a real marked composition so a maintainer can verify the
     // cursor-indicator breathing dot without changing committed text rules.
     "composition-indicator": AcceptanceScript(

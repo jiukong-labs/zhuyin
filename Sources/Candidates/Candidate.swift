@@ -28,6 +28,14 @@ struct CandidateID: Equatable, Hashable {
     }
 }
 
+/// How a phrase candidate that starts inside an automatically accepted
+/// provisional phrase rebuilds that phrase. The candidate takes the
+/// provisional phrase's trailing readings; each reading left in front of it
+/// becomes the matching standalone character in `remainderTexts` again.
+struct ProvisionalPhraseSplit: Equatable, Hashable {
+    let remainderTexts: [String]
+}
+
 struct Candidate: Identifiable, Equatable, Hashable {
     let id: CandidateID
     let text: String
@@ -44,6 +52,9 @@ struct Candidate: Identifiable, Equatable, Hashable {
     /// built-in phrases and character candidates are never deletable there.
     let isUserPhrase: Bool
     let outputPattern: PhraseOutputPattern
+    /// Set only on a phrase the chooser offers across a provisional phrase
+    /// boundary, such as 「維萱」 after the provisional 「視為」.
+    let provisionalSplit: ProvisionalPhraseSplit?
 
     init(
         text: String,
@@ -84,7 +95,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
         lastUsed: Date? = nil,
         pinned: Bool = false,
         isUserPhrase: Bool = false,
-        outputPattern: PhraseOutputPattern? = nil
+        outputPattern: PhraseOutputPattern? = nil,
+        provisionalSplit: ProvisionalPhraseSplit? = nil
     ) {
         let resolvedPattern = outputPattern
             ?? PhraseOutputPattern.inferred(
@@ -109,6 +121,7 @@ struct Candidate: Identifiable, Equatable, Hashable {
         self.pinned = pinned
         self.isUserPhrase = type == .phrase && isUserPhrase
         self.outputPattern = resolvedPattern
+        self.provisionalSplit = type == .phrase ? provisionalSplit : nil
     }
 
     var pronunciation: String {
