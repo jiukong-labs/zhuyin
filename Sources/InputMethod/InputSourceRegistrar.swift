@@ -99,6 +99,17 @@ enum InputSourceRegistrar {
             }
         }
 
+        // The 久空 mode only changes the menu icon, and selecting it falls
+        // back to the Chinese mode, so it must not fail registration.
+        do {
+            try enable(.jiukong, bundleIdentifier: bundleIdentifier)
+        } catch {
+            NSLog(
+                "Jiukong Zhuyin could not enable its 久空 mode: %@",
+                error.localizedDescription
+            )
+        }
+
         return RegisteredInputSource(
             identifier: source.identifier,
             localizedName: source.localizedName,
@@ -111,7 +122,7 @@ enum InputSourceRegistrar {
             return nil
         }
 
-        for mode in LanguageMode.allCases {
+        for mode in InputSourceMode.allCases {
             let identifier = mode.inputSourceID(parentID: bundleIdentifier)
             guard let modeSource = try inputSource(identifier: identifier) else {
                 continue
@@ -134,11 +145,56 @@ enum InputSourceRegistrar {
         )
     }
 
+    /// Set once selecting the 久空 mode has failed, so Chinese keeps using the
+    /// Chinese mode for the rest of the process instead of retrying, which
+    /// would otherwise make every Chinese selection switch sources twice.
+    private static var isJiukongModeUnavailable = false
+
+    /// Selects the mode `style` uses for `language`.
+    ///
+    /// When macOS has not registered the 久空 mode, refuses to enable it, or
+    /// does not select it, Chinese must still work, so the Chinese mode is
+    /// selected instead and only the menu icon differs.
     static func select(
-        mode: LanguageMode,
+        language: LanguageMode,
+        style: ShiftSwitchStyle,
+        bundleIdentifier: String
+    ) throws {
+        let mode = style.inputSourceMode(for: language)
+        guard mode == .jiukong else {
+            try select(mode, bundleIdentifier: bundleIdentifier)
+            return
+        }
+        if !isJiukongModeUnavailable {
+            do {
+                try enable(.jiukong, bundleIdentifier: bundleIdentifier)
+                try select(.jiukong, bundleIdentifier: bundleIdentifier)
+                if currentInputSourceID()
+                    == InputSourceMode.jiukong.inputSourceID(parentID: bundleIdentifier) {
+                    return
+                }
+                NSLog("Jiukong Zhuyin: macOS did not select the 久空 mode; using the Chinese mode.")
+            } catch {
+                NSLog(
+                    "Jiukong Zhuyin could not select its 久空 mode; using the Chinese mode: %@",
+                    error.localizedDescription
+                )
+            }
+            isJiukongModeUnavailable = true
+        }
+        try select(.chinese, bundleIdentifier: bundleIdentifier)
+    }
+
+    static func select(
+        _ mode: InputSourceMode,
         bundleIdentifier: String
     ) throws {
         let identifier = mode.inputSourceID(parentID: bundleIdentifier)
+        // Reselecting the selected mode changes nothing for the user, and
+        // skipping it keeps a fallback from feeding the change observers.
+        guard currentInputSourceID() != identifier else {
+            return
+        }
         guard let source = try inputSource(identifier: identifier) else {
             throw InputSourceRegistrationError.inputSourceNotFound(identifier)
         }
@@ -147,6 +203,52 @@ enum InputSourceRegistrar {
         guard status == noErr else {
             throw InputSourceRegistrationError.selectionFailed(status)
         }
+    }
+
+    /// Enables a mode that an update added after the user enabled Jiukong.
+    /// macOS keeps the user's enabled list, so a new mode starts disabled, and
+    /// a running copy may not have listed it yet.
+    private static func enable(
+        _ mode: InputSourceMode,
+        bundleIdentifier: String
+    ) throws {
+        let identifier = mode.inputSourceID(parentID: bundleIdentifier)
+        var source = try inputSource(identifier: identifier)
+        if source == nil {
+            let status = TISRegisterInputSource(Bundle.main.bundleURL as CFURL)
+            guard status == noErr else {
+                throw InputSourceRegistrationError.registrationFailed(status)
+            }
+            source = try inputSource(identifier: identifier)
+        }
+        guard let source else {
+            throw InputSourceRegistrationError.inputSourceNotFound(identifier)
+        }
+        guard !isEnabled(source.reference) else {
+            return
+        }
+        let status = TISEnableInputSource(source.reference)
+        guard status == noErr else {
+            throw InputSourceRegistrationError.enablingFailed(status)
+        }
+    }
+
+    private static func isEnabled(_ source: TISInputSource) -> Bool {
+        guard let rawValue = TISGetInputSourceProperty(
+            source,
+            kTISPropertyInputSourceIsEnabled
+        ) else {
+            return false
+        }
+        return CFBooleanGetValue(
+            Unmanaged<CFBoolean>.fromOpaque(rawValue).takeUnretainedValue()
+        )
+    }
+
+    private static func currentInputSourceID() -> String? {
+        let inputSource = TISCopyCurrentKeyboardInputSource()
+            .takeRetainedValue()
+        return stringProperty(kTISPropertyInputSourceID, of: inputSource)
     }
 
     private struct InputSourceMetadata {

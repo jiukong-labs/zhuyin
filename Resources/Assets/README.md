@@ -9,11 +9,13 @@ generate `JiukongZhuyin.icns` (16–1024 pixel representations) and
 `JiukongZhuyin.tiff` (128 pixels). These are already referenced by the Xcode
 project and Info.plist. The PNG replaces the previous SVG source.
 
-`JiukongMenuIcon.tiff` is the Chinese input mode's menu-bar icon (16 pt with
-a Retina representation). The same script renders it from the PNG with
-`scripts/render-menu-icon.swift`, which clears the black backdrop around the
-mark and crops the mark to a square so it stays legible at menu-bar size.
+`JiukongMenuIcon.tiff` is the menu-bar icon of the 久空 input mode,
+which the "switch only within Jiukong" Shift style selects for Chinese (16 pt
+with a Retina representation). The same script renders it from the PNG with
+`scripts/render-menu-icon.swift`. macOS draws input-mode icons as templates
+from their alpha alone, so the script turns the white line work and the drop
+into black ink, clears the dark tile and backdrop, and crops the mark to a
+square so it stays legible at menu-bar size.
 
-The English mode keeps the blue A asset `JiukongEnglishAColor.tiff`. The red
-中 asset `JiukongChineseColor.tiff` that the Chinese mode used before is kept
-here but is no longer bundled.
+The Chinese and English modes keep the separate red 中 and blue A assets,
+`JiukongChineseColor.tiff` and `JiukongEnglishAColor.tiff`.

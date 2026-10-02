@@ -492,6 +492,7 @@ final class InputController: IMKInputController {
         ClientDeliveryFallback.shared.controllerDidActivate(self)
         SecureFieldSourceGuard.shared.jiukongInUse()
         synchronizeLanguageModeWithCurrentInputSource()
+        SystemInputSourceObserver.shared.alignSelectedModeAfterActivation()
         UserLearningService.shared.refreshCloudIfNeeded()
         startCursorIndicator()
         synchronizeCompositionActivity()
@@ -724,7 +725,8 @@ final class InputController: IMKInputController {
 
         do {
             try InputSourceRegistrar.select(
-                mode: mode,
+                language: mode,
+                style: preferences.current.shiftSwitchStyle,
                 bundleIdentifier: parentID
             )
         } catch {
@@ -796,7 +798,7 @@ final class InputController: IMKInputController {
         let token = reattachmentGuard.begin()
         do {
             try InputSourceRegistrar.select(
-                mode: .english,
+                .english,
                 bundleIdentifier: parentID
             )
         } catch {
@@ -835,7 +837,8 @@ final class InputController: IMKInputController {
             }
             do {
                 try InputSourceRegistrar.select(
-                    mode: .chinese,
+                    language: .chinese,
+                    style: self.preferences.current.shiftSwitchStyle,
                     bundleIdentifier: parentID
                 )
                 let succeeded = self.currentInputSourceMode() == .chinese
@@ -984,7 +987,7 @@ final class InputController: IMKInputController {
         ) else {
             // A freshly enabled input method can initially activate through
             // its parent source. Select the concrete mode immediately so the
-            // system input menu uses that mode's 中/A icon instead of the
+            // system input menu uses that mode's icon instead of the
             // application icon.
             guard currentInputSourceID == parentID,
                   let parentID else {
@@ -992,7 +995,8 @@ final class InputController: IMKInputController {
             }
             do {
                 try InputSourceRegistrar.select(
-                    mode: languageModeController.mode,
+                    language: languageModeController.mode,
+                    style: preferences.current.shiftSwitchStyle,
                     bundleIdentifier: parentID
                 )
             } catch {

@@ -33,10 +33,55 @@ enum LanguageMode: String, CaseIterable, Codable, Equatable {
         parentID + inputSourceIDSuffix
     }
 
+    /// The language of a selected Jiukong mode. The 久空 mode types Chinese.
     static func mode(
         forInputSourceID inputSourceID: String?,
         parentID: String?
     ) -> LanguageMode? {
+        InputSourceMode.mode(
+            forInputSourceID: inputSourceID,
+            parentID: parentID
+        )?.language
+    }
+}
+
+/// A Text Input Sources mode this bundle declares.
+///
+/// The 久空 mode types Chinese exactly like the Chinese mode. It exists only
+/// so the menu bar can show the Jiukong mark instead of 中 while Shift
+/// toggles within Jiukong, because macOS takes a mode's icon from the bundle
+/// and offers no way to change it at run time.
+enum InputSourceMode: String, CaseIterable, Equatable {
+    case chinese
+    case english
+    case jiukong
+
+    var language: LanguageMode {
+        switch self {
+        case .chinese, .jiukong:
+            return .chinese
+        case .english:
+            return .english
+        }
+    }
+
+    var inputSourceIDSuffix: String {
+        switch self {
+        case .chinese, .english:
+            return language.inputSourceIDSuffix
+        case .jiukong:
+            return ".Jiukong"
+        }
+    }
+
+    func inputSourceID(parentID: String) -> String {
+        parentID + inputSourceIDSuffix
+    }
+
+    static func mode(
+        forInputSourceID inputSourceID: String?,
+        parentID: String?
+    ) -> InputSourceMode? {
         guard let inputSourceID,
               let parentID,
               !parentID.isEmpty else {
@@ -67,6 +112,20 @@ enum ShiftSwitchStyle: String, CaseIterable, Codable, Equatable {
     /// field that accepts ASCII input sources only.
     func togglesWithinInputMethod(selectedMode: LanguageMode) -> Bool {
         self == .withinInputMethod && selectedMode == .chinese
+    }
+
+    /// The mode Jiukong selects for `language`. The input-source style shows
+    /// 中 or A; the within-Jiukong style shows the Jiukong mark for Chinese,
+    /// since its menu icon no longer follows the language.
+    func inputSourceMode(for language: LanguageMode) -> InputSourceMode {
+        switch (self, language) {
+        case (.withinInputMethod, .chinese):
+            return .jiukong
+        case (.inputSource, .chinese):
+            return .chinese
+        case (_, .english):
+            return .english
+        }
     }
 }
 

@@ -66,6 +66,8 @@ targets:
         buildPhase: resources
       - path: Resources/Assets/JiukongZhuyin.tiff
         buildPhase: resources
+      - path: Resources/Assets/JiukongChineseColor.tiff
+        buildPhase: resources
       - path: Resources/Assets/JiukongMenuIcon.tiff
         buildPhase: resources
       - path: Resources/Assets/JiukongEnglishAColor.tiff
@@ -119,9 +121,21 @@ targets:
               TISIntendedLanguage: zh-Hant
               tsInputModeDefaultStateKey: true
               tsInputModeIsVisibleKey: true
+              tsInputModeMenuIconFileKey: JiukongChineseColor.tiff
+              tsInputModePaletteIconFileKey: JiukongChineseColor.tiff
+              tsInputModePrimaryInScriptKey: true
+              tsInputModeScriptKey: smUnicodeScript
+            # Types Chinese like the Chinese mode. The within-Jiukong Shift
+            # style selects it so the menu bar shows the Jiukong mark. macOS
+            # neither enables nor selects a mode hidden from the input menu.
+            tw.idv.jiukong.inputmethod.zhuyin.Jiukong:
+              TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.Jiukong
+              TISIntendedLanguage: zh-Hant
+              tsInputModeDefaultStateKey: true
+              tsInputModeIsVisibleKey: true
               tsInputModeMenuIconFileKey: JiukongMenuIcon.tiff
               tsInputModePaletteIconFileKey: JiukongMenuIcon.tiff
-              tsInputModePrimaryInScriptKey: true
+              tsInputModePrimaryInScriptKey: false
               tsInputModeScriptKey: smUnicodeScript
             tw.idv.jiukong.inputmethod.zhuyin.English:
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.English
@@ -135,6 +149,7 @@ targets:
           tsVisibleInputModeOrderedArrayKey:
             - tw.idv.jiukong.inputmethod.zhuyin.Chinese
             - tw.idv.jiukong.inputmethod.zhuyin.English
+            - tw.idv.jiukong.inputmethod.zhuyin.Jiukong
         InputMethodConnectionName: JiukongZhuyin_1_Connection
         InputMethodServerControllerClass: JiukongInputController
         LSApplicationCategoryType: public.app-category.utilities

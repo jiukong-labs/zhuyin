@@ -18,11 +18,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ### Changed
 
-- Show the Jiukong icon instead of the red 中 for the Chinese input mode in
-  the menu bar and input menu. With the "switch only within Jiukong (menu
-  icon stays)" style the menu-bar icon no longer follows Shift, so a fixed 中
-  read as a language indicator even while typing English. The English mode
-  keeps its blue A.
+- Show the Jiukong mark in the menu bar with the "switch only within Jiukong
+  (menu icon stays)" style. That style's menu-bar icon no longer follows
+  Shift, so a fixed 中 read as a language indicator even while typing
+  English. macOS takes an input mode's icon from the bundle, so the style now
+  selects a new 久空 mode that types Chinese like 久空中文 and carries the
+  mark as line work, because macOS draws mode icons as monochrome templates.
+  The input menu lists it too: macOS neither enables nor selects a mode hidden
+  from that menu. Choosing 久空中文 from the input menu with
+  this style switches to the 久空 mode, and returning to the default style
+  switches back to 中 or A, which that style still shows. If macOS cannot
+  select the 久空 mode, Chinese stays on 久空中文.
 
 ### Fixed
 

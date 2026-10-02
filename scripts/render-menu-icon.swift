@@ -1,12 +1,14 @@
 import AppKit
 
-// Renders the input-menu icon from the application artwork.
+// Renders the 久空 input mode's menu icon from the application artwork.
 //
-// The artwork sits in the middle of an opaque black backdrop. At menu-bar
-// size that backdrop would shrink the mark to about ten points inside a
-// black square, so the backdrop connected to the image edges
-// is cleared, the mark is cropped to a centered square, and 16 px and 32 px
-// PNGs are written for `tiffutil -cathidpicheck`.
+// macOS draws input-mode icons as templates: only the alpha channel counts,
+// tinted for the menu bar. The artwork's mark is white line work on a dark
+// tile on a black backdrop, so its alpha would be a solid square. Each pixel's
+// brightest channel becomes the alpha of black ink instead, which keeps the
+// white line work and the orange drop and clears the tile and backdrop. The
+// result is cropped to a centered square and written as 16 px and 32 px
+// PNGs for `tiffutil -cathidpicheck`.
 //
 // Usage: swift render-menu-icon.swift <artwork.png> <output-directory>
 
@@ -22,9 +24,10 @@ else {
 }
 let outputDirectory = URL(fileURLWithPath: arguments[2], isDirectory: true)
 
-/// Channels at or below this level count as backdrop. The mark's own dark
-/// tile is lighter, so the clearing stops at the tile's edge.
-let backdropLevel: UInt8 = 12
+/// The tile is about 25 at its brightest and the line work about 250, so
+/// brightness between these levels ramps the ink in for smooth edges.
+let clearLevel = 64.0
+let solidLevel = 140.0
 
 let width = source.width
 let height = source.height
@@ -33,8 +36,8 @@ var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
 let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
 let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
 
-pixels.withUnsafeMutableBytes { buffer in
-    let context = CGContext(
+func makeContext(_ buffer: UnsafeMutableRawBufferPointer) -> CGContext {
+    CGContext(
         data: buffer.baseAddress,
         width: width,
         height: height,
@@ -43,50 +46,30 @@ pixels.withUnsafeMutableBytes { buffer in
         space: colorSpace,
         bitmapInfo: bitmapInfo
     )!
-    context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
 }
 
-func isBackdrop(_ index: Int) -> Bool {
-    let offset = index * 4
-    return pixels[offset + 3] > 0
-        && pixels[offset] <= backdropLevel
-        && pixels[offset + 1] <= backdropLevel
-        && pixels[offset + 2] <= backdropLevel
-}
-
-// Clear only backdrop reachable from the edges, so dark detail inside the
-// mark stays opaque.
-var pending: [Int] = []
-var visited = [Bool](repeating: false, count: width * height)
-for x in 0 ..< width {
-    pending.append(x)
-    pending.append((height - 1) * width + x)
-}
-for y in 0 ..< height {
-    pending.append(y * width)
-    pending.append(y * width + width - 1)
-}
-while let index = pending.popLast() {
-    guard !visited[index], isBackdrop(index) else {
-        continue
-    }
-    visited[index] = true
-    pixels.replaceSubrange(index * 4 ..< index * 4 + 4, with: [0, 0, 0, 0])
-    let x = index % width
-    let y = index / width
-    if x > 0 { pending.append(index - 1) }
-    if x < width - 1 { pending.append(index + 1) }
-    if y > 0 { pending.append(index - width) }
-    if y < height - 1 { pending.append(index + width) }
+pixels.withUnsafeMutableBytes { buffer in
+    makeContext(buffer).draw(
+        source,
+        in: CGRect(x: 0, y: 0, width: width, height: height)
+    )
 }
 
 var minX = width, minY = height, maxX = -1, maxY = -1
 for y in 0 ..< height {
-    for x in 0 ..< width where pixels[(y * width + x) * 4 + 3] > 0 {
-        minX = min(minX, x)
-        maxX = max(maxX, x)
-        minY = min(minY, y)
-        maxY = max(maxY, y)
+    for x in 0 ..< width {
+        let offset = (y * width + x) * 4
+        let brightness = Double(max(pixels[offset], pixels[offset + 1], pixels[offset + 2]))
+        let coverage = min(1, max(0, (brightness - clearLevel) / (solidLevel - clearLevel)))
+        let alpha = UInt8((coverage * Double(pixels[offset + 3])).rounded())
+        // Premultiplied black ink: only the alpha carries the mark.
+        pixels.replaceSubrange(offset ..< offset + 4, with: [0, 0, 0, alpha])
+        if alpha > 0 {
+            minX = min(minX, x)
+            maxX = max(maxX, x)
+            minY = min(minY, y)
+            maxY = max(maxY, y)
+        }
     }
 }
 guard maxX >= minX, maxY >= minY else {
@@ -101,17 +84,7 @@ let crop = CGRect(
     width: side,
     height: side
 )
-let cleared = pixels.withUnsafeMutableBytes { buffer in
-    CGContext(
-        data: buffer.baseAddress,
-        width: width,
-        height: height,
-        bitsPerComponent: 8,
-        bytesPerRow: bytesPerRow,
-        space: colorSpace,
-        bitmapInfo: bitmapInfo
-    )!.makeImage()!
-}
+let ink = pixels.withUnsafeMutableBytes { makeContext($0).makeImage()! }
 
 func writeIcon(pixelSize: Int, dotsPerInch: Int, name: String) {
     let context = CGContext(
@@ -127,7 +100,7 @@ func writeIcon(pixelSize: Int, dotsPerInch: Int, name: String) {
     // The bitmap's origin is top-left; Core Graphics draws from bottom-left.
     let scale = CGFloat(pixelSize) / CGFloat(side)
     context.draw(
-        cleared,
+        ink,
         in: CGRect(
             x: -crop.minX * scale,
             y: -(CGFloat(height) - crop.maxY) * scale,

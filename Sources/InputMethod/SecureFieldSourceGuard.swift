@@ -115,7 +115,11 @@ final class SecureFieldSourceGuard {
             return
         }
         do {
-            try InputSourceRegistrar.select(mode: mode, bundleIdentifier: ownInputSourceID)
+            try InputSourceRegistrar.select(
+                language: mode,
+                style: PreferencesController.shared.current.shiftSwitchStyle,
+                bundleIdentifier: ownInputSourceID
+            )
         } catch {
             jiukongShiftTrace(
                 "secure field guard: selecting \(mode.rawValue) failed: \(error.localizedDescription)"

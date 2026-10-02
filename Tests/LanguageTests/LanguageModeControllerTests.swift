@@ -64,6 +64,46 @@ final class LanguageModeControllerTests: XCTestCase {
         }
     }
 
+    /// The input-source style shows 中 for Chinese; the within-Jiukong style,
+    /// whose menu icon no longer follows the language, shows the Jiukong mark.
+    func testEachStyleSelectsItsOwnChineseMode() {
+        XCTAssertEqual(ShiftSwitchStyle.inputSource.inputSourceMode(for: .chinese), .chinese)
+        XCTAssertEqual(ShiftSwitchStyle.withinInputMethod.inputSourceMode(for: .chinese), .jiukong)
+        for style in ShiftSwitchStyle.allCases {
+            XCTAssertEqual(style.inputSourceMode(for: .english), .english)
+            for language in LanguageMode.allCases {
+                XCTAssertEqual(style.inputSourceMode(for: language).language, language)
+            }
+        }
+    }
+
+    func testJiukongModeTypesChineseAndTogglesWithinInputMethod() throws {
+        let parentID = "tw.idv.example.inputmethod.demo"
+        let jiukongID = "tw.idv.example.inputmethod.demo.Jiukong"
+
+        XCTAssertEqual(InputSourceMode.jiukong.inputSourceID(parentID: parentID), jiukongID)
+        XCTAssertEqual(
+            InputSourceMode.mode(forInputSourceID: jiukongID, parentID: parentID),
+            .jiukong
+        )
+        let selectedLanguage = LanguageMode.mode(
+            forInputSourceID: jiukongID,
+            parentID: parentID
+        )
+        XCTAssertEqual(selectedLanguage, .chinese)
+        XCTAssertTrue(
+            ShiftSwitchStyle.withinInputMethod.togglesWithinInputMethod(
+                selectedMode: try XCTUnwrap(selectedLanguage)
+            )
+        )
+        for mode in [InputSourceMode.chinese, .english] {
+            XCTAssertEqual(
+                mode.inputSourceID(parentID: parentID),
+                mode.language.inputSourceID(parentID: parentID)
+            )
+        }
+    }
+
     func testInputSourceStyleActivationAlwaysFollowsTheSelectedMode() {
         let controller = LanguageModeController(initialMode: .chinese)
         controller.toggleWithinInputMethod()

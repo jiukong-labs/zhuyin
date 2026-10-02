@@ -53,6 +53,7 @@ final class SystemInputSourceObserver {
             object: nil
         )
 
+        alignSelectedMode()
         refresh(showing: .selectedSource)
     }
 
@@ -68,6 +69,7 @@ final class SystemInputSourceObserver {
 
     @objc private func selectedInputSourceDidChange() {
         DispatchQueue.main.async { [weak self] in
+            self?.alignSelectedMode()
             self?.refresh(showing: .selectedSource)
         }
     }
@@ -87,24 +89,49 @@ final class SystemInputSourceObserver {
             return
         }
         shiftSwitchStyle = style
-        guard style == .inputSource,
-              let ownInputSourceID,
-              let selectedMode = LanguageMode.mode(
+        alignSelectedMode(
+            language: style == .inputSource ? languageModeController.mode : nil
+        )
+    }
+
+    /// A client activating Jiukong. The selected mode can predate this
+    /// process, after an install or at login, and then no change
+    /// notification would ever align it with the Shift style.
+    func alignSelectedModeAfterActivation() {
+        DispatchQueue.main.async { [weak self] in
+            self?.alignSelectedMode()
+        }
+    }
+
+    /// Keeps the selected Jiukong mode in step with the Shift style, so
+    /// Chinese shows 中 with the input-source style and the Jiukong mark with
+    /// the within-Jiukong style. The Chinese mode chosen from the input menu
+    /// under the within-Jiukong style becomes the 久空 mode, and the reverse.
+    /// `language` nil keeps the language of the selected mode.
+    private func alignSelectedMode(language: LanguageMode? = nil) {
+        guard let ownInputSourceID,
+              let selectedMode = InputSourceMode.mode(
                   forInputSourceID: Self.currentInputSourceID(),
                   parentID: ownInputSourceID
-              ),
-              selectedMode != languageModeController.mode else {
+              ) else {
+            return
+        }
+        let style = preferences.current.shiftSwitchStyle
+        let targetLanguage = language ?? selectedMode.language
+        guard style.inputSourceMode(for: targetLanguage) != selectedMode else {
             return
         }
         do {
             try InputSourceRegistrar.select(
-                mode: languageModeController.mode,
+                language: targetLanguage,
+                style: style,
                 bundleIdentifier: ownInputSourceID
             )
         } catch {
             NSLog(
-                "Jiukong Zhuyin could not select the %@ mode for the input-source Shift style: %@",
-                languageModeController.mode.rawValue,
+                "Jiukong Zhuyin could not select the %@ mode for the %@ Shift style: %@",
+                targetLanguage.rawValue,
+                style.rawValue,
                 error.localizedDescription
             )
         }

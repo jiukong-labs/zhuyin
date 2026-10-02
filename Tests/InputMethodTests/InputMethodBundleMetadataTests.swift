@@ -52,22 +52,44 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let expectedModes = [
             (
                 "tw.idv.jiukong.inputmethod.zhuyin.Chinese",
-                "JiukongMenuIcon.tiff"
+                "JiukongChineseColor.tiff",
+                true
             ),
             (
                 "tw.idv.jiukong.inputmethod.zhuyin.English",
-                "JiukongEnglishAColor.tiff"
-            )
+                "JiukongEnglishAColor.tiff",
+                true
+            ),
+            // Selected for Chinese by the within-Jiukong Shift style, for its
+            // icon. It must be visible: macOS neither enables nor selects a
+            // mode hidden from the input menu.
+            (
+                "tw.idv.jiukong.inputmethod.zhuyin.Jiukong",
+                "JiukongMenuIcon.tiff",
+                true
+            ),
         ]
 
-        XCTAssertEqual(orderedModeIDs, expectedModes.map(\.0))
-        for (identifier, iconName) in expectedModes {
+        XCTAssertEqual(
+            orderedModeIDs,
+            expectedModes.filter(\.2).map(\.0)
+        )
+        XCTAssertEqual(Set(modes.keys), Set(expectedModes.map(\.0)))
+        for (identifier, iconName, isVisible) in expectedModes {
             let mode = try XCTUnwrap(modes[identifier] as? [String: Any])
             XCTAssertEqual(mode["TISInputSourceID"] as? String, identifier)
+            XCTAssertEqual(
+                InputSourceMode.mode(
+                    forInputSourceID: identifier,
+                    parentID: "tw.idv.jiukong.inputmethod.zhuyin"
+                )?.inputSourceID(parentID: "tw.idv.jiukong.inputmethod.zhuyin"),
+                identifier
+            )
             XCTAssertNil(mode["TISIconLabels"])
             XCTAssertEqual(mode["tsInputModeDefaultStateKey"] as? Bool, true)
-            XCTAssertEqual(mode["tsInputModeIsVisibleKey"] as? Bool, true)
+            XCTAssertEqual(mode["tsInputModeIsVisibleKey"] as? Bool, isVisible)
             XCTAssertEqual(mode["tsInputModeMenuIconFileKey"] as? String, iconName)
+            XCTAssertEqual(mode["tsInputModePaletteIconFileKey"] as? String, iconName)
         }
     }
 
@@ -105,8 +127,9 @@ final class InputMethodBundleMetadataTests: XCTestCase {
 
     func testModeIconsContainMenuBarScaleRepresentations() throws {
         for assetName in [
-            "JiukongMenuIcon.tiff",
+            "JiukongChineseColor.tiff",
             "JiukongEnglishAColor.tiff",
+            "JiukongMenuIcon.tiff",
         ] {
             let assetURL = repositoryRoot
                 .appendingPathComponent("Resources", isDirectory: true)
@@ -141,8 +164,9 @@ final class InputMethodBundleMetadataTests: XCTestCase {
 
     func testModeIconsFillAndCenterMenuBarCanvas() throws {
         for assetName in [
-            "JiukongMenuIcon.tiff",
+            "JiukongChineseColor.tiff",
             "JiukongEnglishAColor.tiff",
+            "JiukongMenuIcon.tiff",
         ] {
             let assetURL = repositoryRoot
                 .appendingPathComponent("Resources", isDirectory: true)
@@ -188,9 +212,10 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let iconAppearance = try XCTUnwrap(
             NSAppearance(named: .darkAqua)
         )
-        // The Chinese mode shows the Jiukong mark rather than a glyph in the
-        // indicator's language color, so only the English A is matched.
+        // The 久空 mode's mark is a template drawn in black ink, not a
+        // glyph in the indicator's language color.
         let cases: [(String, LanguageMode)] = [
+            ("JiukongChineseColor.tiff", .chinese),
             ("JiukongEnglishAColor.tiff", .english),
         ]
 

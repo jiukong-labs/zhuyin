@@ -122,6 +122,7 @@
 		7E116391F827EC6CB00B98D0 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645337CF4873F583CF52DC03 /* UpdateInstaller.swift */; };
 		7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 526E719C0F15F1EBD7F97B60 /* InfoPlist.strings */; };
 		7FAC91725DD3BA0C1FD5A503 /* CloudKitUserDataTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD93628A9B830AEF60D269E /* CloudKitUserDataTransport.swift */; };
+		8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */; };
 		80712CA4184D87603AE489B5 /* reviseddict_usage_note.txt in Resources */ = {isa = PBXBuildFile; fileRef = 52585F1659FDE1B503AF4C48 /* reviseddict_usage_note.txt */; };
 		80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */; };
 		82C7B20D1A38E5D3A6F84893 /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
@@ -279,6 +280,7 @@
 		443AFD224DBEF6F890A10793 /* UserDataCloudSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataCloudSyncCoordinator.swift; sourceTree = "<group>"; };
 		4497D9BCA68975759C628228 /* CursorIndicatorGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorGeometryTests.swift; sourceTree = "<group>"; };
 		49C712FAE9F86D20F0D8DDA0 /* CursorIndicatorContentViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorContentViewTests.swift; sourceTree = "<group>"; };
+		4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongChineseColor.tiff; sourceTree = "<group>"; };
 		4C5469DB3F703E5F890E2447 /* JiukongZhuyin.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = JiukongZhuyin.tiff; sourceTree = "<group>"; };
 		4C89DF611021C67F5A4EE86B /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		4E4B61BA9443C8DBB358D1B4 /* CompositionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuffer.swift; sourceTree = "<group>"; };
@@ -524,6 +526,7 @@
 		32605061876F4DEB36D9D8D0 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
+				4A9DDAA5512C0469CF228A95 /* JiukongChineseColor.tiff */,
 				89A231FF829D0C1175F3EBAE /* JiukongEnglishAColor.tiff */,
 				AE9238A5BFDBC6C2322B1894 /* JiukongMenuIcon.tiff */,
 				6D0250DE229CC5F807BD93B0 /* JiukongZhuyin.icns */,
@@ -1058,6 +1061,7 @@
 				174786A95696AC964BBB4E9C /* CNS11643_NOTICE.txt in Resources */,
 				B66C26915E2C357F5F75124D /* InfoPlist.strings in Resources */,
 				7E2D7117CFDA78E9807B11F8 /* InfoPlist.strings in Resources */,
+				8020A615F713F90B149D7D7E /* JiukongChineseColor.tiff in Resources */,
 				A983D01C34A682BE5E9A5CB5 /* JiukongEnglishAColor.tiff in Resources */,
 				93E7EF21C28754CAD881D955 /* JiukongMenuIcon.tiff in Resources */,
 				80B363BEF54D73A50D59D6C3 /* JiukongZhuyin.icns in Resources */,
