@@ -15,8 +15,9 @@ with a Retina representation). The same script renders it from
 `JiukongMenuArtwork.png`, supplied by the project owner from
 `久空輸入法/久空輸入法去背.png`, with `scripts/render-menu-icon.swift`.
 The renderer preserves the original colors and alpha and crops transparent
-margins to a centered square. `TISIconIsTemplate` remains false so the asset
-retains its colors.
+margins to a centered square. `TISIconIsTemplate` is explicitly false on
+each input mode as well as the parent input method, so mode icons retain
+their colors instead of tinting the opaque artwork into a solid silhouette.
 
 The Chinese and English modes keep the separate red 中 and blue A assets,
 `JiukongChineseColor.tiff` and `JiukongEnglishAColor.tiff`.

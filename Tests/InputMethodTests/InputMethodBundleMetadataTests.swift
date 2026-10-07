@@ -85,6 +85,9 @@ final class InputMethodBundleMetadataTests: XCTestCase {
                 )?.inputSourceID(parentID: "tw.idv.jiukong.inputmethod.zhuyin"),
                 identifier
             )
+            // Modes have their own icon metadata; the parent flag alone
+            // must not leave the colored artwork eligible for template tinting.
+            XCTAssertEqual(mode["TISIconIsTemplate"] as? Bool, false)
             XCTAssertNil(mode["TISIconLabels"])
             XCTAssertEqual(mode["tsInputModeDefaultStateKey"] as? Bool, true)
             XCTAssertEqual(mode["tsInputModeIsVisibleKey"] as? Bool, isVisible)

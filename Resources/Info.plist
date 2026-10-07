@@ -32,6 +32,8 @@
 			<dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.Chinese</string>
+				<key>TISIconIsTemplate</key>
+				<false/>
 				<key>TISIntendedLanguage</key>
 				<string>zh-Hant</string>
 				<key>tsInputModeDefaultStateKey</key>
@@ -51,6 +53,8 @@
 			<dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.English</string>
+				<key>TISIconIsTemplate</key>
+				<false/>
 				<key>TISIntendedLanguage</key>
 				<string>en</string>
 				<key>tsInputModeDefaultStateKey</key>
@@ -70,6 +74,8 @@
 			<dict>
 				<key>TISInputSourceID</key>
 				<string>tw.idv.jiukong.inputmethod.zhuyin.Jiukong</string>
+				<key>TISIconIsTemplate</key>
+				<false/>
 				<key>TISIntendedLanguage</key>
 				<string>zh-Hant</string>
 				<key>tsInputModeDefaultStateKey</key>

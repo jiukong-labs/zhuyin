@@ -118,6 +118,7 @@ targets:
           tsInputModeListKey:
             tw.idv.jiukong.inputmethod.zhuyin.Chinese:
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.Chinese
+              TISIconIsTemplate: false
               TISIntendedLanguage: zh-Hant
               tsInputModeDefaultStateKey: true
               tsInputModeIsVisibleKey: true
@@ -130,6 +131,7 @@ targets:
             # neither enables nor selects a mode hidden from the input menu.
             tw.idv.jiukong.inputmethod.zhuyin.Jiukong:
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.Jiukong
+              TISIconIsTemplate: false
               TISIntendedLanguage: zh-Hant
               tsInputModeDefaultStateKey: true
               tsInputModeIsVisibleKey: true
@@ -139,6 +141,7 @@ targets:
               tsInputModeScriptKey: smUnicodeScript
             tw.idv.jiukong.inputmethod.zhuyin.English:
               TISInputSourceID: tw.idv.jiukong.inputmethod.zhuyin.English
+              TISIconIsTemplate: false
               TISIntendedLanguage: en
               tsInputModeDefaultStateKey: true
               tsInputModeIsVisibleKey: true
