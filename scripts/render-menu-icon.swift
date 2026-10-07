@@ -1,14 +1,10 @@
 import AppKit
 
-// Renders the 久空 input mode's menu icon from the application artwork.
+// Renders the 久空 input mode's menu icon from its transparent artwork.
 //
-// macOS draws input-mode icons as templates: only the alpha channel counts,
-// tinted for the menu bar. The artwork's mark is white line work on a dark
-// tile on a black backdrop, so its alpha would be a solid square. Each pixel's
-// brightest channel becomes the alpha of black ink instead, which keeps the
-// white line work and the orange drop and clears the tile and backdrop. The
-// result is cropped to a centered square and written as 16 px and 32 px
-// PNGs for `tiffutil -cathidpicheck`.
+// Preserve the source colors and alpha; TISIconIsTemplate is false. Crop the
+// transparent margins to a centered square and write 16 px and 32 px PNGs
+// for `tiffutil -cathidpicheck`.
 //
 // Usage: swift render-menu-icon.swift <artwork.png> <output-directory>
 
@@ -23,11 +19,6 @@ else {
     exit(2)
 }
 let outputDirectory = URL(fileURLWithPath: arguments[2], isDirectory: true)
-
-/// The tile is about 25 at its brightest and the line work about 250, so
-/// brightness between these levels ramps the ink in for smooth edges.
-let clearLevel = 64.0
-let solidLevel = 140.0
 
 let width = source.width
 let height = source.height
@@ -59,12 +50,9 @@ var minX = width, minY = height, maxX = -1, maxY = -1
 for y in 0 ..< height {
     for x in 0 ..< width {
         let offset = (y * width + x) * 4
-        let brightness = Double(max(pixels[offset], pixels[offset + 1], pixels[offset + 2]))
-        let coverage = min(1, max(0, (brightness - clearLevel) / (solidLevel - clearLevel)))
-        let alpha = UInt8((coverage * Double(pixels[offset + 3])).rounded())
-        // Premultiplied black ink: only the alpha carries the mark.
-        pixels.replaceSubrange(offset ..< offset + 4, with: [0, 0, 0, alpha])
-        if alpha > 0 {
+        let alpha = pixels[offset + 3]
+        // Ignore nearly transparent edge residue when centering the artwork.
+        if alpha > 2 {
             minX = min(minX, x)
             maxX = max(maxX, x)
             minY = min(minY, y)
@@ -78,11 +66,13 @@ guard maxX >= minX, maxY >= minY else {
 }
 
 let side = max(maxX - minX + 1, maxY - minY + 1)
+let horizontalPadding = CGFloat(side - (maxX - minX + 1)) / 2
+let verticalPadding = CGFloat(side - (maxY - minY + 1)) / 2
 let crop = CGRect(
-    x: minX - (side - (maxX - minX + 1)) / 2,
-    y: minY - (side - (maxY - minY + 1)) / 2,
-    width: side,
-    height: side
+    x: CGFloat(minX) - horizontalPadding,
+    y: CGFloat(minY) - verticalPadding,
+    width: CGFloat(side),
+    height: CGFloat(side)
 )
 let ink = pixels.withUnsafeMutableBytes { makeContext($0).makeImage()! }
 

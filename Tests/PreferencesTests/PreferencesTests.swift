@@ -34,11 +34,11 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(malformed.chineseInputScheme, .zhuyin)
     }
 
-    func testShiftSwitchStyleDefaultsToInputSourceAndRoundTrips() {
-        XCTAssertEqual(Preferences.default.shiftSwitchStyle, .inputSource)
+    func testShiftSwitchStyleDefaultsToWithinInputMethodAndRoundTrips() {
+        XCTAssertEqual(Preferences.default.shiftSwitchStyle, .withinInputMethod)
         XCTAssertEqual(
             Preferences.decoded(from: [:]).shiftSwitchStyle,
-            .inputSource
+            .withinInputMethod
         )
 
         for style in ShiftSwitchStyle.allCases {
@@ -55,7 +55,7 @@ final class PreferencesTests: XCTestCase {
                 PreferenceKey.shiftSwitchStyle.rawValue: "unknown",
             ]
         )
-        XCTAssertEqual(malformed.shiftSwitchStyle, .inputSource)
+        XCTAssertEqual(malformed.shiftSwitchStyle, .withinInputMethod)
     }
 
     func testShiftSwitchStyleIsReadWithoutAVersionBump() {

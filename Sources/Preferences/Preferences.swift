@@ -33,7 +33,7 @@ struct Preferences: Equatable {
 
     init(
         shiftKeyPreference: ShiftKeyPreference = .both,
-        shiftSwitchStyle: ShiftSwitchStyle = .inputSource,
+        shiftSwitchStyle: ShiftSwitchStyle = .withinInputMethod,
         chineseInputScheme: ChineseInputScheme = .zhuyin,
         automaticLearningEnabled: Bool = true,
         iCloudSyncEnabled: Bool = true,

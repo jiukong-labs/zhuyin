@@ -212,8 +212,7 @@ final class InputMethodBundleMetadataTests: XCTestCase {
         let iconAppearance = try XCTUnwrap(
             NSAppearance(named: .darkAqua)
         )
-        // The 久空 mode's mark is a template drawn in black ink, not a
-        // glyph in the indicator's language color.
+        // The 久空 mode uses the owner's artwork with its original colors.
         let cases: [(String, LanguageMode)] = [
             ("JiukongChineseColor.tiff", .chinese),
             ("JiukongEnglishAColor.tiff", .english),
