@@ -47,13 +47,26 @@ fi
 
 typeset -i failures=0
 for name in "${requested[@]}"; do
-  # Each run starts a fresh client, so the input method is left running only
-  # between runs; killing it here keeps arrangement changes deterministic.
-  /usr/bin/pkill -x "Jiukong Zhuyin" 2>/dev/null || true
-  sleep 1
-  if ! "${harness}" "${name}"; then
-    (( failures += 1 ))
+  # Each run uses a fresh client and reselects Jiukong. Keep the registered
+  # service running; repeatedly killing it races InputMethodKit reconnection.
+  if output="$("${harness}" "${name}")"; then
+    print -r -- "${output}"
+    continue
   fi
+  print -r -- "${output}"
+
+  # An unconnected client has not executed the scenario. Retry setup once
+  # with a new isolated client; never retry a behavior mismatch or lost focus.
+  if [[ "${output}" == *'aborted: this client never routed keys through the input method'* ]]; then
+    print "Retrying connection setup once for ${name}."
+    sleep 1
+    if output="$("${harness}" "${name}")"; then
+      print -r -- "${output}"
+      continue
+    fi
+    print -r -- "${output}"
+  fi
+  (( failures += 1 ))
 done
 
 if (( failures > 0 )); then

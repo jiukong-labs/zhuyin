@@ -25,6 +25,7 @@ typeset -a required=(
   option-after-composition
   option-ascii-insertion
   shift-round-trip
+  shift-within-input-method
   builtin-phrase
   provisional-phrase-extension
   phrase-homophone-boundary

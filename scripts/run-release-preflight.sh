@@ -37,7 +37,7 @@ cleanup() {
     fi
   fi
 
-  # Acceptance deliberately stops the input method between scripts. Restore
+  # Isolation stops the input method before restoring user data. Restore
   # LaunchServices ownership, but do not launch the app directly: only
   # imklaunchagent may start the resident InputMethodKit server when a text
   # client activates the source. A process opened as an ordinary application
@@ -98,6 +98,9 @@ if [[ -e "${user_data_root}" ]]; then
   had_user_data=1
 fi
 
+# Exercise fresh-install defaults rather than retaining the developer's
+# switch style, rare-candidate setting, or cursor appearance.
+/usr/bin/defaults delete "${preferences_domain}" 2>/dev/null || true
 /usr/bin/defaults write "${preferences_domain}" \
   JiukongPreferencesVersion -int 1
 /usr/bin/defaults write "${preferences_domain}" \

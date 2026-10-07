@@ -15,8 +15,9 @@ import Carbon
 //    indicator for its candidate panel.
 // 2. A running application keeps the input source it already adopted, so the
 //    harness selects the source first and then launches a *new* client
-//    instance, which adopts it at launch. The user's own TextEdit windows and
-//    their input sources are never touched.
+//    instance. Before posting system keyboard events, the harness focuses its
+//    editor, selects Jiukong for that client, and verifies it is frontmost.
+//    The user's own TextEdit documents are never edited.
 //
 // Requires Accessibility and event-posting permission for the calling process,
 // so it cannot run in continuous integration.
@@ -134,7 +135,10 @@ func postEvent(
         return
     }
     event.flags = flags
-    event.postToPid(pid)
+    guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+        finish("aborted: isolated test client is not frontmost", code: 1)
+    }
+    event.post(tap: .cghidEventTap)
     usleep(28_000)
 }
 
@@ -637,8 +641,8 @@ let scripts: [String: AcceptanceScript] = [
         ],
         expectation: "測試ㄨㄛ"
     ),
-    // Requires JiukongShiftSwitchStyle = withinInputMethod before the process
-    // starts. Shift must type English while the Chinese mode stays selected.
+    // The fresh-install default is withinInputMethod. Shift must type English
+    // while the selected Jiukong source remains unchanged.
     "shift-within-input-method": AcceptanceScript(
         probe: standardProbe,
         keystrokes: [
@@ -646,7 +650,6 @@ let scripts: [String: AcceptanceScript] = [
             Keystroke(kVK_ANSI_1),
         ],
         expectation: "1",
-        includedInDefaultRun: false,
         keepsInputSource: true
     ),
     // Requires JiukongKeyboardArrangement = eten before the process starts.
@@ -747,11 +750,65 @@ func finish(_ message: String, code: Int32) -> Never {
     exit(code)
 }
 
+func focusEditableElement(_ root: AXUIElement, depth: Int = 0) -> Bool {
+    guard depth < 12,
+          NSWorkspace.shared.frontmostApplication?.processIdentifier == clientPID else {
+        return false
+    }
+    var role: AnyObject?
+    AXUIElementCopyAttributeValue(root, kAXRoleAttribute as CFString, &role)
+    if role as? String == "AXTextArea" {
+        var position: AnyObject?, size: AnyObject?
+        AXUIElementCopyAttributeValue(root, kAXPositionAttribute as CFString, &position)
+        AXUIElementCopyAttributeValue(root, kAXSizeAttribute as CFString, &size)
+        if let position, let size {
+            var point = CGPoint.zero, dimensions = CGSize.zero
+            if AXValueGetValue(position as! AXValue, .cgPoint, &point),
+               AXValueGetValue(size as! AXValue, .cgSize, &dimensions),
+               dimensions.width > 10, dimensions.height > 10 {
+                AXUIElementSetAttributeValue(root, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+                let center = CGPoint(
+                    x: point.x + dimensions.width / 2,
+                    y: point.y + dimensions.height / 2
+                )
+                for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+                    CGEvent(
+                        mouseEventSource: eventSource,
+                        mouseType: type,
+                        mouseCursorPosition: center,
+                        mouseButton: .left
+                    )?.post(tap: .cghidEventTap)
+                    usleep(100_000)
+                }
+                usleep(700_000)
+                return true
+            }
+        }
+    }
+    var children: AnyObject?
+    if AXUIElementCopyAttributeValue(root, kAXChildrenAttribute as CFString, &children) == .success,
+       let children = children as? [AXUIElement] {
+        for child in children.prefix(250) {
+            if focusEditableElement(child, depth: depth + 1) { return true }
+        }
+    }
+    return false
+}
+client?.activate()
+usleep(700_000)
+guard focusEditableElement(AXUIElementCreateApplication(clientPID)),
+      NSWorkspace.shared.frontmostApplication?.processIdentifier == clientPID else {
+    finish("aborted: could not focus the isolated client editor", code: 1)
+}
+guard select(id: inputMethodBundleID) else {
+    finish("aborted: could not select Jiukong for the frontmost client", code: 1)
+}
+usleep(900_000)
 var connected = false
 for _ in 0 ..< 3 {
     connected = routesOptionASCIIThroughJiukong(pid: clientPID)
     if connected { break }
-    client?.activate(options: [.activateIgnoringOtherApps])
+    client?.activate()
     usleep(700_000)
 }
 
@@ -764,6 +821,7 @@ guard connected else {
 
 // Start from an empty document so the result is unambiguous.
 clearFocusedText(pid: clientPID)
+let inputSourceBeforeKeystrokes = currentInputSourceID()
 
 for keystroke in script.keystrokes {
     post(keystroke, to: clientPID)
@@ -774,7 +832,7 @@ usleep(700_000)
 let text = focusedText(pid: clientPID)
 let selectedInputSourceID = currentInputSourceID()
 let keptInputSource = !script.keepsInputSource
-    || selectedInputSourceID == inputMethodBundleID
+    || selectedInputSourceID == inputSourceBeforeKeystrokes
 let passed = text == script.expectation && keptInputSource
 finish(
     """
@@ -783,7 +841,7 @@ finish(
       actual:   \(text.debugDescription)
     """ + (script.keepsInputSource ? """
 
-      expected source: \(inputMethodBundleID)
+      expected source: \(inputSourceBeforeKeystrokes)
       actual source:   \(selectedInputSourceID)
     """ : ""),
     code: passed ? 0 : 1

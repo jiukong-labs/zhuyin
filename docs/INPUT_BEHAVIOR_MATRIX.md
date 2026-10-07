@@ -38,8 +38,8 @@ leaving the default gate.
 | Chinese-mode Option letters and digits are explicit ASCII | `option-ascii` | `azAZ09` |
 | Option ASCII finalizes an active candidate exactly once | `option-after-composition` | `我a1` |
 | Option ASCII stays at a positioned caret like punctuation | `option-ascii-insertion` | `測｜試` + `⌥6⌥A` commits `測6a試` |
-| Standalone Shift switches Chinese → English → Chinese | `shift-round-trip` | English `a`, then Chinese `我` |
-| The within-Jiukong Shift style switches language without selecting another source | `shift-within-input-method` (opt-in) | English `1`, and the Chinese mode stays selected |
+| Standalone Shift switches Chinese → English → Chinese | `shift-round-trip` | English `1`, then Chinese `我` |
+| The within-Jiukong Shift style switches language without selecting another source | `shift-within-input-method` | English `1`, and the Chinese mode stays selected |
 | Exact built-in phrase replacement | `builtin-phrase` | `測試` |
 | A provisional phrase can extend to a longer exact phrase | `provisional-phrase-extension` | `ㄒㄧㄥˊ ㄕˋ ㄌㄧˋ` previews `形式`, then becomes `行事曆`; never `形式立` |
 | Phrase extension preserves a preceding phrase's complete span | `phrase-homophone-boundary` | `室友` + `有沒有` remains `室友有沒有` |
@@ -83,11 +83,21 @@ covered.
 keyboard arrangement before the input-method process starts. They must still
 be run whenever their layout tables or shared event routing changes.
 
-`shift-within-input-method` is opt-in for the same reason: it needs
-`JiukongShiftSwitchStyle = withinInputMethod` persisted before the process
-starts. Run it whenever Shift toggling, input-source synchronization, or the
-switch style changes. Under the default style the same keystrokes select the
-English mode and the run fails on the source check, which is the point.
+`shift-within-input-method` is part of the default release gate because new
+installations default to `withinInputMethod`. It compares the selected source
+after client activation with the source after the Shift tap; activation may
+first normalize the Chinese mode to the Jiukong mode. An explicit
+`inputSource` preference should fail this unchanged-source check. The release
+preflight isolates both user learning and all saved preferences to exercise
+fresh-install defaults, then restores the original data and preferences.
+
+The harness focuses the isolated TextEdit editor and checks that its process
+is frontmost before every system keyboard event. It keeps the input-method
+service running across cases so repeated termination cannot race client
+reconnection. A case that loses focus or fails the Option ASCII connection
+proof is aborted rather than counted as a behavior pass. The runner retries
+a failed connection proof once in a new isolated client. It never retries
+a behavior mismatch or a lost-focus abort.
 
 ## Change rule
 
