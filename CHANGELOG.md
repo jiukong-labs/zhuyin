@@ -4,6 +4,21 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.33] - 2026-10-10
+
+### Changed
+
+- Simplify the green phrase-selection hint to the selected text and Shift
+  arrows, removing the range/count prefix and the expansion label.
+- Review the owner's local user phrases and add 21 correctly spelled and
+  read general-use entries. Keep uncertain readings and private names out of
+  the public lexicon; record the review in `Data/JiukongPhrases/import-20261010.md`.
+- Remove the exact owner-suppressed entries 「字型」「字形」「實做」「導致」
+  from the first-party built-in lexicon. The suppressed 「紀錄」 was already
+  absent. Preserve the user's local learning database.
+
+## [0.1.32] - 2026-10-07
+
 ### Added
 
 - Add a Shift switching style setting. The default still selects Jiukong's

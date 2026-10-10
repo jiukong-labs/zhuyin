@@ -685,7 +685,7 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.phraseSelectionStatus?.displayText,
-            "造詞範圍 1 音／1 字：【輸】　⇧←／→ 擴張　至少選 2 音，或 1 音加標點"
+            "【輸】　⇧←／→　至少選 2 音，或 1 音加標點"
         )
 
         buffer.clearSelection()
@@ -696,7 +696,7 @@ final class CompositionBufferTests: XCTestCase {
         )
         XCTAssertEqual(
             buffer.phraseSelectionStatus?.displayText,
-            "造詞範圍 2 音／2 字：【入法】　⇧←／→ 擴張"
+            "【入法】　⇧←／→"
         )
     }
 

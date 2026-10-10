@@ -121,7 +121,7 @@ struct CompositionPhraseSelectionStatus: Equatable {
         let minimumHint = isSavable
             ? ""
             : "　至少選 2 音，或 1 音加標點"
-        return "造詞範圍 \(readingCount) 音／\(unitCount) 字：【\(text)】　⇧←／→ 擴張\(minimumHint)"
+        return "【\(text)】　⇧←／→\(minimumHint)"
     }
 }
 

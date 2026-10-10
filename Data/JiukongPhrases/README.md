@@ -26,3 +26,7 @@ record are documented in [import-20260907.md](import-20260907.md).
 The 2026-10-07 owner user-phrase review, accepted additions, and withheld
 spelling/reading or context-dependent entries are documented in
 [import-20261007.md](import-20261007.md).
+
+The 2026-10-10 follow-up owner user-phrase review, 21 accepted additions,
+and four owner-requested built-in removals are documented in
+[import-20261010.md](import-20261010.md).
