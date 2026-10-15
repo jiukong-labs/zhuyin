@@ -21,7 +21,17 @@ final class InputController: IMKInputController {
     )
 
     private let candidateProvider: CharacterCandidateProvider?
-    private let cantoneseDictionary: CantoneseDictionary?
+    private lazy var cantoneseDictionary: CantoneseDictionary? = {
+        do {
+            return try BundledDictionaries.shared.cantoneseDictionary()
+        } catch {
+            NSLog(
+                "Jiukong could not load Cantonese Jyutping data: %@",
+                error.localizedDescription
+            )
+            return nil
+        }
+    }()
     private let cantoneseLearning = CantoneseLearningService.shared
     private let cantoneseRanker = CandidateRanker(phraseBonus: 0)
     private lazy var candidatePresenter = CandidateWindowPresenter.shared
@@ -83,7 +93,7 @@ final class InputController: IMKInputController {
 
     override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
         do {
-            let dictionary = try CharacterDictionary(bundle: .main)
+            let dictionary = try BundledDictionaries.shared.characterDictionary()
             let preferences = PreferencesController.shared
             candidateProvider = CharacterCandidateProvider(
                 dictionary: dictionary,
@@ -98,23 +108,8 @@ final class InputController: IMKInputController {
                     CandidateTextDisplayability.canRender($0)
                 }
             )
-
-            do {
-                cantoneseDictionary = try CantoneseDictionary(
-                    bundle: .main,
-                    allowedCharacters: try dictionary
-                        .generalCandidateCharacterTexts()
-                )
-            } catch {
-                cantoneseDictionary = nil
-                NSLog(
-                    "Jiukong could not load Cantonese Jyutping data: %@",
-                    error.localizedDescription
-                )
-            }
         } catch {
             candidateProvider = nil
-            cantoneseDictionary = nil
             NSLog(
                 "Jiukong Zhuyin could not load its character dictionary: %@",
                 error.localizedDescription

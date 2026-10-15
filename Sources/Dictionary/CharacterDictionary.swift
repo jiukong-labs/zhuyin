@@ -184,6 +184,60 @@ enum CanonicalBopomofoReading {
     private static let suffixToneMarks: [Character] = ["ˊ", "ˇ", "ˋ"]
 }
 
+/// Process-wide immutable dictionary resources. IMK creates a controller for
+/// each client connection; those controllers must not each retain a full copy
+/// of the Cantonese indexes. Loading either resource is deferred until needed.
+final class BundledDictionaries {
+    static let shared = BundledDictionaries()
+
+    private let lock = NSLock()
+    private let loadCharacters: () throws -> CharacterDictionary
+    private let loadCantonese: (CharacterDictionary) throws -> CantoneseDictionary
+    private var characters: Result<CharacterDictionary, Error>?
+    private var cantonese: Result<CantoneseDictionary, Error>?
+
+    init(
+        loadCharacters: @escaping () throws -> CharacterDictionary = {
+            try CharacterDictionary(bundle: .main)
+        },
+        loadCantonese: @escaping (CharacterDictionary) throws -> CantoneseDictionary = {
+            try CantoneseDictionary(
+                bundle: .main,
+                allowedCharacters: $0.generalCandidateCharacterTexts()
+            )
+        }
+    ) {
+        self.loadCharacters = loadCharacters
+        self.loadCantonese = loadCantonese
+    }
+
+    func characterDictionary() throws -> CharacterDictionary {
+        lock.lock()
+        defer { lock.unlock() }
+        return try characterDictionaryWhileLocked()
+    }
+
+    func cantoneseDictionary() throws -> CantoneseDictionary {
+        lock.lock()
+        defer { lock.unlock() }
+        if cantonese == nil {
+            cantonese = Result {
+                try loadCantonese(characterDictionaryWhileLocked())
+            }
+        }
+        return try cantonese!.get()
+    }
+
+    private func characterDictionaryWhileLocked() throws -> CharacterDictionary {
+        if characters == nil {
+            characters = Result { try loadCharacters() }
+        }
+        // Cache failures too: immutable bundle resources cannot recover by
+        // reparsing them for every client or every keystroke.
+        return try characters!.get()
+    }
+}
+
 final class CharacterDictionary {
     static let resourceName = "JiukongZhuyin"
     static let resourceExtension = "sqlite3"

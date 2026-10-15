@@ -473,7 +473,7 @@ final class CustomReadingSettingsController: NSObject,
 
     init(
         service: any CustomReadingManaging = CustomReadingService.shared,
-        dictionary: CharacterDictionary? = try? CharacterDictionary(bundle: .main)
+        dictionary: CharacterDictionary? = try? BundledDictionaries.shared.characterDictionary()
     ) {
         self.service = service
         self.dictionary = dictionary

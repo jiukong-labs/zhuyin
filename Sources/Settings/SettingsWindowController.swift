@@ -57,7 +57,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         phraseList = UserDataListController(kind: .phrases, learning: learning)
         // An unreadable dictionary cannot prove a phrase is gone, so every
         // removal stays listed rather than silently disappearing.
-        let dictionary = try? CharacterDictionary(bundle: .main)
+        let dictionary = try? BundledDictionaries.shared.characterDictionary()
         suppressedPhraseList = UserDataListController(
             kind: .suppressedPhrases,
             learning: learning,

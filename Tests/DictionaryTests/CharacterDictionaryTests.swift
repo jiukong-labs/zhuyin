@@ -3,6 +3,54 @@ import SQLite3
 import XCTest
 
 final class CharacterDictionaryTests: XCTestCase {
+    func testBundledDictionariesLoadOnDemandAndShareInstancesAcrossClients() throws {
+        var characterLoads = 0
+        var cantoneseLoads = 0
+        let resources = BundledDictionaries(
+            loadCharacters: {
+                characterLoads += 1
+                return try self.makeDictionary()
+            },
+            loadCantonese: { characters in
+                cantoneseLoads += 1
+                return try CantoneseDictionary(
+                    contents: "---\nname: test\n...\n你\tnei5\n",
+                    allowedCharacters: characters.generalCandidateCharacterTexts()
+                )
+            }
+        )
+        XCTAssertEqual(characterLoads, 0)
+        XCTAssertEqual(cantoneseLoads, 0)
+
+        let firstClientCharacters = try resources.characterDictionary()
+        XCTAssertTrue(firstClientCharacters === (try resources.characterDictionary()))
+        XCTAssertEqual(characterLoads, 1)
+        XCTAssertEqual(cantoneseLoads, 0, "Zhuyin must not load Cantonese data")
+
+        let firstClientCantonese = try resources.cantoneseDictionary()
+        XCTAssertTrue(firstClientCantonese === (try resources.cantoneseDictionary()))
+        XCTAssertEqual(characterLoads, 1)
+        XCTAssertEqual(cantoneseLoads, 1)
+        XCTAssertEqual(firstClientCantonese.entries(for: "nei5").first?.text, "你")
+    }
+
+    func testBundledDictionariesCacheCantoneseLoadingFailure() throws {
+        enum LoadingError: Error { case unavailable }
+        var attempts = 0
+        let resources = BundledDictionaries(
+            loadCharacters: { try self.makeDictionary() },
+            loadCantonese: { _ in
+                attempts += 1
+                throw LoadingError.unavailable
+            }
+        )
+        for _ in 0 ..< 3 {
+            XCTAssertThrowsError(try resources.cantoneseDictionary())
+        }
+        XCTAssertEqual(attempts, 1)
+        XCTAssertFalse(try resources.characterDictionary().candidates(for: "ㄨㄛˇ").isEmpty)
+    }
+
     func testWoThirdToneHasWoAsItsFirstCandidate() throws {
         let dictionary = try makeDictionary()
         let candidates = try dictionary.candidates(for: "ㄨㄛˇ")
