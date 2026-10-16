@@ -75,7 +75,15 @@ struct CandidateRanker {
             // primary order and recency only breaks equal-count ties. Phrases
             // keep their independent tier, and an explicit pin remains
             // stronger than automatic learning.
+            //
+            // A character that completes one of the user's saved phrases
+            // with the text already displayed in front of it is the user's
+            // own word for this context, so it leads even a character chosen
+            // far more often on its own.
             if lhs.type == .character, rhs.type == .character {
+                if lhs.contextPhraseLength != rhs.contextPhraseLength {
+                    return lhs.contextPhraseLength > rhs.contextPhraseLength
+                }
                 let lhsWasSelected = hasCommittedSelection(lhs)
                 let rhsWasSelected = hasCommittedSelection(rhs)
                 if lhsWasSelected != rhsWasSelected {

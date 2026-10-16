@@ -147,6 +147,47 @@ final class CandidateRankerTests: XCTestCase {
         )
     }
 
+    func testSavedPhraseContextLeadsLearnedCharactersButNotPins() {
+        let heavilyLearned = makeCandidate(
+            "是",
+            baseRank: 0,
+            userFrequency: 986,
+            lastUsed: now
+        )
+        let shortContext = Candidate(
+            text: "事",
+            pronunciation: "ㄘㄜˋ",
+            baseRank: 2,
+            contextPhraseLength: 2
+        )
+        let longContext = Candidate(
+            text: "試",
+            pronunciation: "ㄘㄜˋ",
+            baseRank: 1,
+            contextPhraseLength: 3
+        )
+        let pinned = makeCandidate("釘", baseRank: 999, pinned: true)
+
+        XCTAssertEqual(
+            ranker.ranked(
+                [heavilyLearned, shortContext, longContext, pinned],
+                at: now
+            ).map(\.text),
+            ["釘", "試", "事", "是"]
+        )
+    }
+
+    func testContextPhraseLengthAppliesOnlyToCharacters() {
+        let phrase = Candidate(
+            text: "試試",
+            pronunciationSequence: ["ㄕˋ", "ㄕˋ"],
+            type: .phrase,
+            contextPhraseLength: 2
+        )
+
+        XCTAssertEqual(phrase.contextPhraseLength, 0)
+    }
+
     func testFixedPhraseBonusDominatesMaximumCharacterLearning() {
         let maximumLearnedCharacter = Candidate(
             text: "字",

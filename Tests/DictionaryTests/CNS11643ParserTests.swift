@@ -78,9 +78,9 @@ final class CNS11643ParserTests: XCTestCase {
         XCTAssertEqual(
             dataset.statistics,
             JiukongPhraseStatistics(
-                entryCount: 5_951,
-                uniquePhraseCount: 5_914,
-                pronunciationSequenceCount: 5_884
+                entryCount: 5_991,
+                uniquePhraseCount: 5_953,
+                pronunciationSequenceCount: 5_923
             )
         )
         XCTAssertEqual(dataset.entries.first?.phrase, "測試")

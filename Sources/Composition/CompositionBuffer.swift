@@ -50,26 +50,30 @@ struct PendingCandidateSelection: Equatable {
 /// `provisionalRemainderReadings` is set only when the query starts inside an
 /// automatically accepted provisional phrase. It holds that phrase's leading
 /// readings, which a matching candidate leaves behind as standalone
-/// characters.
+/// characters. `provisionalSuffixText` is the text currently displayed for
+/// the existing suffix of that same split query.
 struct CompositionPhraseQuery: Equatable {
     let pronunciationSequence: [String]
     let existingSuffixUnitIDs: [UUID]
     let existingOutputPattern: PhraseOutputPattern?
     let existingPunctuationText: String
     let provisionalRemainderReadings: [String]?
+    let provisionalSuffixText: String?
 
     init(
         pronunciationSequence: [String],
         existingSuffixUnitIDs: [UUID],
         existingOutputPattern: PhraseOutputPattern? = nil,
         existingPunctuationText: String = "",
-        provisionalRemainderReadings: [String]? = nil
+        provisionalRemainderReadings: [String]? = nil,
+        provisionalSuffixText: String? = nil
     ) {
         self.pronunciationSequence = pronunciationSequence
         self.existingSuffixUnitIDs = existingSuffixUnitIDs
         self.existingOutputPattern = existingOutputPattern
         self.existingPunctuationText = existingPunctuationText
         self.provisionalRemainderReadings = provisionalRemainderReadings
+        self.provisionalSuffixText = provisionalSuffixText
     }
 
     var unitCount: Int {
@@ -686,6 +690,7 @@ struct CompositionBuffer: Equatable {
             let existingUnitCount = unitCount - 1
             let suffix: ArraySlice<CompositionUnit>
             let remainderReadings: [String]?
+            let splitSuffixText: String?
             let ordinarySuffix = suffixUnits(
                 endingAt: endIndex,
                 readingCount: existingUnitCount
@@ -694,6 +699,7 @@ struct CompositionBuffer: Equatable {
                 == existingUnitCount {
                 suffix = ordinarySuffix
                 remainderReadings = nil
+                splitSuffixText = nil
             } else if let split = provisionalSplitSuffix(
                 endingAt: endIndex,
                 readingCount: existingUnitCount
@@ -702,6 +708,7 @@ struct CompositionBuffer: Equatable {
                 remainderReadings = split.remainder
                     .filter { $0.kind == .reading }
                     .map(\.pronunciation)
+                splitSuffixText = split.suffix.map(\.text).joined()
             } else {
                 return nil
             }
@@ -712,7 +719,8 @@ struct CompositionBuffer: Equatable {
                 existingSuffixUnitIDs: suffix.map(\.id),
                 existingOutputPattern: punctuationPattern(for: suffix),
                 existingPunctuationText: punctuationText(in: suffix),
-                provisionalRemainderReadings: remainderReadings
+                provisionalRemainderReadings: remainderReadings,
+                provisionalSuffixText: splitSuffixText
             )
         }
     }

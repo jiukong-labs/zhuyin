@@ -37,15 +37,25 @@ final class CharacterCandidateProvider {
         phraseQueries: [CompositionPhraseQuery] = []
     ) throws -> [Candidate] {
         let includesRareCandidates = showsRareCandidates()
+        let phraseCandidates = try exactPhraseCandidates(
+            for: pronunciation,
+            queries: phraseQueries
+        )
+        let contextPhraseLengths = savedPhraseContinuations(
+            in: phraseCandidates,
+            queries: phraseQueries
+        )
         let exactDictionaryCandidates = try dictionaryCandidates(
             for: pronunciation,
             includesRareCandidates: includesRareCandidates,
-            rankOffset: 0
+            rankOffset: 0,
+            contextPhraseLengths: contextPhraseLengths
         )
         let dictionaryTexts = Set(exactDictionaryCandidates.map(\.text))
         let customCandidates = customReadingCandidates(
             for: pronunciation,
-            excluding: dictionaryTexts
+            excluding: dictionaryTexts,
+            contextPhraseLengths: contextPhraseLengths
         )
         var characterCandidates = customCandidates + exactDictionaryCandidates
 
@@ -74,10 +84,6 @@ final class CharacterCandidateProvider {
             }
         }
 
-        let phraseCandidates = try exactPhraseCandidates(
-            for: pronunciation,
-            queries: phraseQueries
-        )
         let displayableCandidates = (phraseCandidates + characterCandidates)
             .filter { isCandidateDisplayable($0.text) }
         let rankedAt = now()
@@ -110,7 +116,8 @@ final class CharacterCandidateProvider {
 
     private func customReadingCandidates(
         for pronunciation: String,
-        excluding dictionaryTexts: Set<String>
+        excluding dictionaryTexts: Set<String>,
+        contextPhraseLengths: [String: Int]
     ) -> [Candidate] {
         let learningRecords = learning?.records(for: pronunciation) ?? [:]
         return (customReadings?.customReadings(for: pronunciation) ?? [])
@@ -126,7 +133,10 @@ final class CharacterCandidateProvider {
                     baseFrequency: Self.customReadingBaseFrequency,
                     userFrequency: learningRecord?.selectionCount ?? 0,
                     lastUsed: learningRecord?.lastSelectedAt,
-                    pinned: learningRecord?.pinned ?? false
+                    pinned: learningRecord?.pinned ?? false,
+                    contextPhraseLength: contextPhraseLengths[
+                        record.character
+                    ] ?? 0
                 )
             }
     }
@@ -134,7 +144,8 @@ final class CharacterCandidateProvider {
     private func dictionaryCandidates(
         for pronunciation: String,
         includesRareCandidates: Bool,
-        rankOffset: Int
+        rankOffset: Int,
+        contextPhraseLengths: [String: Int] = [:]
     ) throws -> [Candidate] {
         let learningRecords = learning?.records(for: pronunciation) ?? [:]
         return try dictionary.candidateEntries(for: pronunciation)
@@ -166,9 +177,56 @@ final class CharacterCandidateProvider {
                         + defaultSelectionBonus,
                     userFrequency: learningRecord?.selectionCount ?? 0,
                     lastUsed: learningRecord?.lastSelectedAt,
-                    pinned: learningRecord?.pinned ?? false
+                    pinned: learningRecord?.pinned ?? false,
+                    contextPhraseLength: contextPhraseLengths[entry.text] ?? 0
                 )
             }
+    }
+
+    /// Final characters of saved phrases that continue the displayed text.
+    ///
+    /// A saved phrase starting inside a provisional phrase is a chooser-only
+    /// split, because accepting it would rewrite the provisional phrase. When
+    /// its leading characters already equal the displayed text, though, only
+    /// its final character is new: 「試試」 after the provisional 「測試」 just
+    /// adds 「試」. That character is offered first instead, leaving the
+    /// provisional phrase and the new single reading exactly as ordinary
+    /// typing would, so a following phrase such as 「是否」 can still form.
+    ///
+    /// Each character maps to the reading count of its longest such phrase.
+    private func savedPhraseContinuations(
+        in phraseCandidates: [Candidate],
+        queries: [CompositionPhraseQuery]
+    ) -> [String: Int] {
+        var displayedTextByReadings: [[String]: String] = [:]
+        for query in queries {
+            if let displayedText = query.provisionalSuffixText,
+               displayedTextByReadings[query.pronunciationSequence] == nil {
+                displayedTextByReadings[query.pronunciationSequence] =
+                    displayedText
+            }
+        }
+
+        var result: [String: Int] = [:]
+        for candidate in phraseCandidates {
+            guard candidate.isUserPhrase,
+                  candidate.provisionalSplit != nil,
+                  candidate.outputPattern.markers.last
+                    == PhraseOutputPattern.readingMarker,
+                  let finalCharacter = candidate.text.last,
+                  let displayedText = displayedTextByReadings[
+                      candidate.pronunciationSequence
+                  ],
+                  String(candidate.text.dropLast()) == displayedText else {
+                continue
+            }
+            let length = candidate.pronunciationSequence.count
+            result[String(finalCharacter)] = max(
+                result[String(finalCharacter)] ?? 0,
+                length
+            )
+        }
+        return result
     }
 
     @discardableResult

@@ -317,7 +317,8 @@ final class CompositionBufferTests: XCTestCase {
             CompositionPhraseQuery(
                 pronunciationSequence: ["ㄕˋ", "ㄌㄧˋ"],
                 existingSuffixUnitIDs: [provisionalIDs[1]],
-                provisionalRemainderReadings: ["ㄒㄧㄥˊ"]
+                provisionalRemainderReadings: ["ㄒㄧㄥˊ"],
+                provisionalSuffixText: "式"
             ),
         ])
         XCTAssertEqual(
@@ -453,7 +454,8 @@ final class CompositionBufferTests: XCTestCase {
             CompositionPhraseQuery(
                 pronunciationSequence: ["ㄨㄟˊ", "ㄒㄩㄢ"],
                 existingSuffixUnitIDs: [provisionalIDs[1]],
-                provisionalRemainderReadings: ["ㄕˋ"]
+                provisionalRemainderReadings: ["ㄕˋ"],
+                provisionalSuffixText: "為"
             ),
             CompositionPhraseQuery(
                 pronunciationSequence: ["ㄒㄩㄢ"],

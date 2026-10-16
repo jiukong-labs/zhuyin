@@ -30,3 +30,7 @@ spelling/reading or context-dependent entries are documented in
 The 2026-10-10 follow-up owner user-phrase review, 21 accepted additions,
 and four owner-requested built-in removals are documented in
 [import-20261010.md](import-20261010.md).
+
+The 2026-10-16 follow-up owner user-phrase review and its 40 accepted
+additions, including one owner-confirmed spelling, are documented in
+[import-20261016.md](import-20261016.md).

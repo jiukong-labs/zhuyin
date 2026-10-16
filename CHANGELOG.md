@@ -4,6 +4,25 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.34] - 2026-10-16
+
+### Changed
+
+- Review the owner's newer local user phrases and add 39 correctly spelled
+  and read general-use entries, plus 「發怖」 as typed at the owner's request
+  (「發布」 stays). Keep uncertain spellings or readings and private names out
+  of the public lexicon; record the review in
+  `Data/JiukongPhrases/import-20261016.md`.
+
+### Fixed
+
+- Prefer a character that completes one of the user's saved phrases with
+  the text already shown in front of it. After the automatic 「測試」, typing
+  ㄕˋ now shows 「試」 from the saved 「試試」 instead of the more often chosen
+  「是」, so 「測試試看」 no longer comes out as 「測試是看」. The new character
+  still stays a single reading, so a following phrase such as 「是否」 can
+  replace it as before.
+
 ## [0.1.33] - 2026-10-10
 
 ### Changed

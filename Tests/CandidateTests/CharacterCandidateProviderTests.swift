@@ -362,7 +362,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
                 "意", "譯", "議", "益", "施",
                 // Captured selections keep the first five positions; the
                 // expanded first-party lexicon orders the remaining ties.
-                "義", "易", "異", "藝", "憶", "腋", "疫", "翌", "逸", "溢", "億",
+                "義", "易", "異", "憶", "藝", "腋", "疫", "翌", "逸", "溢", "億",
             ]
         )
     }
@@ -558,6 +558,113 @@ final class CharacterCandidateProviderTests: XCTestCase {
             learning.recordedSelections,
             [Selection(character: standalone, pronunciation: "ㄕˋ")]
         )
+    }
+
+    /// 測試試看: after the provisional 「測試」, the saved 「試試」 already agrees
+    /// with the displayed 「試」, so its final 「試」 must beat the far more
+    /// often chosen standalone 「是」 without rewriting 「測試」.
+    func testSavedPhraseContinuingDisplayedTextLeadsCharacters() throws {
+        let learning = makeTestingLearning(savesTryTry: true)
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+
+        var buffer = try typeAutomatically(
+            ["ㄘㄜˋ", "ㄕˋ"],
+            provider: provider
+        )
+        XCTAssertEqual(buffer.text, "測試")
+        let testingIDs = buffer.units.map(\.id)
+
+        let candidates = try provider.candidates(
+            for: "ㄕˋ",
+            phraseQueries: buffer.phraseLookupQueries(
+                appending: "ㄕˋ",
+                minimumUnitCount: 1
+            )
+        )
+        let preferred = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(preferred.text, "試")
+        XCTAssertEqual(preferred.type, .character)
+        XCTAssertEqual(preferred.contextPhraseLength, 2)
+        XCTAssertEqual(
+            candidates.first { $0.type == .character && $0.text == "是" }?
+                .contextPhraseLength,
+            0
+        )
+
+        buffer = try typeAutomatically(
+            ["ㄕˋ", "ㄎㄢˋ"],
+            provider: provider,
+            startingWith: buffer
+        )
+        XCTAssertEqual(buffer.text, "測試試看")
+        XCTAssertEqual(Array(buffer.units.prefix(2).map(\.id)), testingIDs)
+    }
+
+    func testUnsavedContinuationKeepsMostChosenCharacter() throws {
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: makeTestingLearning(savesTryTry: false)
+        )
+
+        let buffer = try typeAutomatically(
+            ["ㄘㄜˋ", "ㄕˋ", "ㄕˋ", "ㄎㄢˋ"],
+            provider: provider
+        )
+
+        XCTAssertEqual(buffer.text, "測試是看")
+    }
+
+    /// The continued character stays a single reading, so a following
+    /// phrase can still claim it exactly as ordinary typing would.
+    func testSavedPhraseContinuationStillJoinsFollowingPhrase() throws {
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: makeTestingLearning(savesTryTry: true)
+        )
+
+        let buffer = try typeAutomatically(
+            ["ㄘㄜˋ", "ㄕˋ", "ㄕˋ", "ㄈㄡˇ"],
+            provider: provider
+        )
+
+        XCTAssertEqual(buffer.text, "測試是否")
+    }
+
+    /// A saved phrase that disagrees with the displayed text would rewrite
+    /// the provisional phrase, so it gives no character any context rank.
+    func testSavedPhraseDisagreeingWithDisplayedTextGivesNoContext() throws {
+        let learning = LearningSpy()
+        learning.phraseRecordsByPronunciation[["ㄨㄟˊ", "ㄒㄩㄢ"]] = [
+            makePhraseRecord(
+                id: 40,
+                phrase: "維萱",
+                readings: ["ㄨㄟˊ", "ㄒㄩㄢ"],
+                selectionCount: 4
+            ),
+        ]
+        let provider = CharacterCandidateProvider(
+            dictionary: try makeDictionary(),
+            learning: learning
+        )
+        let buffer = try typeAutomatically(
+            ["ㄕˋ", "ㄨㄟˊ"],
+            provider: provider
+        )
+        XCTAssertEqual(buffer.text, "視為")
+
+        let candidates = try provider.candidates(
+            for: "ㄒㄩㄢ",
+            phraseQueries: buffer.phraseLookupQueries(
+                appending: "ㄒㄩㄢ",
+                minimumUnitCount: 1
+            )
+        )
+
+        XCTAssertTrue(candidates.allSatisfy { $0.contextPhraseLength == 0 })
+        XCTAssertNotNil(candidates.first { $0.text == "維萱" }?.provisionalSplit)
     }
 
     func testChooserOffersBuiltInPhraseAcrossProvisionalPhraseAfterOrdinaryPhrases() throws {
@@ -1316,6 +1423,76 @@ final class CharacterCandidateProviderTests: XCTestCase {
             selectionCount: selectionCount,
             pinned: pinned
         )
+    }
+
+    /// Mirrors the counts in the report where 「測試試看」 came out as
+    /// 「測試是看」.
+    private func makeTestingLearning(savesTryTry: Bool) -> LearningSpy {
+        let learning = LearningSpy()
+        func record(
+            _ character: String,
+            _ pronunciation: String,
+            _ count: Int64
+        ) -> CharacterLearningRecord {
+            CharacterLearningRecord(
+                character: character,
+                pronunciation: pronunciation,
+                selectionCount: count,
+                lastSelectedAt: Date(timeIntervalSince1970: 1_000),
+                pinned: false
+            )
+        }
+        learning.recordsByPronunciation = [
+            "ㄘㄜˋ": ["冊": record("冊", "ㄘㄜˋ", 15), "測": record("測", "ㄘㄜˋ", 11)],
+            "ㄕˋ": ["是": record("是", "ㄕˋ", 986), "試": record("試", "ㄕˋ", 29)],
+            "ㄎㄢˋ": ["看": record("看", "ㄎㄢˋ", 333)],
+        ]
+        learning.phraseRecordsByPronunciation[["ㄘㄜˋ", "ㄕˋ"]] = [
+            makePhraseRecord(
+                id: 1,
+                phrase: "測試",
+                readings: ["ㄘㄜˋ", "ㄕˋ"],
+                selectionCount: 155
+            ),
+        ]
+        if savesTryTry {
+            learning.phraseRecordsByPronunciation[["ㄕˋ", "ㄕˋ"]] = [
+                makePhraseRecord(
+                    id: 404,
+                    phrase: "試試",
+                    readings: ["ㄕˋ", "ㄕˋ"],
+                    selectionCount: 20
+                ),
+            ]
+        }
+        return learning
+    }
+
+    /// Types each reading and accepts the inline preview the way continued
+    /// typing does, finishing with the last reading's preview accepted.
+    private func typeAutomatically(
+        _ readings: [String],
+        provider: CharacterCandidateProvider,
+        startingWith initialBuffer: CompositionBuffer = CompositionBuffer()
+    ) throws -> CompositionBuffer {
+        var buffer = initialBuffer
+        for reading in readings {
+            let session = try XCTUnwrap(CandidateSession(
+                pronunciation: reading,
+                candidates: try provider.candidates(
+                    for: reading,
+                    phraseQueries: buffer.phraseLookupQueries(
+                        appending: reading,
+                        minimumUnitCount: 1
+                    )
+                )
+            ))
+            XCTAssertTrue(buffer.acceptCandidate(
+                session.preferredCandidate,
+                reason: session.commitReason(for: .implicitPassThrough)
+            ))
+        }
+        return buffer
     }
 
     private func makePhraseQuery(

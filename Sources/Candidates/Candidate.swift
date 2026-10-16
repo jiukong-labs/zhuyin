@@ -55,6 +55,11 @@ struct Candidate: Identifiable, Equatable, Hashable {
     /// Set only on a phrase the chooser offers across a provisional phrase
     /// boundary, such as 「維萱」 after the provisional 「視為」.
     let provisionalSplit: ProvisionalPhraseSplit?
+    /// Set only on a character: the reading count of the longest saved user
+    /// phrase it completes together with the text already displayed in
+    /// front of it, such as 「試」 after the provisional 「測試」 when 「試試」 is
+    /// saved. Zero when it completes none.
+    let contextPhraseLength: Int
 
     init(
         text: String,
@@ -67,7 +72,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
         lastUsed: Date? = nil,
         pinned: Bool = false,
         isUserPhrase: Bool = false,
-        outputPattern: PhraseOutputPattern? = nil
+        outputPattern: PhraseOutputPattern? = nil,
+        contextPhraseLength: Int = 0
     ) {
         self.init(
             text: text,
@@ -80,7 +86,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
             lastUsed: lastUsed,
             pinned: pinned,
             isUserPhrase: isUserPhrase,
-            outputPattern: outputPattern
+            outputPattern: outputPattern,
+            contextPhraseLength: contextPhraseLength
         )
     }
 
@@ -96,7 +103,8 @@ struct Candidate: Identifiable, Equatable, Hashable {
         pinned: Bool = false,
         isUserPhrase: Bool = false,
         outputPattern: PhraseOutputPattern? = nil,
-        provisionalSplit: ProvisionalPhraseSplit? = nil
+        provisionalSplit: ProvisionalPhraseSplit? = nil,
+        contextPhraseLength: Int = 0
     ) {
         let resolvedPattern = outputPattern
             ?? PhraseOutputPattern.inferred(
@@ -122,6 +130,9 @@ struct Candidate: Identifiable, Equatable, Hashable {
         self.isUserPhrase = type == .phrase && isUserPhrase
         self.outputPattern = resolvedPattern
         self.provisionalSplit = type == .phrase ? provisionalSplit : nil
+        self.contextPhraseLength = type == .character
+            ? max(0, contextPhraseLength)
+            : 0
     }
 
     var pronunciation: String {
