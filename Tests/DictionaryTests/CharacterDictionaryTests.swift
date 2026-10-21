@@ -362,8 +362,8 @@ final class CharacterDictionaryTests: XCTestCase {
             try dictionary.metadataValue(for: "first_party_character_entries"),
             "4"
         )
-        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "5991")
-        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "5953")
+        XCTAssertEqual(try dictionary.metadataValue(for: "phrase_entries"), "6103")
+        XCTAssertEqual(try dictionary.metadataValue(for: "unique_phrases"), "6065")
         XCTAssertEqual(
             try dictionary.metadataValue(for: "default_character_ranking_entries"),
             "804"
@@ -384,13 +384,13 @@ final class CharacterDictionaryTests: XCTestCase {
             try dictionary.metadataValue(
                 for: "first_party_attested_character_readings"
             ),
-            "1988"
+            "2016"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(
                 for: "first_party_character_reading_attestations"
             ),
-            "13326"
+            "13628"
         )
         XCTAssertEqual(
             try dictionary.metadataValue(for: "phrase_dataset_name"),

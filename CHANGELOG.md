@@ -4,6 +4,17 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.36] - 2026-10-21
+
+### Changed
+
+- Add 112 owner-reviewed food, drink and ordering terms from a restaurant
+  menu, such as 「雞胗」「松阪豬」「甜不辣」「杏鮑菇」「柳橙汁」, together with
+  the shorter words split out of longer item names. Keep the menu spellings
+  「豆干」「平台」「筊白筍」 alongside 「平臺」「茭白筍」, and include the brand
+  names 「金車」「伯克」「原萃」「可口可樂」「雪碧」 at the owner's request; record
+  the review in `Data/JiukongPhrases/import-20261021.md`.
+
 ## [0.1.35] - 2026-10-21
 
 ### Fixed

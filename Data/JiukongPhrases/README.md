@@ -34,3 +34,8 @@ and four owner-requested built-in removals are documented in
 The 2026-10-16 follow-up owner user-phrase review and its 40 accepted
 additions, including one owner-confirmed spelling, are documented in
 [import-20261016.md](import-20261016.md).
+
+The 2026-10-21 owner-reviewed additions of 112 food, drink, and ordering
+terms taken from a restaurant menu, including five brand names the owner
+explicitly asked to include, are documented in
+[import-20261021.md](import-20261021.md).
