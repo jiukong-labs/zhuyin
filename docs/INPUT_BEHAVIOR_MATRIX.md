@@ -60,6 +60,7 @@ leaving the default gate.
 | Shift-Right phrase selection | `phrase-right` | first Return saves and retains composition; second commits `久空` |
 | Saving a prefix preserves the editable suffix | `phrase-continue` | save `測試` in `測試我`, then Forward Delete edits `我`; final Return commits `測試ㄨㄛ` |
 | Removing a phrase candidate, built-in ones included | mouse only — unit tests | the exact text+reading identity stops appearing and stays gone across dictionary updates |
+| Jiukong's overlays never cover a focused payment or authorization screen | manual — unit tests | the cursor indicator and Shift HUD hide while the sheet has focus; with the pointer on the sheet PassKit keeps logging `Payment UI is occluded: false` and Touch ID stays offered |
 
 `revision-candidate-rows` uses isolated learning data and separate single-reading
 compositions, so preceding readings cannot introduce complete phrase candidates.
@@ -78,6 +79,20 @@ harness cannot drive it. That row is covered by unit tests over
 `CharacterCandidateProvider`, `UserLearningStore`, and the archive and cloud
 record models instead, matching how the pre-existing user-phrase delete is
 covered.
+
+The payment-screen row cannot be scripted: opening an App Store or Apple
+Pay sheet starts a real purchase flow, and the harness types into TextEdit
+only. `SecureSystemUIFocusTests` covers the focus decisions with the client
+order traced from real purchases. On an installed build, open a purchase
+sheet, rest the pointer on it with Jiukong's Chinese mode selected and the
+indicator on, cancel the sheet, and watch:
+
+```sh
+/usr/bin/log stream --style compact --predicate 'process CONTAINS "PaymentAuthorizationUIExtension" AND eventMessage CONTAINS "occluded"'
+```
+
+Before the fix every pass of the indicator over the sheet logged `true` and
+removed the Touch ID prompt.
 
 `eten` and `ibm` remain opt-in because they require changing the persisted
 keyboard arrangement before the input-method process starts. They must still

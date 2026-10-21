@@ -159,6 +159,7 @@ final class InputController: IMKInputController {
                     + " its client delivered an event while another was current"
             )
         }
+        SecureSystemUIGuard.shared.controllerReceivedEvent(self)
 
         switch event.type {
         case .flagsChanged:
@@ -476,15 +477,21 @@ final class InputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
+        let clientBundleIdentifier = (sender as? any IMKTextInput)?.bundleIdentifier()
         jiukongShiftTrace(
             "[\(traceTag)] activateServer"
-                + " client=\((sender as? any IMKTextInput)?.bundleIdentifier() ?? "?")"
+                + " client=\(clientBundleIdentifier ?? "?")"
                 + " source=\(Self.currentInputSourceID() ?? "?")"
                 + " mode=\(languageModeController.mode.rawValue)"
                 + " [\(shiftToggleController.diagnosticState)]"
         )
         shiftToggleController.reset()
         ClientDeliveryFallback.shared.controllerDidActivate(self)
+        // Before the indicator starts, so it never shows over a payment sheet.
+        SecureSystemUIGuard.shared.controllerDidActivate(
+            self,
+            clientBundleIdentifier: clientBundleIdentifier
+        )
         SecureFieldSourceGuard.shared.jiukongInUse()
         synchronizeLanguageModeWithCurrentInputSource()
         SystemInputSourceObserver.shared.alignSelectedModeAfterActivation()
@@ -501,6 +508,7 @@ final class InputController: IMKInputController {
                 + " [\(shiftToggleController.diagnosticState)]"
         )
         ClientDeliveryFallback.shared.controllerDidDeactivate(self)
+        SecureSystemUIGuard.shared.controllerDidDeactivate(self)
         releaseHeldKeysAsTyped()
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: sender)
@@ -510,6 +518,7 @@ final class InputController: IMKInputController {
 
     override func inputControllerWillClose() {
         ClientDeliveryFallback.shared.controllerDidDeactivate(self)
+        SecureSystemUIGuard.shared.controllerDidDeactivate(self)
         releaseHeldKeysAsTyped()
         resetTransientInputState()
         finishComposition(reason: .lifecycle, using: client())
@@ -757,7 +766,7 @@ final class InputController: IMKInputController {
         )
         cursorIndicator.update(mode: mode)
         synchronizeCompositionActivity()
-        if !cursorIndicator.isEnabled {
+        if !cursorIndicator.isEnabled, !SecureSystemUIGuard.shared.hidesOverlays {
             LanguageModeHUD.shared.show(
                 mode: mode,
                 indicator: preferences.current.cursorIndicator,

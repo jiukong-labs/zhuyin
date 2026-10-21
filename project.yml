@@ -214,6 +214,7 @@ targets:
       - path: Sources/Overlay/CursorIndicatorAppearance.swift
       - path: Sources/Overlay/CursorIndicatorController.swift
       - path: Sources/Overlay/JiukongDebugLog.swift
+      - path: Sources/Overlay/SecureSystemUIFocus.swift
       - path: Sources/Preferences
       - path: Sources/Settings/UpdatePrompt.swift
       - path: Sources/Settings/UserDataListSorting.swift

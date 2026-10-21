@@ -4,6 +4,16 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep the cursor indicator and the Shift language HUD off App Store,
+  in-app purchase and Apple Pay payment sheets, and off macOS password and
+  Touch ID prompts, while they have focus. A payment sheet turns off its pay
+  control and Touch ID while another app's window covers it, so pointing at
+  the sheet with the indicator on made buying impossible. The indicator
+  returns about half a second after focus leaves the sheet, and still
+  appears above the input menu everywhere else.
+
 ## [0.1.34] - 2026-10-16
 
 ### Changed

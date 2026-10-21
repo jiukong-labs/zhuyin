@@ -25,6 +25,7 @@ final class CursorIndicatorController {
     private var settings = CursorIndicatorPreferences()
     private var mode: LanguageMode = .chinese
     private var isActive = false
+    private var isHiddenForSecureSystemUI = false
     private var hasActiveComposition = false
     private var isCapsLockOn = false
     private var trackingTimer: Timer?
@@ -140,8 +141,23 @@ final class CursorIndicatorController {
         updateRunState()
     }
 
+    /// Keeps the indicator off screen while a secure system screen, such as a
+    /// payment sheet, has focus. Those screens disable themselves while any
+    /// other process's window covers them, however high or click-through it
+    /// is, so the panel is ordered out rather than lowered.
+    func setHiddenForSecureSystemUI(_ hidden: Bool) {
+        precondition(Thread.isMainThread)
+        guard isHiddenForSecureSystemUI != hidden else {
+            return
+        }
+        isHiddenForSecureSystemUI = hidden
+        refreshContent()
+        resizePanel()
+        updateRunState()
+    }
+
     private var isRunning: Bool {
-        settings.isEnabled && isActive
+        settings.isEnabled && isActive && !isHiddenForSecureSystemUI
     }
 
     private var currentPanelSize: NSSize {
@@ -167,7 +183,7 @@ final class CursorIndicatorController {
 
     private func updateRunState() {
         jiukongDebugLog(
-            "updateRunState isRunning=\(isRunning) isEnabled=\(settings.isEnabled) isActive=\(isActive)"
+            "updateRunState isRunning=\(isRunning) isEnabled=\(settings.isEnabled) isActive=\(isActive) hiddenForSecureSystemUI=\(isHiddenForSecureSystemUI)"
         )
         guard isRunning else {
             stopTimers()

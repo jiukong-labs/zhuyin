@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01B014EEBEEF252C770E13D3 /* SecureSystemUIFocus.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC75ABEA6635C49C8BBBE60E /* SecureSystemUIFocus.swift */; };
 		0221946AE3DE12AFE25C110C /* UpdatePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E0343E61DE79606410917D /* UpdatePrompt.swift */; };
 		02E7FB9F1FFB463D76068A0A /* CandidateWindowGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */; };
 		0352B21E115F9B623A6522F1 /* BopomofoParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6ADDDB3A71F14605377937 /* BopomofoParser.swift */; };
@@ -21,6 +22,7 @@
 		0F0FA0A3E6356E1AA6EC69C2 /* PunctuationLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */; };
 		0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		0F69218859DCF22A1B408FE2 /* UpdateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF0A148BBADCC93D8DADC8A /* UpdateTests.swift */; };
+		0FFECE024ACDEA8B7A68D7A5 /* SecureSystemUIFocus.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC75ABEA6635C49C8BBBE60E /* SecureSystemUIFocus.swift */; };
 		10F58E2EFB33A47E0A930144 /* PreferencesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */; };
 		11D885D73DDF9A2F8185CF0E /* CandidateRankerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75066D454F50C29C343823FA /* CandidateRankerTests.swift */; };
 		13690FD1D6254FFFE84EE809 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 587C51C5637FCED202A4E35B /* Carbon.framework */; };
@@ -70,6 +72,7 @@
 		43C1C9045A125F542E8B2F95 /* InputMethodConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEFFED8D40A4E667A816905 /* InputMethodConfiguration.swift */; };
 		44DF1A91BFB8A2910BE7D86B /* CloudSyncStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2D193AE0A0EB6D678E9964 /* CloudSyncStateStore.swift */; };
 		466E8160ED9E56F8243CE8ED /* CloudUserDataModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50D6DFC84E6B94322309AF5 /* CloudUserDataModelsTests.swift */; };
+		475C2AEE673D4C82E5197577 /* SecureSystemUIFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4802C6439950DCC0596EC1 /* SecureSystemUIFocusTests.swift */; };
 		48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */; };
 		4B22755BB5E4DC9E01F7CE03 /* CursorIndicatorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */; };
 		4C2697D4B248C11AC56E130B /* PhraseSharePack.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E727327737679FC09CB07D /* PhraseSharePack.swift */; };
@@ -204,6 +207,7 @@
 		D8F7B09EB7E71F6893ACE77A /* UserLearningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */; };
 		D967AA5CB44D782534A667D9 /* PhraseOutputPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B5F95220B90461CD201688 /* PhraseOutputPattern.swift */; };
 		D967BA129A655FE1FDD923CC /* CandidateSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8310435AE00955EBEFC673B6 /* CandidateSession.swift */; };
+		DA6B7F4247CE4A846A06C8A9 /* SecureSystemUIGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36D38AAD0948921D0A35748 /* SecureSystemUIGuard.swift */; };
 		DAB7E6162D556C7F816BEB2F /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E38BA26E2A742FE938ED829 /* CryptoKit.framework */; };
 		DB1AFA47DE6A4E97A855E791 /* SystemShiftTapDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08B982B296EADC7CD4CCDC71 /* SystemShiftTapDetector.swift */; };
 		DD82D7B55CAFA20D139D618B /* CloudPreferencesSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E700E9BCC81322DF0506F39 /* CloudPreferencesSyncCoordinator.swift */; };
@@ -363,9 +367,11 @@
 		C26E20F48A99B95459A0E4A7 /* BopomofoParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BopomofoParserTests.swift; sourceTree = "<group>"; };
 		C30667214FEE41C9496CF28D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		C31EF19D1B271390577AA04E /* CandidateInputSourcePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateInputSourcePolicyTests.swift; sourceTree = "<group>"; };
+		C36D38AAD0948921D0A35748 /* SecureSystemUIGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureSystemUIGuard.swift; sourceTree = "<group>"; };
 		C4AF04406192C10379BCF682 /* UserDataListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataListController.swift; sourceTree = "<group>"; };
 		C5F39349259F1AB560B2117D /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		CA9661CC7784B8CDF66544CA /* CursorIndicatorAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorAppearance.swift; sourceTree = "<group>"; };
+		CC75ABEA6635C49C8BBBE60E /* SecureSystemUIFocus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureSystemUIFocus.swift; sourceTree = "<group>"; };
 		D01F60E94243161D89FAC2DA /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		D254359DA2CC8A28A1C9A40D /* CandidateWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowPresenter.swift; sourceTree = "<group>"; };
 		D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorIndicatorController.swift; sourceTree = "<group>"; };
@@ -394,6 +400,7 @@
 		F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometry.swift; sourceTree = "<group>"; };
 		F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVirtualKeyResolver.swift; sourceTree = "<group>"; };
 		F621FE5FB032FDAD27EBC2B0 /* CompositionPunctuationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionPunctuationTests.swift; sourceTree = "<group>"; };
+		FA4802C6439950DCC0596EC1 /* SecureSystemUIFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureSystemUIFocusTests.swift; sourceTree = "<group>"; };
 		FC08386B1CF60E7773FA7520 /* LanguageModeControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageModeControllerTests.swift; sourceTree = "<group>"; };
 		FD336BCDD6182DF9BD10D940 /* PreferencesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesController.swift; sourceTree = "<group>"; };
 		FE159E9B3BB3BB68574482C8 /* UserDataArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataArchive.swift; sourceTree = "<group>"; };
@@ -694,6 +701,7 @@
 				2E6CBF81B08691090230C695 /* CursorIndicatorAppearanceTests.swift */,
 				49C712FAE9F86D20F0D8DDA0 /* CursorIndicatorContentViewTests.swift */,
 				4497D9BCA68975759C628228 /* CursorIndicatorGeometryTests.swift */,
+				FA4802C6439950DCC0596EC1 /* SecureSystemUIFocusTests.swift */,
 			);
 			path = OverlayTests;
 			sourceTree = "<group>";
@@ -759,6 +767,7 @@
 				7585ED007DF726DC32E2962F /* InputSourceRegistrar.swift */,
 				C30667214FEE41C9496CF28D /* main.swift */,
 				5D981A18A6D9BF1458D1C9C9 /* SecureFieldSourceGuard.swift */,
+				C36D38AAD0948921D0A35748 /* SecureSystemUIGuard.swift */,
 				18908D66BF59A103E6375944 /* SystemInputSourceObserver.swift */,
 			);
 			path = InputMethod;
@@ -894,6 +903,7 @@
 				D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */,
 				7D12FCF239B86FEA58145D48 /* CursorIndicatorSettings.swift */,
 				70D376021A1A6CCEAC09536F /* JiukongDebugLog.swift */,
+				CC75ABEA6635C49C8BBBE60E /* SecureSystemUIFocus.swift */,
 			);
 			path = Overlay;
 			sourceTree = "<group>";
@@ -1157,6 +1167,8 @@
 				3A72184F5739C51510C836C8 /* SQLiteDatabase.swift in Sources */,
 				18F43B2A37002AF94B64CE66 /* SecureFieldSourceGuard.swift in Sources */,
 				EA243D763C4596557AADFBE7 /* SecureFieldSourceRestorer.swift in Sources */,
+				01B014EEBEEF252C770E13D3 /* SecureSystemUIFocus.swift in Sources */,
+				DA6B7F4247CE4A846A06C8A9 /* SecureSystemUIGuard.swift in Sources */,
 				9287CE720D6704310DC434EC /* SettingsPaneBuilder.swift in Sources */,
 				5A34442CA12BB28D8BDD49D4 /* SettingsWindowController.swift in Sources */,
 				50E80091B84857B98CC2F46C /* ShiftToggleArbiter.swift in Sources */,
@@ -1267,6 +1279,8 @@
 				F7761C7EF89808E052F64C42 /* SQLiteDatabase.swift in Sources */,
 				34229395E2C9F656111C6A1C /* SecureFieldSourceRestorer.swift in Sources */,
 				E0CA249DC3FAACA75C979F51 /* SecureFieldSourceRestorerTests.swift in Sources */,
+				0FFECE024ACDEA8B7A68D7A5 /* SecureSystemUIFocus.swift in Sources */,
+				475C2AEE673D4C82E5197577 /* SecureSystemUIFocusTests.swift in Sources */,
 				B128BD1DE0C2B4DA36A4C7AE /* ShiftToggleArbiter.swift in Sources */,
 				2F315B08919D15F41F9268E9 /* ShiftToggleArbiterTests.swift in Sources */,
 				09A6C56FD11D94F7A555F1D5 /* ShiftToggleController.swift in Sources */,

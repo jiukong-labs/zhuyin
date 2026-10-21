@@ -115,6 +115,12 @@ final class LanguageModeHUD {
         guard presentedToken == token else {
             return
         }
+        dismiss()
+    }
+
+    /// Hides whatever is showing, for a secure system screen taking focus.
+    func dismiss() {
+        precondition(Thread.isMainThread)
         hideWorkItem?.cancel()
         hideWorkItem = nil
         presentedToken = nil
