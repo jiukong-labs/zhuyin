@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-10-21
+
 ### Fixed
 
 - Keep the cursor indicator and the Shift language HUD off App Store,
