@@ -4,6 +4,16 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- With the within-Jiukong Shift style, stop the input menu from staying on
+  「久空中文」 after a password field. When macOS did not select the 久空 mode
+  at the moment Jiukong restored itself after a Chrome password field,
+  Jiukong used 「久空中文」 for the rest of the process: every later password
+  field ended on 中, and choosing 「久空中文」 no longer turned into 「久空」.
+  Chinese still falls back to 「久空中文」 for that moment, and Jiukong tries
+  「久空」 again at a later focus change.
+
 ## [0.1.36] - 2026-10-21
 
 ### Changed

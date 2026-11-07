@@ -19,6 +19,7 @@
 		0953F6ECA2B01FF78B6B0628 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645337CF4873F583CF52DC03 /* UpdateInstaller.swift */; };
 		09A6C56FD11D94F7A555F1D5 /* ShiftToggleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E03D98756138B225E54A9B /* ShiftToggleController.swift */; };
 		09E3DE5DDF04573C662D9C6D /* UserDataLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390A747ED6D62564F6523EAB /* UserDataLocationTests.swift */; };
+		0BBDEE813DDF2056EE979EEE /* JiukongModeRetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF66A0C941DF2E664994CF7 /* JiukongModeRetry.swift */; };
 		0F0FA0A3E6356E1AA6EC69C2 /* PunctuationLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516A63A789EAA07A71EA98FB /* PunctuationLayoutTests.swift */; };
 		0F5E16968C0BBE31F6884C59 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D01F60E94243161D89FAC2DA /* libsqlite3.tbd */; };
 		0F69218859DCF22A1B408FE2 /* UpdateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EF0A148BBADCC93D8DADC8A /* UpdateTests.swift */; };
@@ -30,6 +31,7 @@
 		14C4230B00D5EC61B7A8901F /* StandardZhuyinLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64635B11159AA169ED0D0E12 /* StandardZhuyinLayout.swift */; };
 		174786A95696AC964BBB4E9C /* CNS11643_NOTICE.txt in Resources */ = {isa = PBXBuildFile; fileRef = DB6C4C3C3D9C5AF38A048092 /* CNS11643_NOTICE.txt */; };
 		18F43B2A37002AF94B64CE66 /* SecureFieldSourceGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D981A18A6D9BF1458D1C9C9 /* SecureFieldSourceGuard.swift */; };
+		19CED33C503356F39CFC47EC /* JiukongModeRetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9B9134AFFD14A32FABB12B /* JiukongModeRetryTests.swift */; };
 		1B00F60DE3439C7B17350472 /* UserPhraseStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910ED64345E6E1246CF21D8D /* UserPhraseStoreTests.swift */; };
 		1B8AB2057B43870E1380A411 /* CNS11643Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE4D0FD6DBF128C8A6E0E95 /* CNS11643Parser.swift */; };
 		1D378560EA1F2C421C82DEEA /* InputMethodBundleMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB5DBC5A6EA2F9E9E2D60F0 /* InputMethodBundleMetadataTests.swift */; };
@@ -75,6 +77,7 @@
 		475C2AEE673D4C82E5197577 /* SecureSystemUIFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4802C6439950DCC0596EC1 /* SecureSystemUIFocusTests.swift */; };
 		48C1574090A13ACA908DB702 /* PreferencesControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */; };
 		4B22755BB5E4DC9E01F7CE03 /* CursorIndicatorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46E8F8417254BFC17D893EF /* CursorIndicatorController.swift */; };
+		4C17BF0C0A92B1D0404196D4 /* JiukongModeRetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF66A0C941DF2E664994CF7 /* JiukongModeRetry.swift */; };
 		4C2697D4B248C11AC56E130B /* PhraseSharePack.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E727327737679FC09CB07D /* PhraseSharePack.swift */; };
 		4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107AA4C2629FAE0343555A77 /* KeyboardKey.swift */; };
 		4D5DBCC7D8EFBB4B3646C391 /* SuppressedPhraseRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF3C4BDE5C533F31425A0F4 /* SuppressedPhraseRecord.swift */; };
@@ -334,6 +337,7 @@
 		8DE283EC54CA1DA251A3E416 /* CharacterLearningRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterLearningRecord.swift; sourceTree = "<group>"; };
 		8DFC427F825123774A8FF4B6 /* ShiftToggleArbiterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftToggleArbiterTests.swift; sourceTree = "<group>"; };
 		8E8A97993E9F64F784A88C56 /* SettingsPaneBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPaneBuilder.swift; sourceTree = "<group>"; };
+		8E9B9134AFFD14A32FABB12B /* JiukongModeRetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiukongModeRetryTests.swift; sourceTree = "<group>"; };
 		8EBAEC7C9BC85CA278600706 /* SilentClientDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentClientDetector.swift; sourceTree = "<group>"; };
 		910ED64345E6E1246CF21D8D /* UserPhraseStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPhraseStoreTests.swift; sourceTree = "<group>"; };
 		9220050C684AE486133EF673 /* LanguageModeHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageModeHUD.swift; sourceTree = "<group>"; };
@@ -396,6 +400,7 @@
 		EB4D535108960D889DB284FB /* PreferencesControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesControllerTests.swift; sourceTree = "<group>"; };
 		EC0DE456E2A3AFF5C99A6F1F /* UserLearningStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLearningStore.swift; sourceTree = "<group>"; };
 		ED6A694E0C4EFD92A5AB44B1 /* CompositionActivityState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionActivityState.swift; sourceTree = "<group>"; };
+		EDF66A0C941DF2E664994CF7 /* JiukongModeRetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiukongModeRetry.swift; sourceTree = "<group>"; };
 		F03882DC24F667E03BC04E7D /* SuppressedPhraseStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuppressedPhraseStoreTests.swift; sourceTree = "<group>"; };
 		F06288DBCB2526374D286134 /* CandidateWindowGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateWindowGeometry.swift; sourceTree = "<group>"; };
 		F49A4DBEBAB69CA4ECB7C6BB /* MacVirtualKeyResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVirtualKeyResolver.swift; sourceTree = "<group>"; };
@@ -469,6 +474,7 @@
 			isa = PBXGroup;
 			children = (
 				963042709B6D9DAA60FA8EA5 /* ActiveControllerTracker.swift */,
+				EDF66A0C941DF2E664994CF7 /* JiukongModeRetry.swift */,
 				DCFB253696548963758C54D3 /* LanguageMode.swift */,
 				9220050C684AE486133EF673 /* LanguageModeHUD.swift */,
 				42AD63088FFB766988A31DEC /* SecureFieldSourceRestorer.swift */,
@@ -573,6 +579,7 @@
 			isa = PBXGroup;
 			children = (
 				C1BDD4614431A4D41945387D /* ActiveControllerTrackerTests.swift */,
+				8E9B9134AFFD14A32FABB12B /* JiukongModeRetryTests.swift */,
 				FC08386B1CF60E7773FA7520 /* LanguageModeControllerTests.swift */,
 				2A8109C50226412EE9A408E3 /* SecureFieldSourceRestorerTests.swift */,
 				8DFC427F825123774A8FF4B6 /* ShiftToggleArbiterTests.swift */,
@@ -1152,6 +1159,7 @@
 				E0E06A086EB36FD974ABF230 /* InputMethodConfiguration.swift in Sources */,
 				8E799509AF0265E9ABF7D848 /* InputSourceRegistrar.swift in Sources */,
 				4E27FB179E3297E5BCDA4255 /* JiukongDebugLog.swift in Sources */,
+				4C17BF0C0A92B1D0404196D4 /* JiukongModeRetry.swift in Sources */,
 				4D39358740F95D48BB1148DE /* KeyboardKey.swift in Sources */,
 				BECDFB34AA2E5BF67DD334EB /* KeyboardLayout.swift in Sources */,
 				BCCCAB446FCD3FF1FCEC7ABB /* LanguageMode.swift in Sources */,
@@ -1259,6 +1267,8 @@
 				43C1C9045A125F542E8B2F95 /* InputMethodConfiguration.swift in Sources */,
 				55DDF9DCC55CE3B207F10651 /* InputMethodConfigurationTests.swift in Sources */,
 				2385FE7B04A31B19DEC22090 /* JiukongDebugLog.swift in Sources */,
+				0BBDEE813DDF2056EE979EEE /* JiukongModeRetry.swift in Sources */,
+				19CED33C503356F39CFC47EC /* JiukongModeRetryTests.swift in Sources */,
 				C916E036900B4B6FDD26D113 /* KeyboardKey.swift in Sources */,
 				F0ACF6BA1D0666B7364E6650 /* KeyboardLayout.swift in Sources */,
 				CA9939E6A9E47F07A760DF9C /* LanguageMode.swift in Sources */,

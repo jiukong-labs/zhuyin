@@ -60,6 +60,7 @@ leaving the default gate.
 | Shift-Right phrase selection | `phrase-right` | first Return saves and retains composition; second commits `久空` |
 | Saving a prefix preserves the editable suffix | `phrase-continue` | save `測試` in `測試我`, then Forward Delete edits `我`; final Return commits `測試ㄨㄛ` |
 | Removing a phrase candidate, built-in ones included | mouse only — unit tests | the exact text+reading identity stops appearing and stays gone across dictionary updates |
+| A moment in which macOS does not select the 久空 mode does not keep 「久空中文」 selected | manual — unit tests | with the within-Jiukong style, 「久空中文」 chosen from the input menu becomes 「久空」 at once, and again after a fallback once its retry delay has passed; the fallback's `log show` trace names that delay |
 | Jiukong's overlays never cover a focused payment or authorization screen | manual — unit tests | the cursor indicator and Shift HUD hide while the sheet has focus; with the pointer on the sheet PassKit keeps logging `Payment UI is occluded: false` and Touch ID stays offered |
 
 `revision-candidate-rows` uses isolated learning data and separate single-reading
@@ -93,6 +94,21 @@ indicator on, cancel the sheet, and watch:
 
 Before the fix every pass of the indicator over the sheet logged `true` and
 removed the Touch ID prompt.
+
+The 久空-mode fallback row cannot be scripted: the refusal followed a
+Chrome password field, apparently while secure input was still turning off
+and on, which the TextEdit harness cannot reproduce on demand.
+`JiukongModeRetryTests` covers the retry schedule. On an installed build
+with the within-Jiukong style, choose 「久空中文」 from the input menu; it
+must become 「久空」 at once. After a fallback, check the reason and the
+next attempt with:
+
+```sh
+/usr/bin/log show --last 1d --style compact --predicate 'subsystem == "tw.idv.jiukong.inputmethod.zhuyin" AND eventMessage CONTAINS "久空 mode not selected"'
+```
+
+Before the fix one fallback disabled the 久空 mode until the process
+restarted, so 「久空中文」 chosen from the input menu stayed selected.
 
 `eten` and `ibm` remain opt-in because they require changing the persisted
 keyboard arrangement before the input-method process starts. They must still

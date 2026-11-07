@@ -145,16 +145,23 @@ enum InputSourceRegistrar {
         )
     }
 
-    /// Set once selecting the 久空 mode has failed, so Chinese keeps using the
-    /// Chinese mode for the rest of the process instead of retrying, which
-    /// would otherwise make every Chinese selection switch sources twice.
-    private static var isJiukongModeUnavailable = false
+    /// Postpones the 久空 mode for a while after macOS did not select it, so
+    /// Chinese uses the Chinese mode meanwhile instead of switching sources
+    /// twice on every selection.
+    private static var jiukongModeRetry = JiukongModeRetry()
+
+    /// The 久空 mode is selected, by Jiukong or from the input menu, so
+    /// macOS accepts it again.
+    static func noteJiukongModeSelected() {
+        jiukongModeRetry.succeeded()
+    }
 
     /// Selects the mode `style` uses for `language`.
     ///
     /// When macOS has not registered the 久空 mode, refuses to enable it, or
     /// does not select it, Chinese must still work, so the Chinese mode is
-    /// selected instead and only the menu icon differs.
+    /// selected instead and only the menu icon differs. A later selection
+    /// tries the 久空 mode again once `JiukongModeRetry` allows it.
     static func select(
         language: LanguageMode,
         style: ShiftSwitchStyle,
@@ -165,22 +172,29 @@ enum InputSourceRegistrar {
             try select(mode, bundleIdentifier: bundleIdentifier)
             return
         }
-        if !isJiukongModeUnavailable {
+        let now = ProcessInfo.processInfo.systemUptime
+        if jiukongModeRetry.allowsAttempt(at: now) {
+            let failure: String
             do {
                 try enable(.jiukong, bundleIdentifier: bundleIdentifier)
                 try select(.jiukong, bundleIdentifier: bundleIdentifier)
-                if currentInputSourceID()
+                let selectedID = currentInputSourceID()
+                if selectedID
                     == InputSourceMode.jiukong.inputSourceID(parentID: bundleIdentifier) {
+                    jiukongModeRetry.succeeded()
                     return
                 }
-                NSLog("Jiukong Zhuyin: macOS did not select the 久空 mode; using the Chinese mode.")
+                failure = "macOS kept \(selectedID ?? "?")"
             } catch {
-                NSLog(
-                    "Jiukong Zhuyin could not select its 久空 mode; using the Chinese mode: %@",
-                    error.localizedDescription
-                )
+                failure = error.localizedDescription
             }
-            isJiukongModeUnavailable = true
+            let delay = jiukongModeRetry.failed(at: now)
+            // The NSLog this replaced never showed up in `log show`, so record
+            // the fallback in the persisted trace instead.
+            jiukongShiftTrace(
+                "久空 mode not selected (\(failure)) secureInput=\(IsSecureEventInputEnabled());"
+                    + " using the Chinese mode, trying again after \(Int(delay)) s"
+            )
         }
         try select(.chinese, bundleIdentifier: bundleIdentifier)
     }

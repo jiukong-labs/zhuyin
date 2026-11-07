@@ -108,6 +108,11 @@ final class SystemInputSourceObserver {
     /// the within-Jiukong style. The Chinese mode chosen from the input menu
     /// under the within-Jiukong style becomes the 久空 mode, and the reverse.
     /// `language` nil keeps the language of the selected mode.
+    ///
+    /// Also runs on every client activation, so the Chinese mode a moment of
+    /// refusal left selected becomes the 久空 mode again at the first focus
+    /// change `JiukongModeRetry` allows, rather than on a timer that could
+    /// switch sources in the middle of a composition.
     private func alignSelectedMode(language: LanguageMode? = nil) {
         guard let ownInputSourceID,
               let selectedMode = InputSourceMode.mode(
@@ -115,6 +120,9 @@ final class SystemInputSourceObserver {
                   parentID: ownInputSourceID
               ) else {
             return
+        }
+        if selectedMode == .jiukong {
+            InputSourceRegistrar.noteJiukongModeSelected()
         }
         let style = preferences.current.shiftSwitchStyle
         let targetLanguage = language ?? selectedMode.language
