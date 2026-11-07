@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.37] - 2026-11-07
+
 ### Fixed
 
 - With the within-Jiukong Shift style, stop the input menu from staying on
