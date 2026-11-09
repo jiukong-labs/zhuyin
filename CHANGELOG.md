@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.39] - 2026-11-09
+
 ### Fixed
 
 - Actually return to Jiukong after leaving Chrome while its password field
