@@ -4,6 +4,15 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Actually return to Jiukong after leaving Chrome while its password field
+  keeps secure input on, which 0.1.38 meant to do but never did. The record
+  Jiukong read the app holding secure input from names whatever app is in
+  front, so once VS Code came to the front it named VS Code, and Jiukong
+  took VS Code for an app with its own password field. Jiukong now reads
+  the holder from the I/O Registry, which kept naming Chrome.
+
 ## [0.1.38] - 2026-11-09
 
 ### Fixed

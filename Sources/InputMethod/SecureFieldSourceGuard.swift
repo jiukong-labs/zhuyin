@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import IOKit
 
 /// Selects Jiukong again once a password field that forced an ASCII-capable
 /// source has ended and macOS left that source selected.
@@ -175,19 +176,45 @@ final class SecureFieldSourceGuard {
         LanguageMode.mode(forInputSourceID: sourceID, parentID: ownInputSourceID)
     }
 
-    /// The process macOS names as holding secure input is the responsible
-    /// app, the same process the workspace reports as frontmost.
     private static func currentSecureInput() -> SecureFieldSourceRestorer.SecureInput {
         guard IsSecureEventInputEnabled() else {
             return .off
         }
-        let session = CGSessionCopyCurrentDictionary() as? [String: Any]
-        let holder = session?["kCGSSessionSecureInputPID"] as? NSNumber
         return SecureFieldSourceRestorer.SecureInput(
             enabled: true,
-            holderPID: holder.map { pid_t(truncatingIfNeeded: $0.intValue) },
+            holderPID: secureInputHolderPID(),
             frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier
         )
+    }
+
+    /// The app that turned secure input on, as the console-user record on
+    /// the I/O Registry root names it. `CGSessionCopyCurrentDictionary`
+    /// carries the same key but names whatever app is in front: with Chrome
+    /// still holding secure input, it named VS Code once VS Code came to the
+    /// front, and Jiukong took VS Code for an app with its own password field.
+    private static func secureInputHolderPID() -> pid_t? {
+        let root = IORegistryGetRootEntry(kIOMainPortDefault)
+        guard root != IO_OBJECT_NULL else {
+            return nil
+        }
+        defer { IOObjectRelease(root) }
+        guard let users = IORegistryEntryCreateCFProperty(
+            root,
+            "IOConsoleUsers" as CFString,
+            kCFAllocatorDefault,
+            0
+        )?.takeRetainedValue() as? [[String: Any]] else {
+            return nil
+        }
+        let userID = getuid()
+        for user in users {
+            guard (user["kCGSSessionUserIDKey"] as? NSNumber)?.uint32Value == userID,
+                  let pid = user["kCGSSessionSecureInputPID"] as? NSNumber else {
+                continue
+            }
+            return pid.int32Value
+        }
+        return nil
     }
 
     private static func describe(_ secureInput: SecureFieldSourceRestorer.SecureInput) -> String {
