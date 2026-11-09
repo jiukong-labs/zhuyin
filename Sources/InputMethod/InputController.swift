@@ -217,7 +217,7 @@ final class InputController: IMKInputController {
                 return true
             }
             shiftToggleController.noteKeyDown()
-            SecureFieldSourceGuard.shared.jiukongInUse()
+            SecureFieldSourceGuard.shared.jiukongTyping()
             hideSavedPhraseConfirmation()
         default:
             return false
@@ -492,7 +492,7 @@ final class InputController: IMKInputController {
             self,
             clientBundleIdentifier: clientBundleIdentifier
         )
-        SecureFieldSourceGuard.shared.jiukongInUse()
+        SecureFieldSourceGuard.shared.jiukongActivated()
         synchronizeLanguageModeWithCurrentInputSource()
         SystemInputSourceObserver.shared.alignSelectedModeAfterActivation()
         UserLearningService.shared.refreshCloudIfNeeded()

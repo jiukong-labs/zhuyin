@@ -40,11 +40,17 @@ final class SecureFieldSourceGuard {
         )
     }
 
-    /// A client is typing with Jiukong, so a password field has not taken
-    /// over yet.
-    func jiukongInUse() {
+    /// A key reached Jiukong, so a password field has not taken over yet.
+    func jiukongTyping() {
         precondition(Thread.isMainThread)
-        restorer.noteJiukongInUse(secureInputEnabled: IsSecureEventInputEnabled())
+        restorer.noteJiukongTyping(Self.currentSecureInput())
+    }
+
+    /// A client activated Jiukong. That client can be the password field
+    /// itself, just before macOS selects ABC for it.
+    func jiukongActivated() {
+        precondition(Thread.isMainThread)
+        restorer.noteJiukongActivated(Self.currentSecureInput())
     }
 
     @objc private func selectedInputSourceDidChange() {
@@ -55,52 +61,63 @@ final class SecureFieldSourceGuard {
 
     private func sourceDidChange() {
         let sourceID = Self.currentInputSourceID()
-        let secureInputEnabled = IsSecureEventInputEnabled()
+        let secureInput = Self.currentSecureInput()
         let wasWaiting = restorer.isWaiting
         let outcome = restorer.sourceChanged(
             to: mode(forSourceID: sourceID),
             sourceID: sourceID,
-            secureInputEnabled: secureInputEnabled,
+            secureInput: secureInput,
             at: ProcessInfo.processInfo.systemUptime
         )
         if restorer.isWaiting, !wasWaiting {
             jiukongShiftTrace(
                 "secure field guard: watching switch to \(sourceID ?? "?")"
-                    + " secureInput=\(secureInputEnabled)"
+                    + " \(Self.describe(secureInput))"
             )
             startPolling()
         }
-        finish(outcome, sourceID: sourceID)
+        finish(outcome, sourceID: sourceID, secureInput: secureInput)
     }
 
     private func poll() {
         let sourceID = Self.currentInputSourceID()
+        let secureInput = Self.currentSecureInput()
         finish(
             restorer.poll(
-                secureInputEnabled: IsSecureEventInputEnabled(),
+                secureInput: secureInput,
                 currentSourceID: sourceID,
                 at: ProcessInfo.processInfo.systemUptime
             ),
-            sourceID: sourceID
+            sourceID: sourceID,
+            secureInput: secureInput
         )
     }
 
     private func finish(
         _ outcome: SecureFieldSourceRestorer.Outcome,
-        sourceID: String?
+        sourceID: String?,
+        secureInput: SecureFieldSourceRestorer.SecureInput
     ) {
         switch outcome {
         case .none:
             return
         case .restore(let mode):
+            let reason = secureInput.enabled
+                ? "password field's app left (\(Self.describe(secureInput)))"
+                : "password field ended"
             jiukongShiftTrace(
-                "secure field guard: password field ended, \(sourceID ?? "?") still selected;"
+                "secure field guard: \(reason), \(sourceID ?? "?") still selected;"
                     + " selecting \(mode.rawValue)"
             )
             select(mode)
         case .dismissed:
             jiukongShiftTrace(
                 "secure field guard: no password field, \(sourceID ?? "?") was chosen"
+            )
+        case .notWatched:
+            jiukongShiftTrace(
+                "secure field guard: switch to \(sourceID ?? "?") left alone,"
+                    + " secure input was on while typing (\(Self.describe(secureInput)))"
             )
         case .superseded:
             jiukongShiftTrace("secure field guard: source changed to \(sourceID ?? "?")")
@@ -156,6 +173,37 @@ final class SecureFieldSourceGuard {
 
     private func mode(forSourceID sourceID: String?) -> LanguageMode? {
         LanguageMode.mode(forInputSourceID: sourceID, parentID: ownInputSourceID)
+    }
+
+    /// The process macOS names as holding secure input is the responsible
+    /// app, the same process the workspace reports as frontmost.
+    private static func currentSecureInput() -> SecureFieldSourceRestorer.SecureInput {
+        guard IsSecureEventInputEnabled() else {
+            return .off
+        }
+        let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+        let holder = session?["kCGSSessionSecureInputPID"] as? NSNumber
+        return SecureFieldSourceRestorer.SecureInput(
+            enabled: true,
+            holderPID: holder.map { pid_t(truncatingIfNeeded: $0.intValue) },
+            frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier
+        )
+    }
+
+    private static func describe(_ secureInput: SecureFieldSourceRestorer.SecureInput) -> String {
+        guard secureInput.enabled else {
+            return "secureInput=false"
+        }
+        return "secureInput=true holder=\(appName(secureInput.holderPID))"
+            + " front=\(appName(secureInput.frontmostPID))"
+    }
+
+    private static func appName(_ pid: pid_t?) -> String {
+        guard let pid else {
+            return "?"
+        }
+        let bundleIdentifier = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+        return "\(bundleIdentifier ?? "pid")[\(pid)]"
     }
 
     private static func currentInputSourceID() -> String? {

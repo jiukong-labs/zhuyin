@@ -4,6 +4,18 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Return to Jiukong after a Chrome password field in two cases where ABC
+  stayed selected. A page whose password field already had focus, such as a
+  router login page, activated Jiukong just after turning secure input on, so
+  Jiukong took the switch to ABC for the user's own choice under secure
+  input and never brought itself back. And Chrome can keep secure input on
+  after the user has moved to another app, so the next app stayed on ABC
+  until Chrome let go. Only typing, not an activation, now marks secure input
+  as the user's, and only when the app being typed into holds it; and the
+  password field counts as ended 0.3 s after another app comes to the front.
+
 ## [0.1.37] - 2026-11-07
 
 ### Fixed
