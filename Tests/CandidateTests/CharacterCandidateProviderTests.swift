@@ -483,6 +483,7 @@ final class CharacterCandidateProviderTests: XCTestCase {
             candidate.text == "設計"
                 && candidate.type == .phrase
                 && candidate.isUserPhrase
+                && candidate.userFrequency == 1
                 && candidate.pronunciationSequence == readings
         })
         XCTAssertEqual(learning.requestedPhraseReadings, [readings])

@@ -69,6 +69,43 @@ struct CandidateGridMetrics: Equatable {
     let documentSize: CGSize
 }
 
+enum CandidateUsageCountPresentation {
+    static let badgeHeight: CGFloat = 14
+    static let badgeEdgeInset: CGFloat = 2
+    static let badgeHorizontalPadding: CGFloat = 4
+
+    static func displayText(for selectionCount: Int64) -> String {
+        String(max(0, selectionCount))
+    }
+
+    /// Candidate buttons use AppKit's ordinary, bottom-up coordinates. The
+    /// badge stays inside the upper-right corner without changing cell size.
+    static func badgeFrame(
+        in bounds: CGRect,
+        textSize: CGSize
+    ) -> CGRect {
+        let width = max(
+            badgeHeight,
+            ceil(textSize.width) + (2 * badgeHorizontalPadding)
+        )
+        return CGRect(
+            x: max(
+                bounds.minX + badgeEdgeInset,
+                bounds.maxX - width - badgeEdgeInset
+            ),
+            y: max(
+                bounds.minY + badgeEdgeInset,
+                bounds.maxY - badgeHeight - badgeEdgeInset
+            ),
+            width: min(width, max(0, bounds.width - (2 * badgeEdgeInset))),
+            height: min(
+                badgeHeight,
+                max(0, bounds.height - (2 * badgeEdgeInset))
+            )
+        )
+    }
+}
+
 enum CandidateWindowSizing {
     static let contentInset: CGFloat = 8
     static let cellWidth: CGFloat = 64

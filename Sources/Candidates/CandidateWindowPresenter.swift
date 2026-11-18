@@ -56,6 +56,8 @@ private final class CandidatePanel: NSPanel {
 private final class CandidateButton: NSButton {
     let candidateIndex: Int
     let sessionID: UUID
+    var displayedUsageCount: Int64?
+    var usesSelectedUsageBadgeStyle = false
 
     init(candidateIndex: Int, sessionID: UUID) {
         self.candidateIndex = candidateIndex
@@ -74,9 +76,58 @@ private final class CandidateButton: NSButton {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
     }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard let displayedUsageCount else {
+            return
+        }
+
+        let text = CandidateUsageCountPresentation.displayText(
+            for: displayedUsageCount
+        )
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(
+                ofSize: 9,
+                weight: .semibold
+            ),
+            .foregroundColor: usesSelectedUsageBadgeStyle
+                ? NSColor.alternateSelectedControlTextColor
+                : NSColor.secondaryLabelColor
+        ]
+        let textSize = (text as NSString).size(withAttributes: attributes)
+        let badgeFrame = CandidateUsageCountPresentation.badgeFrame(
+            in: bounds,
+            textSize: textSize
+        )
+        let backgroundColor = usesSelectedUsageBadgeStyle
+            ? NSColor.alternateSelectedControlTextColor.withAlphaComponent(0.2)
+            : NSColor.labelColor.withAlphaComponent(0.12)
+        backgroundColor.setFill()
+        NSBezierPath(
+            roundedRect: badgeFrame,
+            xRadius: badgeFrame.height / 2,
+            yRadius: badgeFrame.height / 2
+        ).fill()
+
+        let textOrigin = NSPoint(
+            x: badgeFrame.midX - (textSize.width / 2),
+            y: badgeFrame.midY - (textSize.height / 2)
+        )
+        (text as NSString).draw(at: textOrigin, withAttributes: attributes)
+    }
 }
 
 private final class SavedPhraseDeleteButton: NSButton {
+    override var acceptsFirstResponder: Bool { false }
+    override var needsPanelToBecomeKey: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+}
+
+private final class CandidateUsageCountToggleButton: NSButton {
     override var acceptsFirstResponder: Bool { false }
     override var needsPanelToBecomeKey: Bool { false }
 
@@ -144,7 +195,10 @@ private final class CandidateGridView: NSView {
 
     override var isFlipped: Bool { true }
 
-    func update(with session: CandidateSession) {
+    func update(
+        with session: CandidateSession,
+        showsUsageCounts: Bool
+    ) {
         let indices: [Int]
         switch session.presentationMode {
         case .compact:
@@ -169,7 +223,10 @@ private final class CandidateGridView: NSView {
             )
         }
 
-        updateButtonAppearance(for: session)
+        updateButtonAppearance(
+            for: session,
+            showsUsageCounts: showsUsageCounts
+        )
     }
 
     func revealHighlightedCandidate(in session: CandidateSession) {
@@ -248,7 +305,10 @@ private final class CandidateGridView: NSView {
         }
     }
 
-    private func updateButtonAppearance(for session: CandidateSession) {
+    private func updateButtonAppearance(
+        for session: CandidateSession,
+        showsUsageCounts: Bool
+    ) {
         for (candidateIndex, button) in buttons {
             guard let candidate = session.candidate(at: candidateIndex) else {
                 continue
@@ -281,9 +341,17 @@ private final class CandidateGridView: NSView {
             button.layer?.borderColor = isSelected
                 ? NSColor.selectedControlTextColor.withAlphaComponent(0.7).cgColor
                 : NSColor.clear.cgColor
-            button.toolTip = "候選 \(candidateIndex + 1)／\(session.candidates.count)：\(candidate.text)"
+            button.displayedUsageCount = showsUsageCounts
+                ? candidate.userFrequency
+                : nil
+            button.usesSelectedUsageBadgeStyle = isSelected
+            button.needsDisplay = true
+            let usageDescription = showsUsageCounts
+                ? "，已選用 \(CandidateUsageCountPresentation.displayText(for: candidate.userFrequency)) 次"
+                : ""
+            button.toolTip = "候選 \(candidateIndex + 1)／\(session.candidates.count)：\(candidate.text)\(usageDescription)"
             button.setAccessibilityLabel(
-                "候選 \(candidateIndex + 1)／\(session.candidates.count)，\(candidate.text)"
+                "候選 \(candidateIndex + 1)／\(session.candidates.count)，\(candidate.text)\(usageDescription)"
             )
             button.setAccessibilityValue(isSelected ? "已選取" : nil)
 
@@ -354,7 +422,10 @@ final class CandidateWindowPresenter {
     private let gridView: CandidateGridView
     private let revisionLabel: NSTextField
     private let savedPhraseDeleteButton: SavedPhraseDeleteButton
+    private let usageCountToggleButton: CandidateUsageCountToggleButton
     private var savedPhraseHideWorkItem: DispatchWorkItem?
+    private var presentedSession: CandidateSession?
+    private var showsUsageCounts = false
     private(set) var presentedSessionID: UUID?
     private(set) var presentedPhraseSelectionID: UUID?
     private(set) var presentedSavedPhraseConfirmation:
@@ -374,6 +445,11 @@ final class CandidateWindowPresenter {
         revisionLabel = NSTextField(labelWithString: "")
         savedPhraseDeleteButton = SavedPhraseDeleteButton(
             title: "×",
+            target: nil,
+            action: nil
+        )
+        usageCountToggleButton = CandidateUsageCountToggleButton(
+            title: "",
             target: nil,
             action: nil
         )
@@ -433,6 +509,17 @@ final class CandidateWindowPresenter {
             "刪除剛儲存的使用者詞"
         )
         backgroundView.addSubview(savedPhraseDeleteButton)
+
+        usageCountToggleButton.target = self
+        usageCountToggleButton.action = #selector(toggleUsageCounts(_:))
+        usageCountToggleButton.isBordered = false
+        usageCountToggleButton.focusRingType = .none
+        usageCountToggleButton.imagePosition = .imageOnly
+        usageCountToggleButton.contentTintColor = .secondaryLabelColor
+        usageCountToggleButton.isHidden = true
+        usageCountToggleButton.setAccessibilityLabel("顯示候選選用次數")
+        updateUsageCountToggleAppearance()
+        backgroundView.addSubview(usageCountToggleButton)
         panel.contentView = backgroundView
 
         gridView.onChoose = { [weak self] sessionID, candidateIndex in
@@ -480,11 +567,13 @@ final class CandidateWindowPresenter {
 
         self.delegate = delegate
         presentedSessionID = session.id
+        presentedSession = session
         presentedPhraseSelectionID = nil
         panel.ignoresMouseEvents = false
         scrollView.isHidden = false
         revisionLabel.alignment = .center
         savedPhraseDeleteButton.isHidden = true
+        usageCountToggleButton.isHidden = false
 
         let scrollerThickness = NSScroller.scrollerWidth(
             for: .regular,
@@ -569,7 +658,13 @@ final class CandidateWindowPresenter {
             revisionLabel.frame = .zero
             backgroundView.setAccessibilityLabel("候選字")
         }
-        gridView.update(with: session)
+        gridView.update(
+            with: session,
+            showsUsageCounts: showsUsageCounts
+        )
+        layoutUsageCountToggleButton(
+            candidateViewportHeight: actualCandidateViewportSize.height
+        )
         panel.contentView?.layoutSubtreeIfNeeded()
         scrollView.contentView.scroll(to: .zero)
         gridView.revealHighlightedCandidate(in: session)
@@ -597,11 +692,13 @@ final class CandidateWindowPresenter {
 
         delegate = nil
         presentedSessionID = nil
+        presentedSession = nil
         presentedPhraseSelectionID = id
         panel.ignoresMouseEvents = true
         scrollView.isHidden = true
         scrollView.frame = .zero
         gridView.clear()
+        usageCountToggleButton.isHidden = true
 
         revisionLabel.alignment = .center
         revisionLabel.stringValue = displayText
@@ -656,12 +753,14 @@ final class CandidateWindowPresenter {
 
         self.delegate = delegate
         presentedSessionID = nil
+        presentedSession = nil
         presentedPhraseSelectionID = nil
         presentedSavedPhraseConfirmation = confirmation
         panel.ignoresMouseEvents = false
         scrollView.isHidden = true
         scrollView.frame = .zero
         gridView.clear()
+        usageCountToggleButton.isHidden = true
 
         revisionLabel.alignment = .left
         revisionLabel.stringValue = confirmation.displayText
@@ -755,9 +854,11 @@ final class CandidateWindowPresenter {
         }
 
         presentedSessionID = nil
+        presentedSession = nil
         delegate = nil
         panel.orderOut(nil)
         gridView.clear()
+        usageCountToggleButton.isHidden = true
     }
 
     func hidePhraseSelection(id: UUID) {
@@ -789,6 +890,54 @@ final class CandidateWindowPresenter {
         delegate?.candidateWindowPresenter(
             self,
             requestsDeletionOf: confirmation
+        )
+    }
+
+    @objc private func toggleUsageCounts(_ sender: NSButton) {
+        showsUsageCounts.toggle()
+        updateUsageCountToggleAppearance()
+        guard let presentedSession else {
+            return
+        }
+        gridView.update(
+            with: presentedSession,
+            showsUsageCounts: showsUsageCounts
+        )
+    }
+
+    private func updateUsageCountToggleAppearance() {
+        let symbolName = showsUsageCounts ? "number.circle.fill" : "number.circle"
+        let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: showsUsageCounts
+                ? "隱藏候選選用次數"
+                : "顯示候選選用次數"
+        )
+        usageCountToggleButton.image = image?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
+        )
+        usageCountToggleButton.toolTip = showsUsageCounts
+            ? "隱藏每個候選的選用次數"
+            : "顯示每個候選的選用次數"
+        usageCountToggleButton.setAccessibilityLabel(
+            showsUsageCounts ? "隱藏候選選用次數" : "顯示候選選用次數"
+        )
+        usageCountToggleButton.setAccessibilityValue(
+            showsUsageCounts ? "已開啟" : "已關閉"
+        )
+    }
+
+    /// Keeps the visible glyph tiny while preserving a practical click target.
+    /// It sits over the otherwise empty upper-left panel inset shown in the
+    /// compact and expanded candidate grids.
+    private func layoutUsageCountToggleButton(
+        candidateViewportHeight: CGFloat
+    ) {
+        usageCountToggleButton.frame = NSRect(
+            x: 1,
+            y: max(0, candidateViewportHeight - 21),
+            width: 21,
+            height: 21
         )
     }
 

@@ -4,6 +4,13 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.40] - 2026-11-18
+
+### Added
+
+- Add a small candidate-window toggle that shows each character or phrase's
+  personal selection count in a badge at the candidate's upper-right corner.
+
 ## [0.1.39] - 2026-11-09
 
 ### Fixed

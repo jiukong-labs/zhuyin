@@ -3,6 +3,34 @@ import CoreText
 import XCTest
 
 final class CandidateWindowGeometryTests: XCTestCase {
+    func testUsageCountPresentationUsesExactNonnegativeCount() {
+        XCTAssertEqual(
+            CandidateUsageCountPresentation.displayText(for: 0),
+            "0"
+        )
+        XCTAssertEqual(
+            CandidateUsageCountPresentation.displayText(for: 12_345),
+            "12345"
+        )
+        XCTAssertEqual(
+            CandidateUsageCountPresentation.displayText(for: -1),
+            "0"
+        )
+    }
+
+    func testUsageCountBadgeStaysInCandidateUpperRightCorner() {
+        let bounds = CGRect(x: 0, y: 0, width: 64, height: 38)
+        let frame = CandidateUsageCountPresentation.badgeFrame(
+            in: bounds,
+            textSize: CGSize(width: 18, height: 10)
+        )
+
+        XCTAssertEqual(frame.maxX, bounds.maxX - 2)
+        XCTAssertEqual(frame.maxY, bounds.maxY - 2)
+        XCTAssertGreaterThanOrEqual(frame.width, frame.height)
+        XCTAssertTrue(bounds.contains(frame))
+    }
+
     func testLastResortFontIsRecognizedAsMissingGlyphFallback() {
         let lastResort = CTFontCreateWithName(
             "LastResort" as CFString,
