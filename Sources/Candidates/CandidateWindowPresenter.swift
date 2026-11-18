@@ -88,12 +88,12 @@ private final class CandidateButton: NSButton {
         )
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(
-                ofSize: 9,
-                weight: .semibold
+                ofSize: 10,
+                weight: .bold
             ),
             .foregroundColor: usesSelectedUsageBadgeStyle
-                ? NSColor.alternateSelectedControlTextColor
-                : NSColor.secondaryLabelColor
+                ? NSColor.controlAccentColor
+                : NSColor.controlBackgroundColor
         ]
         let textSize = (text as NSString).size(withAttributes: attributes)
         let badgeFrame = CandidateUsageCountPresentation.badgeFrame(
@@ -101,8 +101,9 @@ private final class CandidateButton: NSButton {
             textSize: textSize
         )
         let backgroundColor = usesSelectedUsageBadgeStyle
-            ? NSColor.alternateSelectedControlTextColor.withAlphaComponent(0.2)
-            : NSColor.labelColor.withAlphaComponent(0.12)
+            ? NSColor.alternateSelectedControlTextColor
+                .withAlphaComponent(0.95)
+            : NSColor.labelColor.withAlphaComponent(0.82)
         backgroundColor.setFill()
         NSBezierPath(
             roundedRect: badgeFrame,

@@ -70,9 +70,9 @@ struct CandidateGridMetrics: Equatable {
 }
 
 enum CandidateUsageCountPresentation {
-    static let badgeHeight: CGFloat = 14
+    static let badgeHeight: CGFloat = 16
     static let badgeEdgeInset: CGFloat = 2
-    static let badgeHorizontalPadding: CGFloat = 4
+    static let badgeHorizontalPadding: CGFloat = 5
 
     static func displayText(for selectionCount: Int64) -> String {
         String(max(0, selectionCount))

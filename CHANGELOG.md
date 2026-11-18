@@ -4,6 +4,13 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.41] - 2026-11-18
+
+### Changed
+
+- Increase candidate selection-count badge size, weight, and contrast so the
+  numbers remain legible against both selected and ordinary candidate cells.
+
 ## [0.1.40] - 2026-11-18
 
 ### Added
