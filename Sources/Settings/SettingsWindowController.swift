@@ -31,6 +31,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var updateStatusLabel: NSTextField?
 
     private static let arrangements = ZhuyinKeyboardArrangement.allCases
+    /// The Labs home page lists every app with its platform and store link,
+    /// so it stays current without shipping a new input-method build.
+    private static let moreAppsURL = URL(string: "https://www.jiukong.idv.tw/")!
 
     private static let shiftOptions: [(title: String, value: ShiftKeyPreference)] = [
         ("左右 Shift 皆可", .both),
@@ -306,6 +309,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     controls: [updateButton, statusLabel],
                     note: "久空每天最多自動向 GitHub 檢查一次正式版本；按上方按鈕會立即重新檢查，顯示的一律是目前最新的正式版。發現新版後可自動下載、驗證並開啟 macOS 安裝程式；不會傳送輸入內容或使用者資料，安裝新版仍需管理員授權。"
                 ),
+                SettingsPaneBuilder.section(
+                    title: "更多久空 App",
+                    controls: [
+                        makeButton(
+                            "開啟久空實驗室網站…",
+                            action: #selector(openMoreApps(_:))
+                        ),
+                    ],
+                    note: "久空實驗室還有游標旁的輸入法提示、長截圖、選單列系統監控等 Mac App，以及 iPhone 與 Android 的鬧鐘、日曆和錄影。按上方按鈕會用瀏覽器開啟 www.jiukong.idv.tw；不會傳送輸入內容或使用者資料。"
+                ),
             ]
         )
     }
@@ -494,6 +507,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         UpdateController.shared.checkNow { state in
             UpdatePrompt.present(state)
         }
+    }
+
+    @objc private func openMoreApps(_ sender: Any?) {
+        NSWorkspace.shared.open(Self.moreAppsURL)
     }
 
     @objc private func updateCheckDidChange(_ notification: Notification) {

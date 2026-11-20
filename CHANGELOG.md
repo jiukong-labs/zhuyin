@@ -4,6 +4,11 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add a "更多久空 App" section to the Update settings tab that opens the
+  Jiukong Labs website in the default browser.
+
 ## [0.1.41] - 2026-11-18
 
 ### Changed
