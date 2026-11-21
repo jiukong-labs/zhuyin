@@ -4,6 +4,8 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.42] - 2026-11-21
+
 ### Added
 
 - Add a "更多久空 App" section to the Update settings tab that opens the
