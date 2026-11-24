@@ -17,6 +17,7 @@ final class SecureFieldSourceGuard {
     private var ownInputSourceID: String?
     private var timer: Timer?
     private var activity: NSObjectProtocol?
+    private var activeContextID: String?
 
     private init() {}
 
@@ -49,9 +50,21 @@ final class SecureFieldSourceGuard {
 
     /// A client activated Jiukong. That client can be the password field
     /// itself, just before macOS selects ABC for it.
-    func jiukongActivated() {
+    func jiukongActivated(contextID: String) {
         precondition(Thread.isMainThread)
-        restorer.noteJiukongActivated(Self.currentSecureInput())
+        activeContextID = contextID
+        let sourceID = Self.currentInputSourceID()
+        let secureInput = Self.currentSecureInput()
+        finish(
+            restorer.noteJiukongActivated(
+                secureInput,
+                contextID: contextID,
+                currentSourceID: sourceID,
+                at: ProcessInfo.processInfo.systemUptime
+            ),
+            sourceID: sourceID,
+            secureInput: secureInput
+        )
     }
 
     @objc private func selectedInputSourceDidChange() {
@@ -102,6 +115,12 @@ final class SecureFieldSourceGuard {
         switch outcome {
         case .none:
             return
+        case .preferEnglish:
+            jiukongShiftTrace(
+                "secure field guard: preferring Jiukong English to \(sourceID ?? "?")"
+            )
+            restorer.noteEnglishSelectionContext(activeContextID)
+            select(.english)
         case .restore(let mode):
             let reason = secureInput.enabled
                 ? "password field's app left (\(Self.describe(secureInput)))"
@@ -111,6 +130,24 @@ final class SecureFieldSourceGuard {
                     + " selecting \(mode.rawValue)"
             )
             select(mode)
+        case .tryRestore(let mode):
+            jiukongShiftTrace(
+                "secure field guard: new text context while using Jiukong English;"
+                    + " trying \(mode.rawValue)"
+            )
+            select(mode)
+            let selectedID = Self.currentInputSourceID()
+            if self.mode(forSourceID: selectedID) == mode {
+                restorer.restoreAttemptSucceeded()
+                jiukongShiftTrace(
+                    "secure field guard: original mode accepted, selected \(selectedID ?? "?")"
+                )
+                stopPolling()
+            } else {
+                jiukongShiftTrace(
+                    "secure field guard: original mode refused, \(selectedID ?? "?") remains selected"
+                )
+            }
         case .dismissed:
             jiukongShiftTrace(
                 "secure field guard: no password field, \(sourceID ?? "?") was chosen"

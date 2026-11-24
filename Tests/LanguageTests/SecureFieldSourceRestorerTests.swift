@@ -4,6 +4,7 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
     private typealias SecureInput = SecureFieldSourceRestorer.SecureInput
 
     private let abc = "com.apple.keylayout.ABC"
+    private let jiukongEnglish = "jiukong.English"
     private let delay = SecureFieldSourceRestorer.restoreDelay
 
     private let chrome: pid_t = 101
@@ -28,6 +29,24 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
         restorer.noteJiukongTyping(off)
         XCTAssertEqual(
             restorer.sourceChanged(to: nil, sourceID: abc, secureInput: chromeField, at: 100),
+            .preferEnglish
+        )
+        XCTAssertTrue(restorer.isWaiting)
+        return restorer
+    }
+
+    private func displacedIntoJiukongEnglish(
+        from mode: LanguageMode = .chinese
+    ) -> SecureFieldSourceRestorer {
+        var restorer = displacedByPasswordField(from: mode)
+        restorer.noteEnglishSelectionContext("password")
+        XCTAssertEqual(
+            restorer.sourceChanged(
+                to: .english,
+                sourceID: jiukongEnglish,
+                secureInput: chromeField,
+                at: 100.1
+            ),
             .none
         )
         XCTAssertTrue(restorer.isWaiting)
@@ -35,36 +54,93 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
     }
 
     func testPasswordFieldEndingRestoresJiukong() {
-        var restorer = displacedByPasswordField()
+        var restorer = displacedIntoJiukongEnglish()
 
-        XCTAssertEqual(restorer.poll(secureInput: chromeField, currentSourceID: abc, at: 110), .none)
-        XCTAssertEqual(restorer.poll(secureInput: off, currentSourceID: abc, at: 124), .none)
+        XCTAssertEqual(restorer.poll(secureInput: chromeField, currentSourceID: jiukongEnglish, at: 110), .none)
+        XCTAssertEqual(restorer.poll(secureInput: off, currentSourceID: jiukongEnglish, at: 124), .none)
         XCTAssertEqual(
-            restorer.poll(secureInput: off, currentSourceID: abc, at: 124 + delay - 0.01),
+            restorer.poll(secureInput: off, currentSourceID: jiukongEnglish, at: 124 + delay - 0.01),
             .none
         )
         XCTAssertEqual(
-            restorer.poll(secureInput: off, currentSourceID: abc, at: 124 + delay + 0.01),
+            restorer.poll(secureInput: off, currentSourceID: jiukongEnglish, at: 124 + delay + 0.01),
             .restore(.chinese)
         )
         XCTAssertFalse(restorer.isWaiting)
     }
 
     func testLeavingThePasswordFieldsAppRestoresWhileItKeepsSecureInput() {
-        // Chrome kept secure input on after the user moved to VS Code, which
-        // then stayed on ABC until the user chose Jiukong again.
-        var restorer = displacedByPasswordField()
+        // Chrome kept secure input on after the user moved to VS Code. Keep
+        // watching while Jiukong English stands in, then restore the original
+        // mode once Chrome is no longer in front.
+        var restorer = displacedIntoJiukongEnglish()
         let inVSCode = held(by: chrome, front: vscode)
 
-        XCTAssertEqual(restorer.poll(secureInput: chromeField, currentSourceID: abc, at: 105), .none)
-        XCTAssertEqual(restorer.poll(secureInput: inVSCode, currentSourceID: abc, at: 106), .none)
+        XCTAssertEqual(restorer.poll(secureInput: chromeField, currentSourceID: jiukongEnglish, at: 105), .none)
+        XCTAssertEqual(restorer.poll(secureInput: inVSCode, currentSourceID: jiukongEnglish, at: 106), .none)
         XCTAssertEqual(
-            restorer.poll(secureInput: inVSCode, currentSourceID: abc, at: 106 + delay - 0.01),
+            restorer.poll(secureInput: inVSCode, currentSourceID: jiukongEnglish, at: 106 + delay - 0.01),
             .none
         )
         XCTAssertEqual(
-            restorer.poll(secureInput: inVSCode, currentSourceID: abc, at: 106 + delay + 0.01),
+            restorer.poll(secureInput: inVSCode, currentSourceID: jiukongEnglish, at: 106 + delay + 0.01),
             .restore(.chinese)
+        )
+    }
+
+    func testNewTextContextTriesTheOriginalModeAfterJiukongEnglishSettles() {
+        var restorer = displacedIntoJiukongEnglish()
+        let activationDelay = SecureFieldSourceRestorer.activationRestoreDelay
+
+        XCTAssertEqual(
+            restorer.noteJiukongActivated(
+                chromeField,
+                contextID: "password",
+                currentSourceID: jiukongEnglish,
+                at: 100.1 + activationDelay - 0.01
+            ),
+            .none
+        )
+        XCTAssertEqual(
+            restorer.noteJiukongActivated(
+                chromeField,
+                contextID: "password",
+                currentSourceID: jiukongEnglish,
+                at: 100.1 + activationDelay + 0.01
+            ),
+            .none
+        )
+        XCTAssertEqual(
+            restorer.noteJiukongActivated(
+                chromeField,
+                contextID: "ordinary-text",
+                currentSourceID: jiukongEnglish,
+                at: 100.1 + activationDelay + 0.01
+            ),
+            .tryRestore(.chinese)
+        )
+        XCTAssertTrue(restorer.isWaiting)
+
+        restorer.restoreAttemptSucceeded()
+        XCTAssertFalse(restorer.isWaiting)
+    }
+
+    func testRefusedContextRestoreKeepsWatchingJiukongEnglish() {
+        var restorer = displacedIntoJiukongEnglish()
+
+        XCTAssertEqual(
+            restorer.noteJiukongActivated(
+                chromeField,
+                contextID: "another-password",
+                currentSourceID: jiukongEnglish,
+                at: 101
+            ),
+            .tryRestore(.chinese)
+        )
+        XCTAssertTrue(restorer.isWaiting)
+        XCTAssertEqual(
+            restorer.poll(secureInput: chromeField, currentSourceID: jiukongEnglish, at: 102),
+            .none
         )
     }
 
@@ -255,7 +331,10 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
         restorer.noteJiukongTyping(off)
         _ = restorer.sourceChanged(to: nil, sourceID: abc, secureInput: off, at: 100)
 
-        XCTAssertEqual(restorer.poll(secureInput: chromeField, currentSourceID: abc, at: 100.2), .none)
+        XCTAssertEqual(
+            restorer.poll(secureInput: chromeField, currentSourceID: abc, at: 100.2),
+            .preferEnglish
+        )
         _ = restorer.poll(secureInput: off, currentSourceID: abc, at: 108)
         XCTAssertEqual(
             restorer.poll(secureInput: off, currentSourceID: abc, at: 108 + delay + 0.01),
@@ -269,7 +348,12 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
         var restorer = SecureFieldSourceRestorer(selectedMode: .chinese)
         let secureKeyboardEntry = held(by: terminal, front: terminal)
         restorer.noteJiukongTyping(secureKeyboardEntry)
-        restorer.noteJiukongActivated(secureKeyboardEntry)
+        _ = restorer.noteJiukongActivated(
+            secureKeyboardEntry,
+            contextID: "terminal",
+            currentSourceID: "jiukong.Chinese",
+            at: 99
+        )
 
         XCTAssertEqual(
             restorer.sourceChanged(to: nil, sourceID: abc, secureInput: secureKeyboardEntry, at: 100),
@@ -295,7 +379,12 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
         for front in [chrome, vscode] {
             var restorer = SecureFieldSourceRestorer(selectedMode: .chinese)
             restorer.noteJiukongTyping(off)
-            restorer.noteJiukongActivated(held(by: chrome, front: front))
+            _ = restorer.noteJiukongActivated(
+                held(by: chrome, front: front),
+                contextID: "password",
+                currentSourceID: "jiukong.Chinese",
+                at: 99
+            )
 
             XCTAssertEqual(
                 restorer.sourceChanged(
@@ -304,7 +393,7 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
                     secureInput: held(by: chrome, front: front),
                     at: 100
                 ),
-                .none
+                .preferEnglish
             )
             XCTAssertTrue(restorer.isWaiting)
         }
@@ -323,7 +412,12 @@ final class SecureFieldSourceRestorerTests: XCTestCase {
     func testActivationWithoutSecureInputInFrontClearsTheTypingSample() {
         var restorer = SecureFieldSourceRestorer(selectedMode: .chinese)
         restorer.noteJiukongTyping(held(by: terminal, front: terminal))
-        restorer.noteJiukongActivated(off)
+        _ = restorer.noteJiukongActivated(
+            off,
+            contextID: "ordinary-text",
+            currentSourceID: "jiukong.Chinese",
+            at: 99
+        )
 
         _ = restorer.sourceChanged(to: nil, sourceID: abc, secureInput: chromeField, at: 100)
         XCTAssertTrue(restorer.isWaiting)

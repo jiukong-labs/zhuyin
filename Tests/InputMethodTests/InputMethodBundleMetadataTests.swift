@@ -93,6 +93,15 @@ final class InputMethodBundleMetadataTests: XCTestCase {
             XCTAssertEqual(mode["tsInputModeIsVisibleKey"] as? Bool, isVisible)
             XCTAssertEqual(mode["tsInputModeMenuIconFileKey"] as? String, iconName)
             XCTAssertEqual(mode["tsInputModePaletteIconFileKey"] as? String, iconName)
+            let isEnglish = identifier.hasSuffix(".English")
+            XCTAssertEqual(
+                mode["TISIntendedLanguage"] as? String,
+                isEnglish ? "en" : "zh-Hant"
+            )
+            XCTAssertEqual(
+                mode["tsInputModeScriptKey"] as? String,
+                isEnglish ? "smRoman" : "smUnicodeScript"
+            )
         }
     }
 

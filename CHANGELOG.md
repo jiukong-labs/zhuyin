@@ -4,6 +4,19 @@ All notable changes to Jiukong Zhuyin will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.43] - 2026-11-24
+
+### Fixed
+
+- Keep password fields inside Jiukong whenever macOS permits it. If a secure
+  field displaces Jiukong with ABC, Jiukong now selects its own ASCII-capable
+  English mode, remembers the previous mode, and restores it after the field
+  ends. A later text context in the same Chrome process also gets a verified
+  restore attempt, fixing pages where Chrome kept secure input enabled after
+  focus had already left the password field. Password contexts can still
+  refuse the non-ASCII mode, and system English remains the fallback if
+  Jiukong English itself is refused.
+
 ## [0.1.42] - 2026-11-21
 
 ### Added

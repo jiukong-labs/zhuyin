@@ -22,6 +22,10 @@ struct SecureFieldSourceRestorer {
     /// Gives macOS the first chance to restore the source itself, and lets
     /// focus move between two password fields without a restore in between.
     static let restoreDelay: TimeInterval = 0.3
+    /// Ignores the activation caused by selecting Jiukong English itself.
+    /// A later activation means the client has moved to another text context,
+    /// where macOS can decide whether the original non-ASCII mode is allowed.
+    static let activationRestoreDelay: TimeInterval = 0.5
     /// Secure input left on this long is no longer a password being typed.
     static let maximumWait: TimeInterval = 600
 
@@ -53,8 +57,14 @@ struct SecureFieldSourceRestorer {
     enum Outcome: Equatable {
         /// Still waiting, or nothing to do.
         case none
+        /// Prefer Jiukong's ASCII-capable English mode to a system layout.
+        /// The displacement remains watched so the original mode can return.
+        case preferEnglish
         /// Select this Jiukong mode again.
         case restore(LanguageMode)
+        /// A new text context appeared while Jiukong English was standing in.
+        /// Try the original mode, but keep watching if macOS refuses it.
+        case tryRestore(LanguageMode)
         /// Secure input never started; the user chose that source.
         case dismissed
         /// Secure input was already on in the app Jiukong was typing into,
@@ -74,6 +84,9 @@ struct SecureFieldSourceRestorer {
         /// The app that held secure input while it was in front.
         var fieldAppPID: pid_t?
         var fieldEndedAt: TimeInterval?
+        var englishRequested = false
+        var englishSelectedAt: TimeInterval?
+        var englishContextID: String?
 
         mutating func noteFieldApp(_ secureInput: SecureInput) {
             guard fieldAppPID == nil,
@@ -120,12 +133,31 @@ struct SecureFieldSourceRestorer {
 
     /// A Jiukong controller activated. A Chrome page whose password field
     /// already has focus activates Jiukong just after turning secure input
-    /// on and just before macOS selects ABC, so an activation only ever
-    /// clears the sample.
-    mutating func noteJiukongActivated(_ secureInput: SecureInput) {
+    /// on and just before macOS selects ABC, so an activation before the
+    /// displacement only clears the sample. Once Jiukong English stands in,
+    /// a later activation is a safe opportunity to ask macOS for the original
+    /// mode again; a still-secure field can refuse it.
+    mutating func noteJiukongActivated(
+        _ secureInput: SecureInput,
+        contextID: String,
+        currentSourceID: String?,
+        at now: TimeInterval
+    ) -> Outcome {
         if !secureInput.heldByFrontmostApp {
             secureInputWhileTyping = false
         }
+        guard var displacement,
+              displacement.sourceID == currentSourceID,
+              let englishSelectedAt = displacement.englishSelectedAt,
+              now - englishSelectedAt >= Self.activationRestoreDelay else {
+            return .none
+        }
+        guard displacement.englishContextID != contextID else {
+            return .none
+        }
+        displacement.englishContextID = contextID
+        self.displacement = displacement
+        return .tryRestore(displacement.mode)
     }
 
     /// `mode` is nil for a source other than Jiukong.
@@ -138,11 +170,21 @@ struct SecureFieldSourceRestorer {
         let previous = selectedMode
         selectedMode = mode
 
-        if mode != nil {
-            return endWaiting(.superseded)
-        }
-        if let displacement {
+        if var displacement {
+            if displacement.englishRequested, mode == .english {
+                displacement.sourceID = sourceID
+                displacement.englishSelectedAt = now
+                displacement.fieldEndedAt = nil
+                self.displacement = displacement
+                return .none
+            }
+            if mode != nil {
+                return endWaiting(.superseded)
+            }
             return displacement.sourceID == sourceID ? .none : endWaiting(.superseded)
+        }
+        if mode != nil {
+            return .none
         }
         guard let previous else {
             return .none
@@ -158,7 +200,7 @@ struct SecureFieldSourceRestorer {
         )
         displacement.noteFieldApp(secureInput)
         self.displacement = displacement
-        return .none
+        return preferEnglishIfConfirmed()
     }
 
     mutating func poll(
@@ -184,6 +226,10 @@ struct SecureFieldSourceRestorer {
         // The front app can lag the switch by a moment, so the field's app
         // is taken from the first poll that sees it in front.
         displacement.noteFieldApp(secureInput)
+        self.displacement = displacement
+        if let outcome = requestEnglishIfNeeded() {
+            return outcome
+        }
         if now - displacement.startedAt > Self.maximumWait {
             return endWaiting(.gaveUp)
         }
@@ -199,6 +245,35 @@ struct SecureFieldSourceRestorer {
             return .none
         }
         return endWaiting(.restore(displacement.mode))
+    }
+
+    /// A verified restore attempt selected the original Jiukong mode.
+    mutating func restoreAttemptSucceeded() {
+        displacement = nil
+    }
+
+    /// Records the password text context that caused Jiukong English to be
+    /// selected. Re-activating that same context is not evidence that focus
+    /// left the password field.
+    mutating func noteEnglishSelectionContext(_ contextID: String?) {
+        displacement?.englishContextID = contextID
+    }
+
+    private mutating func preferEnglishIfConfirmed() -> Outcome {
+        guard displacement?.confirmed == true else {
+            return .none
+        }
+        return requestEnglishIfNeeded() ?? .none
+    }
+
+    private mutating func requestEnglishIfNeeded() -> Outcome? {
+        guard var displacement,
+              !displacement.englishRequested else {
+            return nil
+        }
+        displacement.englishRequested = true
+        self.displacement = displacement
+        return .preferEnglish
     }
 
     private mutating func endWaiting(_ outcome: Outcome) -> Outcome {

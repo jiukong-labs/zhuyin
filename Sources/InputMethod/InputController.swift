@@ -492,7 +492,7 @@ final class InputController: IMKInputController {
             self,
             clientBundleIdentifier: clientBundleIdentifier
         )
-        SecureFieldSourceGuard.shared.jiukongActivated()
+        SecureFieldSourceGuard.shared.jiukongActivated(contextID: traceTag)
         synchronizeLanguageModeWithCurrentInputSource()
         SystemInputSourceObserver.shared.alignSelectedModeAfterActivation()
         UserLearningService.shared.refreshCloudIfNeeded()

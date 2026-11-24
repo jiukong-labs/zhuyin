@@ -60,7 +60,7 @@ leaving the default gate.
 | Shift-Right phrase selection | `phrase-right` | first Return saves and retains composition; second commits `久空` |
 | Saving a prefix preserves the editable suffix | `phrase-continue` | save `測試` in `測試我`, then Forward Delete edits `我`; final Return commits `測試ㄨㄛ` |
 | Removing a phrase candidate, built-in ones included | mouse only — unit tests | the exact text+reading identity stops appearing and stays gone across dictionary updates |
-| Jiukong returns after a password field forced ABC, also when the page opens with the password field focused or Chrome is left for another app | manual — unit tests | 0.3 s after the field ends, or after another app comes to the front while Chrome still holds secure input, the Jiukong mode that was selected is selected again; under Terminal's Secure Keyboard Entry a switch to ABC stays |
+| Password fields use Jiukong English instead of staying on ABC, then restore the previous mode | manual — unit tests | Once secure input confirms the displacement, the ASCII-capable Jiukong English mode replaces ABC; 0.3 s after the field ends or its app leaves, the previous mode returns. A new text context in the same Chrome process gets a verified restore attempt, while a password context may refuse it and remain safely in English; under Terminal's Secure Keyboard Entry a deliberate switch to ABC stays |
 | A moment in which macOS does not select the 久空 mode does not keep 「久空中文」 selected | manual — unit tests | with the within-Jiukong style, 「久空中文」 chosen from the input menu becomes 「久空」 at once, and again after a fallback once its retry delay has passed; the fallback's `log show` trace names that delay |
 | Jiukong's overlays never cover a focused payment or authorization screen | manual — unit tests | the cursor indicator and Shift HUD hide while the sheet has focus; with the pointer on the sheet PassKit keeps logging `Payment UI is occluded: false` and Touch ID stays offered |
 
@@ -98,18 +98,23 @@ removed the Touch ID prompt.
 
 The password-field row cannot be scripted: the harness types into TextEdit
 only, and the failures needed Chrome, a page whose password field had focus
-as it loaded, and a move to another app while Chrome kept secure input on.
-`SecureFieldSourceRestorerTests` covers the decisions, with the order of
-events traced on 2026-11-09. On an installed build, open such a login page in
-Chrome with Jiukong selected, leave for another app, and check each switch
-and restore, with the app holding secure input and the app in front, with:
+as it loaded, a second text context in the same process, and a move to another
+app while Chrome kept secure input on. `SecureFieldSourceRestorerTests` covers
+the decisions, with the original order traced on 2026-11-09 and the same-app
+case on 2026-11-24. On an installed build, open such a login page in Chrome
+with Jiukong selected, move between its password and ordinary fields, then
+leave for another app. The password field must use Jiukong English, the
+ordinary field must recover the previous mode only when macOS accepts it, and
+the trace must name each preference, refusal, or restore:
 
 ```sh
 /usr/bin/log show --last 1h --style compact --predicate 'subsystem == "tw.idv.jiukong.inputmethod.zhuyin" AND eventMessage CONTAINS "secure field guard"'
 ```
 
-Before the fix the first case logged nothing at all, and the second logged
-only a watch until the user chose Jiukong from the input menu.
+Before the fixes the first case logged nothing at all, leaving Chrome logged
+only a watch until the user chose Jiukong, and moving to another field in the
+same Chrome process left ABC selected because process-wide secure input still
+named Chrome.
 
 The 久空-mode fallback row cannot be scripted: the refusal followed a
 Chrome password field, apparently while secure input was still turning off
